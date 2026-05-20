@@ -1,0 +1,330 @@
+const express = require('express');
+const makeWASocket = require('@whiskeysockets/baileys').default;
+const { DisconnectReason, useMultiFileAuthState, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
+const { Boom } = require('@hapi/boom');
+const qrcode = require('qrcode');
+const Groq = require('groq-sdk');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+app.use(express.json());
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const BASE44_WEBHOOK = process.env.BASE44_WEBHOOK_URL || ''; // optional, for forwarding messages
+const AUTH_FOLDER = './auth_info';
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let sock = null;
+let currentQR = null;
+let connectionStatus = 'disconnected'; // 'disconnected' | 'connecting' | 'connected'
+let connectedPhone = null;
+let messageLog = []; // in-memory store (use a DB in production)
+let contacts = {};   // { phoneNumber: { name, messages: [] } }
+let settings = {
+  ai_enabled: true,
+  ai_reply_cap: 10,
+  ai_delay_seconds: 2,
+  sales_prompt: `You are a customer service agent for Lasalu Drop Logistics (LDL). 
+LDL is a fast and reliable delivery/logistics company in Nigeria. 
+Be friendly, professional, and concise. 
+When asked about pricing, say rates start from ₦500 for local deliveries. 
+Always speak AS the business, never from the customer's perspective.
+Keep replies short — max 3 sentences.`,
+  routing_prompt: `You handle routing and delivery tracking queries for LDL. 
+Help customers with: Where is my package? Delivery timelines? Pickup scheduling?
+Be reassuring and helpful. Keep replies short.`,
+  verification_prompt: `You handle order confirmation and payment verification for LDL.
+Help confirm orders and payments. Ask for order ID if needed. Keep replies short.`
+};
+let aiReplyCounts = {}; // { phoneNumber: count }
+
+// ─── GROQ AI ──────────────────────────────────────────────────────────────────
+async function getAIReply(incomingMessage, phoneNumber) {
+  if (!GROQ_API_KEY) return null;
+
+  try {
+    const groq = new Groq({ apiKey: GROQ_API_KEY });
+    const systemPrompt = `Business name: Lasalu Drop Logistics (LDL). Business type: Logistics and delivery services in Nigeria.
+Always reply as LDL staff to the customer. Never reply from the customer's perspective.
+
+${settings.sales_prompt}`;
+
+    const response = await groq.chat.completions.create({
+      model: 'llama3-8b-8192',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: incomingMessage }
+      ],
+      temperature: 0.7,
+      max_tokens: 200
+    });
+
+    return response.choices[0]?.message?.content || null;
+  } catch (err) {
+    console.error('Groq error:', err.message);
+    return null;
+  }
+}
+
+// ─── WHATSAPP CONNECTION ──────────────────────────────────────────────────────
+async function connectWhatsApp() {
+  if (!fs.existsSync(AUTH_FOLDER)) fs.mkdirSync(AUTH_FOLDER, { recursive: true });
+
+  const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
+
+  sock = makeWASocket({
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, require('pino')({ level: 'silent' }))
+    },
+    printQRInTerminal: false,
+    logger: require('pino')({ level: 'silent' }),
+    browser: ['LDL Swift Reply', 'Chrome', '120.0.0']
+  });
+
+  sock.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr) {
+      currentQR = await qrcode.toDataURL(qr);
+      connectionStatus = 'connecting';
+      console.log('QR code generated — waiting for scan');
+    }
+
+    if (connection === 'close') {
+      const shouldReconnect = lastDisconnect?.error instanceof Boom
+        ? lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut
+        : true;
+
+      connectionStatus = 'disconnected';
+      connectedPhone = null;
+      currentQR = null;
+      console.log('Connection closed. Reconnecting:', shouldReconnect);
+
+      if (shouldReconnect) {
+        setTimeout(connectWhatsApp, 3000);
+      }
+    }
+
+    if (connection === 'open') {
+      connectionStatus = 'connected';
+      currentQR = null;
+      connectedPhone = sock.user?.id?.split(':')[0] || null;
+      console.log('WhatsApp connected! Phone:', connectedPhone);
+    }
+  });
+
+  sock.ev.on('creds.update', saveCreds);
+
+  // ─── INCOMING MESSAGES ───────────────────────────────────────────────────
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    for (const msg of messages) {
+      if (!msg.message || msg.key.fromMe) continue; // skip sent messages
+
+      const from = msg.key.remoteJid;
+      if (!from || from.endsWith('@g.us')) continue; // skip group messages
+
+      const phoneNumber = from.replace('@s.whatsapp.net', '');
+      const text =
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text ||
+        '';
+
+      if (!text) continue;
+
+      console.log(`📩 Message from ${phoneNumber}: ${text}`);
+
+      // Store contact and message
+      if (!contacts[phoneNumber]) {
+        contacts[phoneNumber] = { name: phoneNumber, messages: [], ai_enabled: true };
+      }
+      contacts[phoneNumber].messages.push({
+        id: Date.now().toString(),
+        content: text,
+        direction: 'received',
+        timestamp: new Date().toISOString(),
+        is_ai_reply: false
+      });
+      contacts[phoneNumber].last_message = text;
+      contacts[phoneNumber].last_message_date = new Date().toISOString();
+
+      // AI auto-reply logic
+      const contactAiEnabled = contacts[phoneNumber].ai_enabled !== false;
+      const globalAiEnabled = settings.ai_enabled;
+      const replyCount = aiReplyCounts[phoneNumber] || 0;
+      const underCap = replyCount < settings.ai_reply_cap;
+
+      if (globalAiEnabled && contactAiEnabled && underCap) {
+        // Delay before replying
+        await new Promise(r => setTimeout(r, settings.ai_delay_seconds * 1000));
+
+        const aiReply = await getAIReply(text, phoneNumber);
+        if (aiReply) {
+          await sock.sendMessage(from, { text: aiReply });
+          aiReplyCounts[phoneNumber] = replyCount + 1;
+
+          contacts[phoneNumber].messages.push({
+            id: Date.now().toString(),
+            content: aiReply,
+            direction: 'sent',
+            timestamp: new Date().toISOString(),
+            is_ai_reply: true
+          });
+
+          console.log(`🤖 AI replied to ${phoneNumber}: ${aiReply}`);
+        }
+      }
+    }
+  });
+}
+
+// ─── API ROUTES ───────────────────────────────────────────────────────────────
+
+// Health check
+app.get('/', (req, res) => {
+  res.json({ message: 'LDL Baileys WhatsApp Service is running!', status: 'online', version: '1.0.0' });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', connection: connectionStatus, phone: connectedPhone });
+});
+
+// WhatsApp status
+app.get('/status', (req, res) => {
+  res.json({
+    status: connectionStatus,
+    phone: connectedPhone,
+    qr: currentQR
+  });
+});
+
+// Get QR code (returns base64 image)
+app.get('/qr', (req, res) => {
+  if (connectionStatus === 'connected') {
+    return res.json({ status: 'already_connected', phone: connectedPhone });
+  }
+  if (!currentQR) {
+    return res.json({ status: 'generating', message: 'QR not ready yet, try again in a few seconds' });
+  }
+  res.json({ status: 'pending', qr: currentQR });
+});
+
+// Start/restart connection
+app.post('/session/start', async (req, res) => {
+  if (connectionStatus === 'connected') {
+    return res.json({ status: 'already_connected', phone: connectedPhone });
+  }
+  try {
+    await connectWhatsApp();
+    res.json({ status: 'starting', message: 'Connection initiated, fetch /qr for QR code' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Disconnect
+app.post('/session/disconnect', async (req, res) => {
+  try {
+    if (sock) await sock.logout();
+    connectionStatus = 'disconnected';
+    connectedPhone = null;
+    currentQR = null;
+    // Clear auth so next connect is fresh
+    if (fs.existsSync(AUTH_FOLDER)) {
+      fs.rmSync(AUTH_FOLDER, { recursive: true });
+    }
+    res.json({ status: 'disconnected' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send a manual message
+app.post('/send', async (req, res) => {
+  const { phone, message } = req.body;
+  if (!phone || !message) return res.status(400).json({ error: 'phone and message required' });
+  if (connectionStatus !== 'connected') return res.status(400).json({ error: 'WhatsApp not connected' });
+
+  try {
+    const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
+    await sock.sendMessage(jid, { text: message });
+
+    // Log it
+    if (!contacts[phone]) contacts[phone] = { name: phone, messages: [], ai_enabled: true };
+    contacts[phone].messages.push({
+      id: Date.now().toString(),
+      content: message,
+      direction: 'sent',
+      timestamp: new Date().toISOString(),
+      is_ai_reply: false
+    });
+
+    res.json({ status: 'sent' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all contacts with their last message
+app.get('/contacts', (req, res) => {
+  const result = Object.entries(contacts).map(([phone, data]) => ({
+    phone,
+    name: data.name || phone,
+    last_message: data.last_message || '',
+    last_message_date: data.last_message_date || null,
+    total_messages: data.messages?.length || 0,
+    ai_replies_count: aiReplyCounts[phone] || 0,
+    ai_enabled: data.ai_enabled !== false
+  }));
+  res.json(result);
+});
+
+// Get messages for a specific contact
+app.get('/contacts/:phone/messages', (req, res) => {
+  const { phone } = req.params;
+  const contact = contacts[phone];
+  if (!contact) return res.json([]);
+  res.json(contact.messages || []);
+});
+
+// Toggle AI for a specific contact
+app.post('/contacts/:phone/toggle-ai', (req, res) => {
+  const { phone } = req.params;
+  if (!contacts[phone]) contacts[phone] = { name: phone, messages: [], ai_enabled: true };
+  contacts[phone].ai_enabled = !contacts[phone].ai_enabled;
+  res.json({ phone, ai_enabled: contacts[phone].ai_enabled });
+});
+
+// Update settings
+app.post('/settings', (req, res) => {
+  const { ai_enabled, ai_reply_cap, ai_delay_seconds, sales_prompt, routing_prompt, verification_prompt } = req.body;
+  if (ai_enabled !== undefined) settings.ai_enabled = ai_enabled;
+  if (ai_reply_cap !== undefined) settings.ai_reply_cap = ai_reply_cap;
+  if (ai_delay_seconds !== undefined) settings.ai_delay_seconds = ai_delay_seconds;
+  if (sales_prompt) settings.sales_prompt = sales_prompt;
+  if (routing_prompt) settings.routing_prompt = routing_prompt;
+  if (verification_prompt) settings.verification_prompt = verification_prompt;
+  res.json({ status: 'saved', settings });
+});
+
+// Get settings
+app.get('/settings', (req, res) => {
+  res.json(settings);
+});
+
+// Test AI reply (for debugging)
+app.post('/test-ai', async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: 'message required' });
+  const reply = await getAIReply(message, 'test');
+  res.json({ reply });
+});
+
+// ─── START SERVER ─────────────────────────────────────────────────────────────
+app.listen(PORT, async () => {
+  console.log(`🚀 LDL Baileys Service running on port ${PORT}`);
+  await connectWhatsApp();
+});
