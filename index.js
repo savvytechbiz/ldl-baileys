@@ -202,7 +202,22 @@ app.get('/health', (req, res) => {
 app.get('/status', (req, res) => {
   res.json({ status: connectionStatus, phone: connectedPhone, qr: currentQR });
 });
-
+app.get('/session/reset', async (req, res) => {
+  try {
+    if (sock) {
+      try { await sock.logout(); } catch(e) {}
+      sock = null;
+    }
+    const fs = require('fs');
+    if (fs.existsSync('./auth_info')) {
+      fs.rmSync('./auth_info', { recursive: true, force: true });
+    }
+    setTimeout(() => initializeWhatsApp(), 2000);
+    res.json({ success: true, message: 'Session cleared, reinitializing...' });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
 app.get('/qr', (req, res) => {
   if (connectionStatus === 'connected') {
     return res.json({ status: 'already_connected', phone: connectedPhone });
