@@ -141,16 +141,39 @@ async function connectWhatsApp() {
         });
 
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
-                  if (type !== 'notify') return;
+  if (type !== 'notify') return;
 
-                         for (const msg of messages) {
-                                     if (msg.key.fromMe) continue;
+  for (const msg of messages) {
+    if (msg.key.fromMe) continue;
 
-                    const phoneNumber = msg.key.remoteJid?.replace('@s.whatsapp.net', '') || msg.key.remoteJid;
-                                     const text =
-                                                   msg.message?.conversation ||
-                                                   msg.message?.extendedTextMessage?.text ||
-                                                   '';
+    const phoneNumber = msg.key.remoteJid?.replace('@s.whatsapp.net', '') || msg.key.remoteJid;
+    const text =
+      msg.message?.conversation ||
+      msg.message?.extendedTextMessage?.text ||
+      '';
+
+    // NEW: Send message to your app via webhook
+    try {
+      const response = await fetch('https://lasalu-chat-flow.base44.app/api/functions/receiveMessage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer 53eb9215ee354bd38d017cfa7cbc574c`
+        },
+        body: JSON.stringify({
+          from: phoneNumber,
+          contact_name: msg.pushName || phoneNumber,
+          message: text,
+          timestamp: msg.messageTimestamp,
+          is_group: msg.key.remoteJid?.endsWith('@g.us') || false
+        })
+      });
+      console.log('Message webhook response:', await response.json());
+    } catch (error) {
+      console.error('Failed to send message to app:', error.message);
+    }
+  }
+});
 
                     if (!text) continue;
 
