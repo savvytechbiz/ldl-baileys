@@ -4,6 +4,7 @@ const { DisconnectReason, useMultiFileAuthState, makeCacheableSignalKeyStore } =
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode');
 const Groq = require('groq-sdk');
+const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
 
@@ -78,8 +79,10 @@ async function connectWhatsApp() {
   sock = makeWASocket({
     auth: {
       creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, require('pino')({ level: 'silent' }))
+      keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
     },
+    printQRInTerminal: false,
+    logger: pino({ level: 'silent' }),
     printQRInTerminal: false,
     logger: require('pino')({ level: 'silent' }),
     browser: ['LDL Swift Reply', 'Chrome', '120.0.0']
