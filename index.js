@@ -13,16 +13,16 @@ app.use(express.json());
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
-const BASE44_WEBHOOK = process.env.BASE44_WEBHOOK_URL || ''; // optional, for forwarding messages
+const BASE44_WEBHOOK = process.env.BASE44_WEBHOOK_URL || '';
 const AUTH_FOLDER = './auth_info';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let sock = null;
 let currentQR = null;
-let connectionStatus = 'disconnected'; // 'disconnected' | 'connecting' | 'connected'
+let connectionStatus = 'disconnected';
 let connectedPhone = null;
-let messageLog = []; // in-memory store (use a DB in production)
-let contacts = {};   // { phoneNumber: { name, messages: [] } }
+let messageLog = [];
+let contacts = {};
 let settings = {
   ai_enabled: true,
   ai_reply_cap: 10,
@@ -39,7 +39,7 @@ Be reassuring and helpful. Keep replies short.`,
   verification_prompt: `You handle order confirmation and payment verification for LDL.
 Help confirm orders and payments. Ask for order ID if needed. Keep replies short.`
 };
-let aiReplyCounts = {}; // { phoneNumber: count }
+let aiReplyCounts = {};
 
 // ─── GROQ AI ──────────────────────────────────────────────────────────────────
 async function getAIReply(incomingMessage, phoneNumber) {
@@ -95,16 +95,27 @@ async function connectWhatsApp() {
     }
 
     if (connection === 'close') {
-      const shouldReconnect = lastDisconnect?.error instanceof Boom
-        ? lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut
-        : true;
+      const statusCode = lastDisconnect?.error instanceof Boom
+        ? lastDisconnect.error.output.statusCode
+        : null;
+
+      const loggedOut = statusCode === DisconnectReason.loggedOut;
 
       connectionStatus = 'disconnected';
       connectedPhone = null;
       currentQR = null;
-      console.log('Connection closed. Reconnecting:', shouldReconnect);
+      console.log('Connection closed. Status code:', statusCode, 'Logged out:', loggedOut);
 
-      if (shouldReconnect) {
+      // If session is bad/expired — clear auth so next connect generates a fresh QR
+      if (loggedOut || statusCode === 401 || statusCode === 440) {
+        console.log('Clearing auth and reconnecting fresh...');
+        if (fs.existsSync(AUTH_FOLDER)) {
+          fs.rmSync(AUTH_FOLDER, { recursive: true });
+        }
+      }
+
+      // Always reconnect unless explicitly logged out by user
+      if (!loggedOut) {
         setTimeout(connectWhatsApp, 3000);
       }
     }
@@ -122,10 +133,10 @@ async function connectWhatsApp() {
   // ─── INCOMING MESSAGES ───────────────────────────────────────────────────
   sock.ev.on('messages.upsert', async ({ messages }) => {
     for (const msg of messages) {
-      if (!msg.message || msg.key.fromMe) continue; // skip sent messages
+      if (!msg.message || msg.key.fromMe) continue;
 
       const from = msg.key.remoteJid;
-      if (!from || from.endsWith('@g.us')) continue; // skip group messages
+      if (!from || from.endsWith('@g.us')) continue;
 
       const phoneNumber = from.replace('@s.whatsapp.net', '');
       const text =
@@ -137,7 +148,6 @@ async function connectWhatsApp() {
 
       console.log(`📩 Message from ${phoneNumber}: ${text}`);
 
-      // Store contact and message
       if (!contacts[phoneNumber]) {
         contacts[phoneNumber] = { name: phoneNumber, messages: [], ai_enabled: true };
       }
@@ -151,14 +161,12 @@ async function connectWhatsApp() {
       contacts[phoneNumber].last_message = text;
       contacts[phoneNumber].last_message_date = new Date().toISOString();
 
-      // AI auto-reply logic
       const contactAiEnabled = contacts[phoneNumber].ai_enabled !== false;
       const globalAiEnabled = settings.ai_enabled;
       const replyCount = aiReplyCounts[phoneNumber] || 0;
       const underCap = replyCount < settings.ai_reply_cap;
 
       if (globalAiEnabled && contactAiEnabled && underCap) {
-        // Delay before replying
         await new Promise(r => setTimeout(r, settings.ai_delay_seconds * 1000));
 
         const aiReply = await getAIReply(text, phoneNumber);
@@ -183,7 +191,6 @@ async function connectWhatsApp() {
 
 // ─── API ROUTES ───────────────────────────────────────────────────────────────
 
-// Health check
 app.get('/', (req, res) => {
   res.json({ message: 'LDL Baileys WhatsApp Service is running!', status: 'online', version: '1.0.0' });
 });
@@ -192,16 +199,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', connection: connectionStatus, phone: connectedPhone });
 });
 
-// WhatsApp status
 app.get('/status', (req, res) => {
-  res.json({
-    status: connectionStatus,
-    phone: connectedPhone,
-    qr: currentQR
-  });
+  res.json({ status: connectionStatus, phone: connectedPhone, qr: currentQR });
 });
 
-// Get QR code (returns base64 image)
 app.get('/qr', (req, res) => {
   if (connectionStatus === 'connected') {
     return res.json({ status: 'already_connected', phone: connectedPhone });
@@ -212,7 +213,6 @@ app.get('/qr', (req, res) => {
   res.json({ status: 'pending', qr: currentQR });
 });
 
-// Start/restart connection
 app.post('/session/start', async (req, res) => {
   if (connectionStatus === 'connected') {
     return res.json({ status: 'already_connected', phone: connectedPhone });
@@ -225,14 +225,12 @@ app.post('/session/start', async (req, res) => {
   }
 });
 
-// Disconnect
 app.post('/session/disconnect', async (req, res) => {
   try {
     if (sock) await sock.logout();
     connectionStatus = 'disconnected';
     connectedPhone = null;
     currentQR = null;
-    // Clear auth so next connect is fresh
     if (fs.existsSync(AUTH_FOLDER)) {
       fs.rmSync(AUTH_FOLDER, { recursive: true });
     }
@@ -242,7 +240,24 @@ app.post('/session/disconnect', async (req, res) => {
   }
 });
 
-// Send a manual message
+// ─── NEW: Clear session and reconnect fresh (generates new QR) ────────────────
+app.post('/session/clear', async (req, res) => {
+  try {
+    if (sock) { try { await sock.logout(); } catch {} }
+    sock = null;
+    connectionStatus = 'disconnected';
+    connectedPhone = null;
+    currentQR = null;
+    if (fs.existsSync(AUTH_FOLDER)) {
+      fs.rmSync(AUTH_FOLDER, { recursive: true });
+    }
+    setTimeout(connectWhatsApp, 1000);
+    res.json({ status: 'cleared', message: 'Auth cleared, reconnecting fresh...' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/send', async (req, res) => {
   const { phone, message } = req.body;
   if (!phone || !message) return res.status(400).json({ error: 'phone and message required' });
@@ -252,7 +267,6 @@ app.post('/send', async (req, res) => {
     const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
     await sock.sendMessage(jid, { text: message });
 
-    // Log it
     if (!contacts[phone]) contacts[phone] = { name: phone, messages: [], ai_enabled: true };
     contacts[phone].messages.push({
       id: Date.now().toString(),
@@ -268,7 +282,6 @@ app.post('/send', async (req, res) => {
   }
 });
 
-// Get all contacts with their last message
 app.get('/contacts', (req, res) => {
   const result = Object.entries(contacts).map(([phone, data]) => ({
     phone,
@@ -282,7 +295,6 @@ app.get('/contacts', (req, res) => {
   res.json(result);
 });
 
-// Get messages for a specific contact
 app.get('/contacts/:phone/messages', (req, res) => {
   const { phone } = req.params;
   const contact = contacts[phone];
@@ -290,7 +302,6 @@ app.get('/contacts/:phone/messages', (req, res) => {
   res.json(contact.messages || []);
 });
 
-// Toggle AI for a specific contact
 app.post('/contacts/:phone/toggle-ai', (req, res) => {
   const { phone } = req.params;
   if (!contacts[phone]) contacts[phone] = { name: phone, messages: [], ai_enabled: true };
@@ -298,7 +309,6 @@ app.post('/contacts/:phone/toggle-ai', (req, res) => {
   res.json({ phone, ai_enabled: contacts[phone].ai_enabled });
 });
 
-// Update settings
 app.post('/settings', (req, res) => {
   const { ai_enabled, ai_reply_cap, ai_delay_seconds, sales_prompt, routing_prompt, verification_prompt } = req.body;
   if (ai_enabled !== undefined) settings.ai_enabled = ai_enabled;
@@ -310,12 +320,10 @@ app.post('/settings', (req, res) => {
   res.json({ status: 'saved', settings });
 });
 
-// Get settings
 app.get('/settings', (req, res) => {
   res.json(settings);
 });
 
-// Test AI reply (for debugging)
 app.post('/test-ai', async (req, res) => {
   const { message } = req.body;
   if (!message) return res.status(400).json({ error: 'message required' });
