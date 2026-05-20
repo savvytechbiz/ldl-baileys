@@ -83,8 +83,6 @@ async function connectWhatsApp() {
     },
     printQRInTerminal: false,
     logger: pino({ level: 'silent' }),
-    printQRInTerminal: false,
-    logger: require('pino')({ level: 'silent' }),
     browser: ['LDL Swift Reply', 'Chrome', '120.0.0']
   });
 
@@ -114,10 +112,11 @@ async function connectWhatsApp() {
         if (fs.existsSync(AUTH_FOLDER)) {
           fs.rmSync(AUTH_FOLDER, { recursive: true });
         }
-      }
-
-      if (!loggedOut) {
-        setTimeout(connectWhatsApp, 3000);
+      } else {
+        // Exponential backoff retry to avoid rate limiting
+        const retryDelay = Math.min(10000 + Math.random() * 5000, 30000); // 10-30 seconds
+        console.log(`Reconnecting in ${Math.round(retryDelay / 1000)}s...`);
+        setTimeout(connectWhatsApp, retryDelay);
       }
     }
 
@@ -207,7 +206,6 @@ app.get('/qr', (req, res) => {
   res.json({ status: 'qr_ready', qr: currentQR });
 });
 
-// FIX: was calling initializeWhatsApp() which doesn't exist
 app.get('/session/reset', async (req, res) => {
   try {
     if (sock) {
