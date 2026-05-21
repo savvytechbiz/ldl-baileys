@@ -168,7 +168,7 @@ async function connectWhatsApp() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${BASE44_AUTH_TOKEN}`
+              'x-webhook-secret': BASE44_AUTH_TOKEN
             },
             body: JSON.stringify(payload)
           });
