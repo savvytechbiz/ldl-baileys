@@ -25,8 +25,10 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
-const BASE44_AUTH_TOKEN = process.env.BASE44_AUTH_TOKEN || '';
-const BASE44_APP_URL = process.env.BASE44_APP_URL || 'https://lasalu-chat-flow.base44.app';
+// Supabase Edge Functions base URL, e.g. https://<ref>.supabase.co/functions/v1
+const SUPABASE_FUNCTIONS_URL = (process.env.SUPABASE_FUNCTIONS_URL || '').replace(/\/$/, '');
+// Shared secret validated by the receiveMessage function (falls back to the old var name).
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || process.env.BASE44_AUTH_TOKEN || '';
 const AUTH_FOLDER = './auth_info';
 
 let sock = null;
@@ -160,15 +162,16 @@ async function connectWhatsApp() {
             is_group: msg.key.remoteJid?.endsWith('@g.us') || false,
             direction
           };
-          console.log('Sending webhook to:', `${BASE44_APP_URL}/api/functions/receiveMessage`);
+          const webhookUrl = `${SUPABASE_FUNCTIONS_URL}/receiveMessage`;
+          console.log('Sending webhook to:', webhookUrl);
           console.log('Payload:', payload);
-          console.log('Token set:', BASE44_AUTH_TOKEN ? 'YES' : 'NO');
-          
-          const response = await fetch(`${BASE44_APP_URL}/api/functions/receiveMessage`, {
+          console.log('Webhook secret set:', WEBHOOK_SECRET ? 'YES' : 'NO');
+
+          const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-webhook-secret': BASE44_AUTH_TOKEN
+              'x-webhook-secret': WEBHOOK_SECRET
             },
             body: JSON.stringify(payload)
           });
@@ -338,8 +341,8 @@ app.post('/test-ai', async (req, res) => {
 app.listen(PORT, async () => {
   console.log('LDL Baileys Service running on port', PORT);
   console.log('GROQ_API_KEY:', GROQ_API_KEY ? 'SET' : 'NOT SET');
-  console.log('BASE44_AUTH_TOKEN:', BASE44_AUTH_TOKEN ? 'SET' : 'NOT SET');
-  console.log('BASE44_APP_URL:', BASE44_APP_URL);
+  console.log('WEBHOOK_SECRET:', WEBHOOK_SECRET ? 'SET' : 'NOT SET');
+  console.log('SUPABASE_FUNCTIONS_URL:', SUPABASE_FUNCTIONS_URL || 'NOT SET');
   console.log('Auto-starting WhatsApp connection...');
   setTimeout(connectWhatsApp, 3000);
 });
