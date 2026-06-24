@@ -1,13 +1,11 @@
 /* global process */
 import express from 'express';
 import makeWASocket from '@whiskeysockets/baileys';
-import { DisconnectReason, useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers } from '@whiskeysockets/baileys';
+import { DisconnectReason, makeCacheableSignalKeyStore, Browsers, downloadMediaMessage, initAuthCreds, BufferJSON, proto } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import qrcode from 'qrcode';
 import Groq from 'groq-sdk';
 import pino from 'pino';
-import fs from 'fs';
-import path from 'path';
 
 const app = express();
 app.use(express.json());
@@ -29,7 +27,6 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const SUPABASE_FUNCTIONS_URL = (process.env.SUPABASE_FUNCTIONS_URL || '').replace(/\/$/, '');
 // Shared secret that the receiveMessage function validates (WEBHOOK_SECRET there).
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
-const AUTH_FOLDER = './auth_info';
 
 let sock = null;
 let currentQR = null;
@@ -65,6 +62,97 @@ async function getAIReply(message, phoneNumber) {
   }
 }
 
+// ─── Durable WhatsApp session: stored in Supabase, not on Render's disposable disk ───
+// Survives deploys/restarts so we don't have to re-scan the QR every time. Talks to the
+// baileysAuth edge function using the WEBHOOK_SECRET we already have (no new env vars).
+async function useSupabaseAuthState() {
+  const url = `${SUPABASE_FUNCTIONS_URL}/baileysAuth`;
+  const call = async (action, id, data) => {
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-webhook-secret': WEBHOOK_SECRET },
+        body: JSON.stringify({ action, id, data })
+      });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch { return null; }
+  };
+  const read = async (id) => {
+    const res = await call('get', id);
+    const raw = res?.data;
+    return raw ? JSON.parse(JSON.stringify(raw), BufferJSON.reviver) : null;
+  };
+  const write = (id, value) => call('set', id, JSON.parse(JSON.stringify(value, BufferJSON.replacer)));
+  const del = (id) => call('remove', id);
+
+  const creds = (await read('creds')) || initAuthCreds();
+
+  return {
+    state: {
+      creds,
+      keys: {
+        get: async (type, ids) => {
+          const result = {};
+          await Promise.all(ids.map(async (id) => {
+            let value = await read(`${type}-${id}`);
+            if (type === 'app-state-sync-key' && value) value = proto.Message.AppStateSyncKeyData.fromObject(value);
+            result[id] = value;
+          }));
+          return result;
+        },
+        set: async (data) => {
+          const tasks = [];
+          for (const category in data) {
+            for (const id in data[category]) {
+              const value = data[category][id];
+              const key = `${category}-${id}`;
+              tasks.push(value ? write(key, value) : del(key));
+            }
+          }
+          await Promise.all(tasks);
+        }
+      }
+    },
+    saveCreds: () => write('creds', creds)
+  };
+}
+
+// Wipe the stored session (on logout / manual clear) so the next boot shows a fresh QR.
+async function clearSupabaseAuth() {
+  try {
+    await fetch(`${SUPABASE_FUNCTIONS_URL}/baileysAuth`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': WEBHOOK_SECRET },
+      body: JSON.stringify({ action: 'clear' })
+    });
+  } catch {}
+}
+
+// ─── Voice notes: transcribe with Groq Whisper (free) so ADANOVA can understand them ───
+async function transcribeVoice(msg, sock) {
+  try {
+    if (!GROQ_API_KEY) return '';
+    const buffer = await downloadMediaMessage(
+      msg, 'buffer', {},
+      { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage }
+    );
+    const form = new FormData();
+    form.append('file', new Blob([buffer], { type: 'audio/ogg' }), 'voice.ogg');
+    form.append('model', 'whisper-large-v3-turbo');
+    form.append('response_format', 'text');
+    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST', headers: { Authorization: `Bearer ${GROQ_API_KEY}` }, body: form
+    });
+    if (!res.ok) { console.error('Whisper error:', res.status, (await res.text()).slice(0, 200)); return ''; }
+    const text = (await res.text()).trim();
+    console.log('Voice note transcribed:', text);
+    return text;
+  } catch (e) {
+    console.error('transcribeVoice error:', e.message);
+    return '';
+  }
+}
+
 async function connectWhatsApp() {
   if (isConnecting) {
     console.log('Already connecting...');
@@ -75,12 +163,8 @@ async function connectWhatsApp() {
   currentQR = null;
 
   try {
-    if (!fs.existsSync(AUTH_FOLDER)) {
-      fs.mkdirSync(AUTH_FOLDER, { recursive: true });
-    }
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
+    // Session is restored from Supabase (durable), not the local disk.
+    const { state, saveCreds } = await useSupabaseAuthState();
 
     sock = makeWASocket({
       auth: {
@@ -120,10 +204,8 @@ async function connectWhatsApp() {
         console.log('Connection closed. Status code:', statusCode, 'Logged out:', loggedOut);
 
         if (loggedOut) {
-          console.log('Logged out - clearing auth and waiting for manual reconnect');
-          if (fs.existsSync(AUTH_FOLDER)) {
-            fs.rmSync(AUTH_FOLDER, { recursive: true });
-          }
+          console.log('Logged out - clearing stored session and waiting for manual reconnect');
+          await clearSupabaseAuth();
         } else {
           const retryDelay = Math.min(15000 + Math.random() * 10000, 60000);
           console.log('Reconnecting in', Math.round(retryDelay / 1000) + 's...');
@@ -161,9 +243,14 @@ async function connectWhatsApp() {
         const hasMedia = !!(msg.message?.imageMessage || msg.message?.documentMessage || msg.message?.videoMessage);
         const mediaCaption = msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || '';
 
-        const text = interactiveSelection
+        let text = interactiveSelection
           ? interactiveSelection.selected_id  // treat selected ID as the message text
           : (msg.message?.conversation || msg.message?.extendedTextMessage?.text || mediaCaption || (hasMedia ? '[image]' : ''));
+
+        // Voice note (or PTT) with no caption → transcribe it so ADANOVA can reply.
+        if (!text && (msg.message?.audioMessage)) {
+          text = await transcribeVoice(msg, sock);
+        }
 
         if (!text) continue;
 
@@ -311,9 +398,7 @@ app.post('/session/clear', async (req, res) => {
     connectionStatus = 'disconnected';
     connectedPhone = null;
     currentQR = null;
-    if (fs.existsSync(AUTH_FOLDER)) {
-      fs.rmSync(AUTH_FOLDER, { recursive: true });
-    }
+    await clearSupabaseAuth();
     setTimeout(connectWhatsApp, 2000);
     res.json({ status: 'cleared', message: 'Auth cleared, reconnecting fresh...' });
   } catch (err) {
