@@ -25,10 +25,10 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
-// Supabase Edge Functions base URL, e.g. https://<ref>.supabase.co/functions/v1
+// Supabase Edge Functions base URL, e.g. https://<project-ref>.supabase.co/functions/v1
 const SUPABASE_FUNCTIONS_URL = (process.env.SUPABASE_FUNCTIONS_URL || '').replace(/\/$/, '');
-// Shared secret validated by the receiveMessage function (falls back to the old var name).
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || process.env.BASE44_AUTH_TOKEN || '';
+// Shared secret that the receiveMessage function validates (WEBHOOK_SECRET there).
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
 const AUTH_FOLDER = './auth_info';
 
 let sock = null;
@@ -145,7 +145,25 @@ async function connectWhatsApp() {
 
       for (const msg of messages) {
         const phoneNumber = msg.key.remoteJid?.replace('@s.whatsapp.net', '') || msg.key.remoteJid;
-        const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+
+        // Detect interactive list response (user selected from a list message)
+        const listResponse = msg.message?.listResponseMessage;
+        const interactiveSelection = listResponse
+          ? {
+              type: 'list_response',
+              selected_id: listResponse.singleSelectReply?.selectedRowId || '',
+              selected_title: listResponse.title || '',
+              body: listResponse.description || ''
+            }
+          : null;
+
+        // Detect media messages (images count as payment proof)
+        const hasMedia = !!(msg.message?.imageMessage || msg.message?.documentMessage || msg.message?.videoMessage);
+        const mediaCaption = msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || '';
+
+        const text = interactiveSelection
+          ? interactiveSelection.selected_id  // treat selected ID as the message text
+          : (msg.message?.conversation || msg.message?.extendedTextMessage?.text || mediaCaption || (hasMedia ? '[image]' : ''));
 
         if (!text) continue;
 
@@ -160,7 +178,10 @@ async function connectWhatsApp() {
             message: text,
             timestamp: msg.messageTimestamp,
             is_group: msg.key.remoteJid?.endsWith('@g.us') || false,
-            direction
+            direction,
+            interactive_selection: interactiveSelection,
+            has_media: hasMedia,
+            media_url: null
           };
           const webhookUrl = `${SUPABASE_FUNCTIONS_URL}/receiveMessage`;
           console.log('Sending webhook to:', webhookUrl);
@@ -182,7 +203,7 @@ async function connectWhatsApp() {
             console.error('Webhook failed with status:', response.status, 'Body:', result);
           }
         } catch (error) {
-          console.error('Failed to send message to Base44:', error.message);
+          console.error('Failed to send message webhook:', error.message);
         }
       }
     });
@@ -300,6 +321,31 @@ app.post('/session/clear', async (req, res) => {
   }
 });
 
+// Typing indicator — sends "composing" presence then clears it after duration
+app.post('/typing', async (req, res) => {
+  try {
+    const { phone, duration = 3 } = req.body;
+    if (!phone) return res.status(400).json({ error: 'phone required' });
+    if (connectionStatus !== 'connected' || !sock) {
+      return res.status(503).json({ error: 'WhatsApp not connected' });
+    }
+    const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
+    // WhatsApp only shows "typing…" if we subscribe to the contact's presence and
+    // appear online first — otherwise the composing update is silently dropped.
+    try { await sock.presenceSubscribe(jid); } catch {}
+    try { await sock.sendPresenceUpdate('available'); } catch {}
+    await new Promise(r => setTimeout(r, 300));
+    await sock.sendPresenceUpdate('composing', jid);
+    // Clear after the specified duration
+    setTimeout(async () => {
+      try { await sock.sendPresenceUpdate('paused', jid); } catch {}
+    }, duration * 1000);
+    res.json({ status: 'typing_started', duration });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Send message
 app.post('/send', async (req, res) => {
   try {
@@ -312,6 +358,32 @@ app.post('/send', async (req, res) => {
     await sock.sendMessage(jid, { text: message });
     res.json({ status: 'sent' });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send interactive list message (location picker)
+// body: { phone, title, body_text, button_text, sections: [{ title, rows: [{ id, title, description }] }], footer? }
+app.post('/send-list', async (req, res) => {
+  try {
+    const { phone, title, body_text, button_text, sections, footer } = req.body;
+    if (!phone || !sections) return res.status(400).json({ error: 'phone and sections required' });
+    if (connectionStatus !== 'connected' || !sock) {
+      return res.status(503).json({ error: 'WhatsApp not connected' });
+    }
+    const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
+    await sock.sendMessage(jid, {
+      listMessage: {
+        title: title || 'Select an option',
+        text: body_text || 'Please choose one:',
+        footerText: footer || '',
+        buttonText: button_text || 'View Options',
+        sections
+      }
+    });
+    res.json({ status: 'sent' });
+  } catch (err) {
+    console.error('send-list error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
