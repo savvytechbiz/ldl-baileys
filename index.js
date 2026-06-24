@@ -252,6 +252,14 @@ async function connectWhatsApp() {
           text = await transcribeVoice(msg, sock);
         }
 
+        // Shared location pin → forward exact coordinates so ADANOVA can use them.
+        const locMsg = msg.message?.locationMessage || msg.message?.liveLocationMessage;
+        let location = null;
+        if (locMsg && locMsg.degreesLatitude != null && locMsg.degreesLongitude != null) {
+          location = { lat: locMsg.degreesLatitude, lng: locMsg.degreesLongitude, name: locMsg.name || locMsg.address || '' };
+          if (!text) text = '📍 Shared location';
+        }
+
         if (!text) continue;
 
         const direction = msg.key.fromMe ? 'outbound' : 'inbound';
@@ -268,7 +276,8 @@ async function connectWhatsApp() {
             direction,
             interactive_selection: interactiveSelection,
             has_media: hasMedia,
-            media_url: null
+            media_url: null,
+            location: location
           };
           const webhookUrl = `${SUPABASE_FUNCTIONS_URL}/receiveMessage`;
           console.log('Sending webhook to:', webhookUrl);
