@@ -331,7 +331,8 @@ h2{margin:6px 0 14px;font-size:18px}
 .fld label{font-size:12px;color:#555;display:block;margin-bottom:4px}
 .fld input{width:100%;padding:12px;border:1px solid #d6dbe0;border-radius:10px;font-size:15px;outline:none}
 .fld input:focus{border-color:#25D366;box-shadow:0 0 0 3px rgba(37,211,102,.15)}
-.sug{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #e2e6ea;border-radius:10px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,.08);overflow:hidden}
+.sug{position:absolute;z-index:2000;left:0;right:0;background:#fff;border:1px solid #e2e6ea;border-radius:10px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,.08);overflow:hidden}
+.leaflet-container{z-index:1}
 .sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f0f2f4}
 .sug div:active{background:#eafaf0}
 #map{height:240px;border-radius:12px;margin:10px 0;border:1px solid #e2e6ea}
@@ -340,13 +341,19 @@ button{width:100%;padding:14px;border:0;border-radius:12px;background:#25D366;co
 button:disabled{background:#b6e6c8}
 .done{text-align:center;padding:30px 14px}.done h2{font-size:20px;color:#0a7d33}
 .muted{color:#777;font-size:13px;text-align:center}
+.wabtn{display:inline-block;margin-top:18px;padding:15px 26px;background:#25D366;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
 </style></head><body><div class="wrap" id="app">
-<h2>📍 Set your pickup & drop-off</h2>
+<h2>📦 Book your delivery</h2>
 <div class="fld"><label>Pickup (sending from)</label><input id="pin" placeholder="Type an area, e.g. Woji" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
 <div class="fld"><label>Drop-off (sending to)</label><input id="din" placeholder="Type an area, e.g. GRA" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
 <div id="map"></div>
 <div class="fee" id="fee"></div>
-<button id="go" disabled>Confirm</button>
+<div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
+<div class="fld"><label>Sender's phone</label><input id="sphone" type="tel" inputmode="tel" placeholder="0801…"></div>
+<div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
+<div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="0801…"></div>
+<div class="fld"><label>What are you sending?</label><input id="item" placeholder="e.g. documents, a phone, food"></div>
+<button id="go" disabled>Confirm & book</button>
 <p class="muted">Powered by Lasalu Drop Logistics</p>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -365,8 +372,13 @@ function setPin(which,d){
   picked[which]=d;
   var pts=[]; if(picked.pickup)pts.push([picked.pickup.lat,picked.pickup.lng]); if(picked.dropoff)pts.push([picked.dropoff.lat,picked.dropoff.lng]);
   if(pts.length)map.fitBounds(pts,{padding:[40,40],maxZoom:14});
-  document.getElementById('go').disabled=!(picked.pickup&&picked.dropoff);
+  validate();
   if(picked.pickup&&picked.dropoff)quote();
+}
+function val(id){return (document.getElementById(id).value||'').trim();}
+function validate(){
+  var ok = picked.pickup&&picked.dropoff&&val('sname')&&val('sphone').length>=7&&val('rname')&&val('rphone').length>=7&&val('item');
+  document.getElementById('go').disabled=!ok;
 }
 function quote(){
   var f=document.getElementById('fee'); f.textContent='Calculating fee…';
@@ -391,12 +403,16 @@ function wire(inId,sugId,which){
 }
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
 else { initMap(); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
+  ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
   document.getElementById('go').onclick=function(){
-    var b=document.getElementById('go'); b.disabled=true; b.textContent='Sending…';
-    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:SESSION,pickup:picked.pickup,dropoff:picked.dropoff})})
+    var b=document.getElementById('go'); b.disabled=true; b.textContent='Booking…';
+    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      session:SESSION,pickup:picked.pickup,dropoff:picked.dropoff,
+      sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),item:val('item')
+    })})
      .then(r=>r.json()).then(j=>{
-       document.getElementById('app').innerHTML='<div class="done"><h2>✅ Sent to your chat!</h2><p class="muted">Tap the ✕ to go back to WhatsApp — your price is waiting there.</p></div>';
-     }).catch(function(){ b.disabled=false; b.textContent='Confirm'; alert('Network hiccup — try again.'); });
+       document.getElementById('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
+     }).catch(function(){ b.disabled=false; b.textContent='Confirm & book'; alert('Network hiccup — try again.'); });
   };
 }
 </script></body></html>`;
