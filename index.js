@@ -316,6 +316,92 @@ app.get('/', (req, res) => {
   res.json({ message: 'LDL Baileys WhatsApp Service is running!', status: 'online', version: '2.0.0' });
 });
 
+// ── In-WhatsApp map picker page (opens in WhatsApp's in-app browser) ──
+// Static page; it calls the Supabase mapPicker function for autocomplete/price/callback.
+const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Set your delivery — Lasalu Drop</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+body{margin:0;background:#f4f6f8;color:#111}
+.wrap{max-width:520px;margin:0 auto;padding:14px}
+h2{margin:6px 0 14px;font-size:18px}
+.fld{position:relative;margin-bottom:10px}
+.fld label{font-size:12px;color:#555;display:block;margin-bottom:4px}
+.fld input{width:100%;padding:12px;border:1px solid #d6dbe0;border-radius:10px;font-size:15px;outline:none}
+.fld input:focus{border-color:#25D366;box-shadow:0 0 0 3px rgba(37,211,102,.15)}
+.sug{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #e2e6ea;border-radius:10px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,.08);overflow:hidden}
+.sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f0f2f4}
+.sug div:active{background:#eafaf0}
+#map{height:240px;border-radius:12px;margin:10px 0;border:1px solid #e2e6ea}
+.fee{font-size:15px;font-weight:600;text-align:center;color:#0a7d33;min-height:22px;margin:6px 0}
+button{width:100%;padding:14px;border:0;border-radius:12px;background:#25D366;color:#fff;font-size:16px;font-weight:600}
+button:disabled{background:#b6e6c8}
+.done{text-align:center;padding:30px 14px}.done h2{font-size:20px;color:#0a7d33}
+.muted{color:#777;font-size:13px;text-align:center}
+</style></head><body><div class="wrap" id="app">
+<h2>📍 Set your pickup & drop-off</h2>
+<div class="fld"><label>Pickup (sending from)</label><input id="pin" placeholder="Type an area, e.g. Woji" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
+<div class="fld"><label>Drop-off (sending to)</label><input id="din" placeholder="Type an area, e.g. GRA" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
+<div id="map"></div>
+<div class="fee" id="fee"></div>
+<button id="go" disabled>Confirm</button>
+<p class="muted">Powered by Lasalu Drop Logistics</p>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var SESSION=new URLSearchParams(location.search).get('session')||"";
+var VALID=SESSION?"1":"0";
+var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/mapPicker";
+function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
+var picked={pickup:null,dropoff:null};
+var map,mP,mD;
+function initMap(){map=L.map('map').setView([4.82,7.03],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);}
+function setPin(which,d){
+  var ll=[d.lat,d.lng];
+  if(which==='pickup'){ if(mP)map.removeLayer(mP); mP=L.marker(ll).addTo(map).bindPopup('Pickup'); }
+  else { if(mD)map.removeLayer(mD); mD=L.marker(ll).addTo(map).bindPopup('Drop-off'); }
+  picked[which]=d;
+  var pts=[]; if(picked.pickup)pts.push([picked.pickup.lat,picked.pickup.lng]); if(picked.dropoff)pts.push([picked.dropoff.lat,picked.dropoff.lng]);
+  if(pts.length)map.fitBounds(pts,{padding:[40,40],maxZoom:14});
+  document.getElementById('go').disabled=!(picked.pickup&&picked.dropoff);
+  if(picked.pickup&&picked.dropoff)quote();
+}
+function quote(){
+  var f=document.getElementById('fee'); f.textContent='Calculating fee…';
+  fetch(api('action=price&plat='+picked.pickup.lat+'&plng='+picked.pickup.lng+'&dlat='+picked.dropoff.lat+'&dlng='+picked.dropoff.lng))
+   .then(r=>r.json()).then(j=>{ f.textContent=j.price?('Delivery fee: ₦'+j.price.toLocaleString()+(j.km?(' • ~'+j.km+'km'):'')):''; });
+}
+function wire(inId,sugId,which){
+  var inp=document.getElementById(inId), sug=document.getElementById(sugId), t;
+  inp.addEventListener('input',function(){
+    clearTimeout(t); var q=inp.value.trim(); if(q.length<2){sug.style.display='none';return;}
+    t=setTimeout(function(){
+      fetch(api('action=autocomplete&q='+encodeURIComponent(q))).then(r=>r.json()).then(j=>{
+        sug.innerHTML=''; (j.predictions||[]).forEach(function(p){
+          var div=document.createElement('div'); div.textContent=p.label;
+          div.onclick=function(){ inp.value=p.label; sug.style.display='none';
+            fetch(api('action=resolve&place_id='+encodeURIComponent(p.id))).then(r=>r.json()).then(d=>{ if(d.lat)setPin(which,{address:p.label,lat:d.lat,lng:d.lng}); }); };
+          sug.appendChild(div); });
+        sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';
+      });
+    },300);
+  });
+}
+if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
+else { initMap(); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
+  document.getElementById('go').onclick=function(){
+    var b=document.getElementById('go'); b.disabled=true; b.textContent='Sending…';
+    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:SESSION,pickup:picked.pickup,dropoff:picked.dropoff})})
+     .then(r=>r.json()).then(j=>{
+       document.getElementById('app').innerHTML='<div class="done"><h2>✅ Sent to your chat!</h2><p class="muted">Tap the ✕ to go back to WhatsApp — your price is waiting there.</p></div>';
+     }).catch(function(){ b.disabled=false; b.textContent='Confirm'; alert('Network hiccup — try again.'); });
+  };
+}
+</script></body></html>`;
+app.get('/map', (req, res) => { res.type('html').send(MAP_PAGE); });
+
 // Status
 app.get('/status', (req, res) => {
   res.json({ status: connectionStatus, phone: connectedPhone, qr: currentQR });
