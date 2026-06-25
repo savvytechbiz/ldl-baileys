@@ -321,6 +321,11 @@ app.get('/', (req, res) => {
 const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Set your delivery — Lasalu Drop</title>
+<meta name="description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds.">
+<meta property="og:title" content="📦 Set your delivery — Lasalu Drop">
+<meta property="og:description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds 🛵">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#25D366">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
@@ -336,7 +341,8 @@ h2{margin:6px 0 14px;font-size:18px}
 .sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f0f2f4}
 .sug div:active{background:#eafaf0}
 #map{height:240px;border-radius:12px;margin:10px 0;border:1px solid #e2e6ea}
-.fee{font-size:15px;font-weight:600;text-align:center;color:#0a7d33;min-height:22px;margin:6px 0}
+.feebig{font-size:21px;font-weight:800;text-align:center;color:#0a7d33;background:#eafaf0;border:1px solid #bce6cb;border-radius:12px;padding:13px;margin:12px 0;display:none}
+.feebig small{display:block;font-size:12px;font-weight:600;color:#5a8a6c;margin-top:2px}
 button{width:100%;padding:14px;border:0;border-radius:12px;background:#25D366;color:#fff;font-size:16px;font-weight:600}
 button:disabled{background:#b6e6c8}
 .done{text-align:center;padding:30px 14px}.done h2{font-size:20px;color:#0a7d33}
@@ -345,16 +351,22 @@ button:disabled{background:#b6e6c8}
 .reuse{margin:-4px 0 9px}
 .reuse a{display:inline-block;background:#eafaf0;color:#0a7d33;border:1px solid #bce6cb;border-radius:20px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer}
 .reuse a.on{background:#25D366;color:#fff;border-color:#25D366}
-.locbtn{width:100%;padding:11px;margin:-2px 0 11px;border:1px solid #25D366;background:#fff;color:#0a7d33;border-radius:10px;font-size:14px;font-weight:600}
+.locbtn{width:100%;padding:14px;border:0;background:#25D366;color:#fff;border-radius:12px;font-size:16px;font-weight:700}
+.intro{font-size:13px;color:#666;margin:0 0 14px}
+.or{text-align:center;color:#aaa;font-size:12px;margin:10px 0 8px}
+.sec{font-size:12px;color:#8a9099;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin:18px 0 8px}
 </style></head><body><div class="wrap" id="app">
 <h2>📦 Book your delivery</h2>
+<p class="intro">Set your pickup &amp; drop-off for an instant price, then book your rider — about 10 seconds.</p>
+<button type="button" id="loc" class="locbtn">📍 Use my current location for pickup</button>
+<div class="or">— or type it —</div>
 <div class="fld"><label>Pickup (sending from)</label><input id="pin" placeholder="Type an area, e.g. Woji" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
 <div class="reuse" id="rpickup"></div>
-<button type="button" id="loc" class="locbtn">📍 Use my current location</button>
 <div class="fld"><label>Drop-off (sending to)</label><input id="din" placeholder="Type an area, e.g. GRA" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
 <div class="reuse" id="rdrop"></div>
 <div id="map"></div>
-<div class="fee" id="fee"></div>
+<div class="feebig" id="fee"></div>
+<div class="sec">Delivery details</div>
 <div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
 <div class="fld"><label>Sender's phone</label><input id="sphone" type="tel" inputmode="tel" placeholder="0801…"></div>
 <div class="reuse" id="rrecv"></div>
@@ -418,9 +430,12 @@ function validate(){
   document.getElementById('go').disabled=!ok;
 }
 function quote(){
-  var f=document.getElementById('fee'); f.textContent='Calculating fee…';
+  var f=document.getElementById('fee'); f.style.display='block'; f.textContent='Calculating fee…';
   fetch(api('action=price&plat='+picked.pickup.lat+'&plng='+picked.pickup.lng+'&dlat='+picked.dropoff.lat+'&dlng='+picked.dropoff.lng))
-   .then(r=>r.json()).then(j=>{ f.textContent=j.price?('Delivery fee: ₦'+j.price.toLocaleString()+(j.km?(' • ~'+j.km+'km'):'')):''; });
+   .then(r=>r.json()).then(j=>{
+     if(j.price){ f.style.display='block'; f.innerHTML='₦'+j.price.toLocaleString()+(j.km?('<small>Delivery fee • ~'+j.km+'km</small>'):'<small>Delivery fee</small>'); }
+     else { f.style.display='none'; }
+   }).catch(function(){ f.style.display='none'; });
 }
 function wire(inId,sugId,which){
   var inp=document.getElementById(inId), sug=document.getElementById(sugId), t;
