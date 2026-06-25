@@ -345,10 +345,12 @@ button:disabled{background:#b6e6c8}
 .reuse{margin:-4px 0 9px}
 .reuse a{display:inline-block;background:#eafaf0;color:#0a7d33;border:1px solid #bce6cb;border-radius:20px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer}
 .reuse a.on{background:#25D366;color:#fff;border-color:#25D366}
+.locbtn{width:100%;padding:11px;margin:-2px 0 11px;border:1px solid #25D366;background:#fff;color:#0a7d33;border-radius:10px;font-size:14px;font-weight:600}
 </style></head><body><div class="wrap" id="app">
 <h2>📦 Book your delivery</h2>
 <div class="fld"><label>Pickup (sending from)</label><input id="pin" placeholder="Type an area, e.g. Woji" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
 <div class="reuse" id="rpickup"></div>
+<button type="button" id="loc" class="locbtn">📍 Use my current location</button>
 <div class="fld"><label>Drop-off (sending to)</label><input id="din" placeholder="Type an area, e.g. GRA" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
 <div class="reuse" id="rdrop"></div>
 <div id="map"></div>
@@ -373,13 +375,42 @@ var map,mP,mD;
 function initMap(){map=L.map('map').setView([4.82,7.03],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);}
 function setPin(which,d){
   var ll=[d.lat,d.lng];
-  if(which==='pickup'){ if(mP)map.removeLayer(mP); mP=L.marker(ll).addTo(map).bindPopup('Pickup'); }
-  else { if(mD)map.removeLayer(mD); mD=L.marker(ll).addTo(map).bindPopup('Drop-off'); }
-  picked[which]=d;
+  var old=which==='pickup'?mP:mD; if(old)map.removeLayer(old);
+  var m=L.marker(ll,{draggable:true}).addTo(map).bindPopup(which==='pickup'?'Pickup — drag to adjust':'Drop-off — drag to adjust');
+  m.on('dragend',function(e){var p=e.target.getLatLng();reverseSet(which,p.lat,p.lng);});
+  if(which==='pickup')mP=m;else mD=m;
+  picked[which]={address:d.address,lat:d.lat,lng:d.lng};
   var pts=[]; if(picked.pickup)pts.push([picked.pickup.lat,picked.pickup.lng]); if(picked.dropoff)pts.push([picked.dropoff.lat,picked.dropoff.lng]);
-  if(pts.length)map.fitBounds(pts,{padding:[40,40],maxZoom:14});
+  if(pts.length)map.fitBounds(pts,{padding:[40,40],maxZoom:15});
   validate();
   if(picked.pickup&&picked.dropoff)quote();
+}
+// Reverse-geocode a moved/located pin and update the field.
+function reverseSet(which,lat,lng){
+  picked[which]={address:(which==='pickup'?'Pickup point':'Drop-off point'),lat:lat,lng:lng};
+  validate(); if(picked.pickup&&picked.dropoff)quote();
+  fetch(api('action=reverse&lat='+lat+'&lng='+lng)).then(function(r){return r.json();}).then(function(d){
+    var addr=d.address||picked[which].address;
+    document.getElementById(which==='pickup'?'pin':'din').value=addr;
+    picked[which].address=addr;
+  }).catch(function(){});
+}
+// Get the customer's current GPS location and set it as the pickup.
+function useLoc(){
+  var btn=document.getElementById('loc');
+  if(!navigator.geolocation){ alert('Location is not available here — please type your area.'); return; }
+  btn.textContent='Locating you…'; btn.disabled=true;
+  navigator.geolocation.getCurrentPosition(function(pos){
+    btn.textContent='📍 Use my current location'; btn.disabled=false;
+    var lat=pos.coords.latitude, lng=pos.coords.longitude;
+    map.setView([lat,lng],16);
+    document.getElementById('pin').value='Pinpointing…';
+    setPin('pickup',{address:'My current location',lat:lat,lng:lng});
+    reverseSet('pickup',lat,lng);
+  }, function(){
+    btn.textContent='📍 Use my current location'; btn.disabled=false;
+    alert('Couldn\\'t get your location — please allow location access, or just type your area.');
+  }, {enableHighAccuracy:true,timeout:10000,maximumAge:0});
 }
 function val(id){return (document.getElementById(id).value||'').trim();}
 function validate(){
@@ -409,6 +440,7 @@ function wire(inId,sugId,which){
 }
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
 else { initMap(); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
+  document.getElementById('loc').onclick=useLoc;
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,label,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.textContent=label; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
