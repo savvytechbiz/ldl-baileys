@@ -342,14 +342,20 @@ button:disabled{background:#b6e6c8}
 .done{text-align:center;padding:30px 14px}.done h2{font-size:20px;color:#0a7d33}
 .muted{color:#777;font-size:13px;text-align:center}
 .wabtn{display:inline-block;margin-top:18px;padding:15px 26px;background:#25D366;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
+.reuse{margin:-4px 0 9px}
+.reuse a{display:inline-block;background:#eafaf0;color:#0a7d33;border:1px solid #bce6cb;border-radius:20px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer}
+.reuse a.on{background:#25D366;color:#fff;border-color:#25D366}
 </style></head><body><div class="wrap" id="app">
 <h2>📦 Book your delivery</h2>
 <div class="fld"><label>Pickup (sending from)</label><input id="pin" placeholder="Type an area, e.g. Woji" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
+<div class="reuse" id="rpickup"></div>
 <div class="fld"><label>Drop-off (sending to)</label><input id="din" placeholder="Type an area, e.g. GRA" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
+<div class="reuse" id="rdrop"></div>
 <div id="map"></div>
 <div class="fee" id="fee"></div>
 <div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
 <div class="fld"><label>Sender's phone</label><input id="sphone" type="tel" inputmode="tel" placeholder="0801…"></div>
+<div class="reuse" id="rrecv"></div>
 <div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
 <div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="0801…"></div>
 <div class="fld"><label>What are you sending?</label><input id="item" placeholder="e.g. documents, a phone, food"></div>
@@ -404,6 +410,17 @@ function wire(inId,sugId,which){
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
 else { initMap(); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
+  // One-tap reuse for returning customers ("same as last time").
+  function reuse(id,label,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.textContent=label; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
+  fetch(api('action=prefill')).then(function(r){return r.json();}).then(function(p){
+    if(!p) return;
+    if(p.name) document.getElementById('sname').value=p.name;
+    if(p.phone) document.getElementById('sphone').value=p.phone;
+    if(p.pickup&&p.pickup.lat) reuse('rpickup','↩ Same pickup — '+p.pickup.address,function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); });
+    if(p.dropoff&&p.dropoff.lat) reuse('rdrop','↩ Same drop-off — '+p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); });
+    if(p.receiver&&p.receiver.name) reuse('rrecv','↩ Same receiver — '+p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; });
+    validate();
+  }).catch(function(){});
   document.getElementById('go').onclick=function(){
     var b=document.getElementById('go'); b.disabled=true; b.textContent='Booking…';
     fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
