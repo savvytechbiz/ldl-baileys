@@ -482,6 +482,132 @@ else { initMap(); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
 </script></body></html>`;
 app.get('/map', (req, res) => { res.type('html').send(MAP_PAGE); });
 
+// ── International / Waybill quote calculator (the INTL/WAYBILL twin of the map) ──
+// Pricing is recomputed server-side by the Supabase quotePicker function (intlPricing).
+const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Get your shipping quote — Lasalu Drop</title>
+<meta name="description" content="Pick destination, weight & value for an instant international or waybill price, and book in seconds.">
+<meta property="og:title" content="🌍 Get your shipping quote — Lasalu Drop">
+<meta property="og:description" content="Instant international & interstate prices — pick destination, weight & value, then book 📦">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#E23A7C">
+<style>
+*{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+body{margin:0;background:#f4f6f8;color:#111}
+.wrap{max-width:520px;margin:0 auto;padding:14px}
+h2{margin:6px 0 4px;font-size:19px}
+.intro{font-size:13px;color:#666;margin:0 0 14px}
+.fld{margin-bottom:11px}
+.fld label{font-size:12px;color:#555;display:block;margin-bottom:4px}
+.fld input,.fld select{width:100%;padding:12px;border:1px solid #d6dbe0;border-radius:10px;font-size:15px;outline:none;background:#fff;-webkit-appearance:none}
+.fld input:focus,.fld select:focus{border-color:#E23A7C;box-shadow:0 0 0 3px rgba(226,58,124,.15)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.feebig{font-size:21px;font-weight:800;text-align:center;color:#a01457;background:#fcebf2;border:1px solid #f3c4da;border-radius:12px;padding:13px;margin:12px 0;display:none}
+.feebig small{display:block;font-size:12px;font-weight:600;color:#b56b8c;margin-top:2px}
+.sec{font-size:12px;color:#8a9099;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin:18px 0 8px}
+button{width:100%;padding:14px;border:0;border-radius:12px;background:#E23A7C;color:#fff;font-size:16px;font-weight:700}
+button:disabled{background:#f0a9c8}
+.done{text-align:center;padding:30px 14px}.done h2{font-size:20px;color:#a01457}
+.muted{color:#777;font-size:13px;text-align:center}
+.wabtn{display:inline-block;margin-top:18px;padding:15px 26px;background:#25D366;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
+.err{color:#c0392b;font-size:13px;text-align:center;min-height:16px}
+</style></head><body><div class="wrap" id="app">
+<h2>🌍 Get your shipping quote</h2>
+<p class="intro">Pick the service, destination, weight &amp; value for an instant price — then book.</p>
+<div class="fld"><label>Service</label><select id="svc">
+<option value="express">✈️ Air Express — worldwide, 3–7 days</option>
+<option value="cargo">📦 Air Cargo — UK/USA/Canada/Ghana, 10kg+</option>
+<option value="waybill">🚚 Waybill — interstate Nigeria</option>
+</select></div>
+<div class="fld" id="countryFld"><label>Destination country</label>
+<input id="country" list="countries" placeholder="Start typing… e.g. United Kingdom" autocomplete="off"></div>
+<datalist id="countries">
+<option value="UNITED KINGDOM (Z1)"><option value="IRELAND REP OF (Z1)"><option value="GUERNSEY (Z1)"><option value="JERSEY (Z1)">
+<option value="GHANA (Z2)"><option value="BENIN (Z2)"><option value="CAMEROON (Z2)"><option value="COTE D IVOIRE (Z2)"><option value="GABON (Z2)"><option value="GAMBIA (Z2)"><option value="GUINEA REP. (Z2)">
+<option value="USA (Z3)"><option value="CANADA (Z3)"><option value="MEXICO (Z3)">
+<option value="GERMANY (Z4)"><option value="FRANCE (Z4)"><option value="ITALY (Z4)"><option value="SPAIN (Z4)"><option value="NETHERLANDS (Z4)"><option value="BELGIUM (Z4)"><option value="SWITZERLAND (Z4)"><option value="SWEDEN (Z4)"><option value="NORWAY (Z4)"><option value="DENMARK (Z4)"><option value="POLAND (Z4)"><option value="PORTUGAL (Z4)"><option value="AUSTRIA (Z4)"><option value="GREECE (Z4)"><option value="TURKEY (Z4)"><option value="FINLAND (Z4)"><option value="CZECH REPUBLIC (Z4)"><option value="ROMANIA (Z4)"><option value="HUNGARY (Z4)"><option value="RUSSIA (Z4)">
+<option value="SOUTH AFRICA (Z5)"><option value="EGYPT (Z5)"><option value="KENYA (Z5)"><option value="MOROCCO (Z5)"><option value="TANZANIA (Z5)"><option value="UGANDA (Z5)"><option value="RWANDA (Z5)"><option value="ETHIOPIA (Z5)"><option value="ZAMBIA (Z5)"><option value="ZIMBABWE (Z5)"><option value="NAMIBIA (Z5)"><option value="BOTSWANA (Z5)"><option value="ANGOLA (Z5)">
+<option value="UNITED ARAB EMIRATES (Z6)"><option value="SAUDI ARABIA (Z6)"><option value="QATAR (Z6)"><option value="KUWAIT (Z6)"><option value="OMAN (Z6)"><option value="BAHRAIN (Z6)"><option value="ISRAEL (Z6)"><option value="LEBANON (Z6)"><option value="JORDAN (Z6)">
+<option value="CHINA (Z7)"><option value="INDIA (Z7)"><option value="JAPAN (Z7)"><option value="SINGAPORE (Z7)"><option value="MALAYSIA (Z7)"><option value="HONG KONG (Z7)"><option value="AUSTRALIA (Z7)"><option value="PHILIPPINES (Z7)"><option value="THAILAND (Z7)"><option value="INDONESIA (Z7)"><option value="VIETNAM (Z7)"><option value="PAKISTAN (Z7)"><option value="BANGLADESH (Z7)"><option value="TAIWAN (Z7)">
+<option value="BRAZIL (Z8)"><option value="ARGENTINA (Z8)"><option value="CHILE (Z8)"><option value="COLOMBIA (Z8)"><option value="PERU (Z8)"><option value="JAMAICA (Z8)"><option value="NEW ZEALAND (Z8)"><option value="PANAMA (Z8)"><option value="VENEZUELA (Z8)">
+</datalist>
+<div class="fld" id="stateFld" style="display:none"><label>Destination state</label>
+<select id="state"><option value="">— Select a state —</option><option value="LAGOS">Lagos</option></select></div>
+<div class="two"><div class="fld"><label>Weight (kg)</label><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="2"></div>
+<div class="fld"><label>Item value (₦)</label><input id="value" type="number" min="0" inputmode="numeric" placeholder="30000"></div></div>
+<div class="fld"><label>Pickup city (Nigeria)</label><select id="pickup"><option value="PORT_HARCOURT">Port Harcourt</option><option value="OWERRI">Owerri</option></select></div>
+<div class="feebig" id="fee"></div>
+<div class="err" id="err"></div>
+<div class="sec">Delivery details</div>
+<div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
+<div class="fld"><label>Sender's phone</label><input id="sphone" type="tel" inputmode="tel" placeholder="0801…"></div>
+<div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
+<div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="Their number"></div>
+<div class="fld"><label>Delivery address</label><input id="daddr" placeholder="Full address abroad / in the state"></div>
+<div class="fld"><label>What are you sending?</label><input id="item" placeholder="e.g. documents, clothes, a phone"></div>
+<button id="go" disabled>Confirm &amp; book</button>
+<p class="muted">Powered by Lasalu Drop Logistics</p>
+</div>
+<script>
+var SESSION=new URLSearchParams(location.search).get('session')||"";
+var VALID=SESSION?"1":"0";
+var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
+var lastPrice=null, t;
+function el(id){return document.getElementById(id);}
+function svc(){return el('svc').value;}
+function val(id){return (el(id).value||'').trim();}
+function dest(){return svc()==='waybill'?val('state'):val('country');}
+function snapWeight(){var w=parseFloat(el('weight').value);if(!isNaN(w)&&w>0)el('weight').value=(Math.ceil(w*2)/2).toFixed(1);}
+function toggleSvc(){
+  var wb=svc()==='waybill';
+  el('countryFld').style.display=wb?'none':'block';
+  el('stateFld').style.display=wb?'block':'none';
+  recalc();validate();
+}
+function recalc(){
+  lastPrice=null;el('fee').style.display='none';el('err').textContent='';
+  var d=dest(),w=parseFloat(el('weight').value),v=parseFloat(el('value').value);
+  if(!d||isNaN(w)||w<=0){validate();return;}
+  el('fee').style.display='block';el('fee').textContent='Calculating…';
+  var qs='action=price&session='+encodeURIComponent(SESSION)+'&mode='+svc()+'&destination='+encodeURIComponent(d)+'&weight='+w+'&value='+(isNaN(v)?0:v)+'&pickup_city='+el('pickup').value;
+  fetch(API+'?'+qs).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.price){lastPrice=j.price;el('fee').style.display='block';el('fee').innerHTML='₦'+Number(j.price).toLocaleString()+'<small>'+(j.ship_mode==='cargo'?'Air Cargo':j.ship_mode==='express'?'Air Express':'Waybill')+' • delivery '+(j.etd||'')+'</small>';}
+    else{el('fee').style.display='none';
+      if(j&&j.error==='cargo_min_weight')el('err').textContent='Air Cargo needs 10kg or more — try Express for lighter parcels.';
+      else if(j&&j.error==='cargo_unavailable')el('err').textContent='Air Cargo is UK, USA, Canada & Ghana only — use Express here.';
+      else if(j&&j.error==='unknown_country')el('err').textContent='Pick a destination from the list.';
+      else if(j&&j.error==='unknown_state')el('err').textContent='We currently run waybill to Lagos only.';
+    }
+    validate();
+  }).catch(function(){el('fee').style.display='none';validate();});
+}
+function validate(){
+  var ok=lastPrice&&val('sname')&&val('sphone').length>=7&&val('rname')&&val('rphone').length>=7&&val('daddr')&&val('item');
+  el('go').disabled=!ok;
+}
+function book(){
+  var b=el('go');b.disabled=true;b.textContent='Booking…';
+  fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    session:SESSION,mode:svc(),destination:dest(),weight:parseFloat(el('weight').value),value:parseFloat(el('value').value)||0,pickup_city:el('pickup').value,
+    sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item')
+  })}).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';}
+    else{b.disabled=false;b.textContent='Confirm & book';el('err').textContent=(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
+  }).catch(function(){b.disabled=false;b.textContent='Confirm & book';alert('Network hiccup — try again.');});
+}
+if(VALID!=='1'){el('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for a quote again.</p></div>';}
+else{
+  el('svc').addEventListener('change',toggleSvc);
+  el('weight').addEventListener('input',function(){snapWeight();recalc();});
+  ['country','value'].forEach(function(id){el(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});});
+  el('state').addEventListener('change',recalc);el('pickup').addEventListener('change',recalc);
+  ['sname','sphone','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
+  el('go').onclick=book;
+}
+</script></body></html>`;
+app.get('/quote', (req, res) => { res.type('html').send(QUOTE_PAGE); });
+
 // Status
 app.get('/status', (req, res) => {
   res.json({ status: connectionStatus, phone: connectedPhone, qr: currentQR });
