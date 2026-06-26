@@ -228,6 +228,22 @@ async function connectWhatsApp() {
       for (const msg of messages) {
         const phoneNumber = msg.key.remoteJid?.replace('@s.whatsapp.net', '') || msg.key.remoteJid;
 
+        // WhatsApp increasingly hides the real number behind an @lid. Best-effort resolve it to
+        // the actual phone so the backend can match admins (Settings) by their normal number.
+        let fromPhone = null;
+        const _rjid = msg.key.remoteJid || '';
+        if (_rjid.endsWith('@s.whatsapp.net')) {
+          fromPhone = _rjid.replace('@s.whatsapp.net', '');
+        } else if (_rjid.endsWith('@lid')) {
+          try {
+            let cand = msg.key.senderPn || msg.key.participantPn || msg.key.remoteJidAlt || null;
+            if (!cand && sock?.signalRepository?.lidMapping?.getPNForLID) {
+              cand = await sock.signalRepository.lidMapping.getPNForLID(_rjid);
+            }
+            if (cand) fromPhone = String(cand).replace(/@.*/, '').replace(/[^0-9]/g, '') || null;
+          } catch { /* best-effort only */ }
+        }
+
         // Detect interactive list response (user selected from a list message)
         const listResponse = msg.message?.listResponseMessage;
         const interactiveSelection = listResponse
@@ -269,6 +285,7 @@ async function connectWhatsApp() {
         try {
           const payload = {
             from: phoneNumber,
+            from_phone: fromPhone,
             contact_name: msg.pushName || phoneNumber,
             message: text,
             timestamp: msg.messageTimestamp,
