@@ -535,13 +535,14 @@ button:disabled{background:#f0a9c8}
 <div class="fld" id="stateFld" style="display:none"><label>Destination state</label>
 <select id="state"><option value="">— Select a state —</option><option value="LAGOS">Lagos</option></select></div>
 <div class="two"><div class="fld"><label>Weight (kg)</label><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="2"></div>
-<div class="fld"><label>Item value (₦)</label><input id="value" type="number" min="0" inputmode="numeric" placeholder="30000"></div></div>
+<div class="fld"><label>Item value (₦) <span style="color:#E23A7C">*</span></label><input id="value" type="number" min="1" inputmode="numeric" placeholder="What is it worth?" required></div></div>
 <div class="fld"><label>Pickup city (Nigeria)</label><select id="pickup"><option value="PORT_HARCOURT">Port Harcourt</option><option value="OWERRI">Owerri</option></select></div>
 <div class="feebig" id="fee"></div>
 <div class="err" id="err"></div>
 <div class="sec">Delivery details</div>
 <div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
-<div class="fld"><label>Sender's phone</label><input id="sphone" type="tel" inputmode="tel" placeholder="0801…"></div>
+<div class="fld"><label>Your phone <span style="color:#E23A7C">*</span></label><input id="sphone" type="tel" inputmode="tel" placeholder="So our rider can reach you"></div>
+<div class="fld"><label>Pickup address — where our rider picks up <span style="color:#E23A7C">*</span></label><input id="paddr" placeholder="Your full address in Nigeria"></div>
 <div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
 <div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="Their number"></div>
 <div class="fld"><label>Delivery address</label><input id="daddr" placeholder="Full address abroad / in the state"></div>
@@ -569,10 +570,11 @@ function recalc(){
   lastPrice=null;el('fee').style.display='none';el('err').textContent='';
   var d=dest(),w=parseFloat(el('weight').value),v=parseFloat(el('value').value);
   if(!d||isNaN(w)||w<=0){validate();return;}
+  if(isNaN(v)||v<=0){el('err').textContent='Please enter the item\\'s value to see the price.';validate();return;}
   el('fee').style.display='block';el('fee').textContent='Calculating…';
-  var qs='action=price&session='+encodeURIComponent(SESSION)+'&mode='+svc()+'&destination='+encodeURIComponent(d)+'&weight='+w+'&value='+(isNaN(v)?0:v)+'&pickup_city='+el('pickup').value;
+  var qs='action=price&session='+encodeURIComponent(SESSION)+'&mode='+svc()+'&destination='+encodeURIComponent(d)+'&weight='+w+'&value='+v+'&pickup_city='+el('pickup').value;
   fetch(API+'?'+qs).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.price){lastPrice=j.price;el('fee').style.display='block';el('fee').innerHTML='₦'+Number(j.price).toLocaleString()+'<small>'+(j.ship_mode==='cargo'?'Air Cargo':j.ship_mode==='express'?'Air Express':'Waybill')+' • delivery '+(j.etd||'')+'</small>';}
+    if(j&&j.price){lastPrice=j.price;el('fee').style.display='block';el('fee').innerHTML=(j.ship_mode?'~₦':'₦')+Number(j.price).toLocaleString()+'<small>'+(j.ship_mode==='cargo'?'Air Cargo':j.ship_mode==='express'?'Air Express':'Waybill')+(j.ship_mode?' • estimate':'')+(j.etd?(' • delivery '+j.etd):'')+'</small>';}
     else{el('fee').style.display='none';
       if(j&&j.error==='cargo_min_weight')el('err').textContent='Air Cargo needs 10kg or more — try Express for lighter parcels.';
       else if(j&&j.error==='cargo_unavailable')el('err').textContent='Air Cargo is UK, USA, Canada & Ghana only — use Express here.';
@@ -583,14 +585,14 @@ function recalc(){
   }).catch(function(){el('fee').style.display='none';validate();});
 }
 function validate(){
-  var ok=lastPrice&&val('sname')&&val('sphone').length>=7&&val('rname')&&val('rphone').length>=7&&val('daddr')&&val('item');
+  var ok=lastPrice&&val('sname')&&val('sphone').length>=7&&val('paddr')&&val('rname')&&val('rphone').length>=7&&val('daddr')&&val('item');
   el('go').disabled=!ok;
 }
 function book(){
   var b=el('go');b.disabled=true;b.textContent='Booking…';
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     session:SESSION,mode:svc(),destination:dest(),weight:parseFloat(el('weight').value),value:parseFloat(el('value').value)||0,pickup_city:el('pickup').value,
-    sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item')
+    sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item')
   })}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';}
     else{b.disabled=false;b.textContent='Confirm & book';el('err').textContent=(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
@@ -602,7 +604,7 @@ else{
   el('weight').addEventListener('input',function(){snapWeight();recalc();});
   ['country','value'].forEach(function(id){el(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});});
   el('state').addEventListener('change',recalc);el('pickup').addEventListener('change',recalc);
-  ['sname','sphone','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
+  ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
   el('go').onclick=book;
 }
 </script></body></html>`;
