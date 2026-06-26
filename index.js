@@ -498,10 +498,13 @@ body{margin:0;background:#f4f6f8;color:#111}
 .wrap{max-width:520px;margin:0 auto;padding:14px}
 h2{margin:6px 0 4px;font-size:19px}
 .intro{font-size:13px;color:#666;margin:0 0 14px}
-.fld{margin-bottom:11px}
+.fld{margin-bottom:11px;position:relative}
 .fld label{font-size:12px;color:#555;display:block;margin-bottom:4px}
 .fld input,.fld select{width:100%;padding:12px;border:1px solid #d6dbe0;border-radius:10px;font-size:15px;outline:none;background:#fff;-webkit-appearance:none}
 .fld input:focus,.fld select:focus{border-color:#E23A7C;box-shadow:0 0 0 3px rgba(226,58,124,.15)}
+.sug{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #e2e6ea;border-radius:10px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,.1);overflow:hidden}
+.sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f0f2f4;cursor:pointer}
+.sug div:active,.sug div:hover{background:#fcebf2}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .feebig{font-size:21px;font-weight:800;text-align:center;color:#a01457;background:#fcebf2;border:1px solid #f3c4da;border-radius:12px;padding:13px;margin:12px 0;display:none}
 .feebig small{display:block;font-size:12px;font-weight:600;color:#b56b8c;margin-top:2px}
@@ -536,16 +539,15 @@ button:disabled{background:#f0a9c8}
 <select id="state"><option value="">— Select a state —</option><option value="LAGOS">Lagos</option></select></div>
 <div class="two"><div class="fld"><label>Weight (kg)</label><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="2"></div>
 <div class="fld"><label>Item value (₦) <span style="color:#E23A7C">*</span></label><input id="value" type="number" min="1" inputmode="numeric" placeholder="What is it worth?" required></div></div>
-<div class="fld"><label>Pickup city (Nigeria)</label><select id="pickup"><option value="PORT_HARCOURT">Port Harcourt</option><option value="OWERRI">Owerri</option></select></div>
 <div class="feebig" id="fee"></div>
 <div class="err" id="err"></div>
 <div class="sec">Delivery details</div>
 <div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
 <div class="fld"><label>Your phone <span style="color:#E23A7C">*</span></label><input id="sphone" type="tel" inputmode="tel" placeholder="So our rider can reach you"></div>
-<div class="fld"><label>Pickup address — where our rider picks up <span style="color:#E23A7C">*</span></label><input id="paddr" placeholder="Your full address in Nigeria"></div>
+<div class="fld"><label>Pickup address — where our rider picks up <span style="color:#E23A7C">*</span></label><input id="paddr" placeholder="Start typing your address…" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
 <div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
 <div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="Their number"></div>
-<div class="fld"><label>Delivery address</label><input id="daddr" placeholder="Full address abroad / in the state"></div>
+<div class="fld"><label>Delivery address</label><input id="daddr" placeholder="Start typing the address abroad…" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
 <div class="fld"><label>What are you sending?</label><input id="item" placeholder="e.g. documents, clothes, a phone"></div>
 <button id="go" disabled>Confirm &amp; book</button>
 <p class="muted">Powered by Lasalu Drop Logistics</p>
@@ -559,6 +561,24 @@ function el(id){return document.getElementById(id);}
 function svc(){return el('svc').value;}
 function val(id){return (el(id).value||'').trim();}
 function dest(){return svc()==='waybill'?val('state'):val('country');}
+function pickupCity(){return /owerri|\bimo\b/i.test(val('paddr'))?'OWERRI':'PORT_HARCOURT';}
+function wireAuto(inId,sugId,region){
+  var inp=el(inId),sug=el(sugId),tt;
+  inp.addEventListener('input',function(){
+    clearTimeout(tt);var q=inp.value.trim();if(q.length<2){sug.style.display='none';return;}
+    tt=setTimeout(function(){
+      fetch(API+'?action=autocomplete&session='+encodeURIComponent(SESSION)+'&q='+encodeURIComponent(q)+(region?'&region='+region:'')).then(function(r){return r.json();}).then(function(j){
+        sug.innerHTML='';(j.predictions||[]).forEach(function(p){
+          var dv=document.createElement('div');dv.textContent=p.label;
+          dv.onclick=function(){inp.value=p.label;sug.style.display='none';validate();if(region==='ng')recalc();};
+          sug.appendChild(dv);
+        });
+        sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';
+      }).catch(function(){sug.style.display='none';});
+    },300);
+  });
+  inp.addEventListener('blur',function(){setTimeout(function(){sug.style.display='none';},200);});
+}
 function snapWeight(){var w=parseFloat(el('weight').value);if(!isNaN(w)&&w>0)el('weight').value=(Math.ceil(w*2)/2).toFixed(1);}
 function toggleSvc(){
   var wb=svc()==='waybill';
@@ -572,7 +592,7 @@ function recalc(){
   if(!d||isNaN(w)||w<=0){validate();return;}
   if(isNaN(v)||v<=0){el('err').textContent='Please enter the item\\'s value to see the price.';validate();return;}
   el('fee').style.display='block';el('fee').textContent='Calculating…';
-  var qs='action=price&session='+encodeURIComponent(SESSION)+'&mode='+svc()+'&destination='+encodeURIComponent(d)+'&weight='+w+'&value='+v+'&pickup_city='+el('pickup').value;
+  var qs='action=price&session='+encodeURIComponent(SESSION)+'&mode='+svc()+'&destination='+encodeURIComponent(d)+'&weight='+w+'&value='+v+'&pickup_city='+pickupCity();
   fetch(API+'?'+qs).then(function(r){return r.json();}).then(function(j){
     if(j&&j.price){lastPrice=j.price;el('fee').style.display='block';el('fee').innerHTML=(j.ship_mode?'~₦':'₦')+Number(j.price).toLocaleString()+'<small>'+(j.ship_mode==='cargo'?'Air Cargo':j.ship_mode==='express'?'Air Express':'Waybill')+(j.ship_mode?' • estimate':'')+(j.etd?(' • delivery '+j.etd):'')+'</small>';}
     else{el('fee').style.display='none';
@@ -591,7 +611,7 @@ function validate(){
 function book(){
   var b=el('go');b.disabled=true;b.textContent='Booking…';
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    session:SESSION,mode:svc(),destination:dest(),weight:parseFloat(el('weight').value),value:parseFloat(el('value').value)||0,pickup_city:el('pickup').value,
+    session:SESSION,mode:svc(),destination:dest(),weight:parseFloat(el('weight').value),value:parseFloat(el('value').value)||0,pickup_city:pickupCity(),
     sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item')
   })}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';}
@@ -603,8 +623,9 @@ else{
   el('svc').addEventListener('change',toggleSvc);
   el('weight').addEventListener('input',function(){snapWeight();recalc();});
   ['country','value'].forEach(function(id){el(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});});
-  el('state').addEventListener('change',recalc);el('pickup').addEventListener('change',recalc);
+  el('state').addEventListener('change',recalc);
   ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
+  wireAuto('paddr','psug','ng');wireAuto('daddr','dsug','');
   el('go').onclick=book;
 }
 </script></body></html>`;
