@@ -264,7 +264,9 @@ async function connectWhatsApp() {
           : (msg.message?.conversation || msg.message?.extendedTextMessage?.text || mediaCaption || (hasMedia ? '[image]' : ''));
 
         // Voice note (or PTT) with no caption → transcribe it so ADANOVA can reply.
+        let wasVoice = false;
         if (!text && (msg.message?.audioMessage)) {
+          wasVoice = true;
           text = await transcribeVoice(msg, sock);
         }
 
@@ -276,7 +278,13 @@ async function connectWhatsApp() {
           if (!text) text = '📍 Shared location';
         }
 
-        if (!text) continue;
+        if (!text) {
+          // A voice note we couldn't transcribe → ask them to type, never silently ignore them.
+          if (wasVoice && !msg.key.fromMe) {
+            try { await sock.sendMessage(msg.key.remoteJid, { text: "I couldn't quite catch that voice note 🙏 could you type it out for me? I'll sort it right away 🙌" }); } catch (e) { /* best effort */ }
+          }
+          continue;
+        }
 
         const direction = msg.key.fromMe ? 'outbound' : 'inbound';
         console.log(`Message [${direction}] ${msg.key.fromMe ? 'to' : 'from'} ${phoneNumber}:`, text);
