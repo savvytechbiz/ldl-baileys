@@ -355,50 +355,66 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <style>
 *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
 body{margin:0;background:#f4f6f8;color:#111}
-.wrap{max-width:520px;margin:0 auto;padding:14px}
-h2{margin:6px 0 14px;font-size:18px}
-.fld{position:relative;margin-bottom:10px}
-.fld label{font-size:12px;color:#555;display:block;margin-bottom:4px}
-.fld input{width:100%;padding:12px;border:1px solid #d6dbe0;border-radius:10px;font-size:15px;outline:none}
+.wrap{max-width:520px;margin:0 auto;padding:16px}
+h2{margin:8px 0 6px;font-size:21px}
+.fld{position:relative;margin-bottom:12px}
+.fld label{font-size:13px;color:#555;display:block;margin-bottom:5px;font-weight:600}
+.fld input{width:100%;padding:16px;border:1.5px solid #d6dbe0;border-radius:14px;font-size:17px;outline:none}
 .fld input:focus{border-color:#25D366;box-shadow:0 0 0 3px rgba(37,211,102,.15)}
-.sug{position:absolute;z-index:2000;left:0;right:0;background:#fff;border:1px solid #e2e6ea;border-radius:10px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,.08);overflow:hidden}
+.sug{position:absolute;z-index:2000;left:0;right:0;background:#fff;border:1px solid #e2e6ea;border-radius:12px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,.08);overflow:hidden}
 .leaflet-container{z-index:1}
-.sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f0f2f4}
+.sug div{padding:15px 14px;font-size:16px;border-bottom:1px solid #f0f2f4}
 .sug div:active{background:#eafaf0}
-#map{height:240px;border-radius:12px;margin:10px 0;border:1px solid #e2e6ea}
-.feebig{font-size:21px;font-weight:800;text-align:center;color:#0a7d33;background:#eafaf0;border:1px solid #bce6cb;border-radius:12px;padding:13px;margin:12px 0;display:none}
-.feebig small{display:block;font-size:12px;font-weight:600;color:#5a8a6c;margin-top:2px}
-button{width:100%;padding:14px;border:0;border-radius:12px;background:#25D366;color:#fff;font-size:16px;font-weight:600}
+#map{height:260px;border-radius:14px;margin:12px 0;border:1px solid #e2e6ea}
+.feebig{font-size:24px;font-weight:800;text-align:center;color:#0a7d33;background:#eafaf0;border:1px solid #bce6cb;border-radius:14px;padding:16px;margin:14px 0;display:none}
+.feebig small{display:block;font-size:13px;font-weight:600;color:#5a8a6c;margin-top:3px}
+button{width:100%;padding:18px;border:0;border-radius:14px;background:#25D366;color:#fff;font-size:18px;font-weight:800}
 button:disabled{background:#b6e6c8}
-.done{text-align:center;padding:30px 14px}.done h2{font-size:20px;color:#0a7d33}
-.muted{color:#777;font-size:13px;text-align:center}
-.wabtn{display:inline-block;margin-top:18px;padding:15px 26px;background:#25D366;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
-.reuse{margin:-4px 0 9px}
-.reuse a{display:inline-block;background:#eafaf0;color:#0a7d33;border:1px solid #bce6cb;border-radius:20px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer}
+.done{text-align:center;padding:30px 14px}.done h2{font-size:22px;color:#0a7d33}
+.muted{color:#777;font-size:13px;text-align:center;margin-top:18px}
+.wabtn{display:inline-block;margin-top:18px;padding:16px 28px;background:#25D366;color:#fff;border-radius:14px;text-decoration:none;font-weight:700;font-size:17px}
+.reuse{margin:-2px 0 10px}
+.reuse a{display:inline-block;background:#eafaf0;color:#0a7d33;border:1px solid #bce6cb;border-radius:22px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer}
 .reuse a.on{background:#25D366;color:#fff;border-color:#25D366}
-.locbtn{width:100%;padding:14px;border:0;background:#25D366;color:#fff;border-radius:12px;font-size:16px;font-weight:700}
-.intro{font-size:13px;color:#666;margin:0 0 14px}
-.or{text-align:center;color:#aaa;font-size:12px;margin:10px 0 8px}
-.sec{font-size:12px;color:#8a9099;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin:18px 0 8px}
+.locbtn{width:100%;padding:20px;border:0;background:#25D366;color:#fff;border-radius:16px;font-size:19px;font-weight:800;box-shadow:0 5px 16px rgba(37,211,102,.38)}
+.intro{font-size:14px;color:#666;margin:0 0 16px}
+.or{text-align:center;color:#aaa;font-size:13px;margin:12px 0 10px}
+.step{font-size:16px;font-weight:800;color:#111;margin:22px 0 10px}
+.step:first-child{margin-top:8px}
+.reveal{animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style></head><body><div class="wrap" id="app">
 <h2>📦 Book your delivery</h2>
-<p class="intro">Set your pickup &amp; drop-off for an instant price, then book your rider — about 10 seconds.</p>
-<button type="button" id="loc" class="locbtn">📍 Use my current location for pickup</button>
-<div class="or">— or type it —</div>
-<div class="fld"><label>Pickup (sending from)</label><input id="pin" placeholder="Type an area, e.g. Woji" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
-<div class="reuse" id="rpickup"></div>
-<div class="fld"><label>Drop-off (sending to)</label><input id="din" placeholder="Type an area, e.g. GRA" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
-<div class="reuse" id="rdrop"></div>
-<div id="map"></div>
+<p class="intro">Just a few taps — we'll show your price and book your rider 🛵</p>
+
+<div id="step-pickup">
+  <div class="step">1 · Where are you sending FROM? 📍</div>
+  <button type="button" id="loc" class="locbtn">📍 Use my current location</button>
+  <div class="or">— or type the area —</div>
+  <div class="fld"><input id="pin" placeholder="e.g. Woji, Chicken Republic" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
+  <div class="reuse" id="rpickup"></div>
+</div>
+
+<div id="map" style="display:none"></div>
+
+<div id="step-drop" style="display:none">
+  <div class="step">2 · Where is it going TO? 🏁</div>
+  <div class="fld"><input id="din" placeholder="e.g. GRA, Forces Avenue" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
+  <div class="reuse" id="rdrop"></div>
+</div>
+
 <div class="feebig" id="fee"></div>
-<div class="sec">Delivery details</div>
-<div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
-<div class="fld"><label>Sender's phone</label><input id="sphone" type="tel" inputmode="tel" placeholder="0801…"></div>
-<div class="reuse" id="rrecv"></div>
-<div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
-<div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="0801…"></div>
-<div class="fld"><label>What are you sending?</label><input id="item" placeholder="e.g. documents, a phone, food"></div>
-<button id="go" disabled>Confirm & book</button>
+
+<div id="step-details" style="display:none">
+  <div class="step">3 · Who's it for? 📦</div>
+  <div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
+  <div class="fld"><label>Sender's phone</label><input id="sphone" type="tel" inputmode="tel" placeholder="0801…"></div>
+  <div class="reuse" id="rrecv"></div>
+  <div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
+  <div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="0801…"></div>
+  <div class="fld"><label>What are you sending?</label><input id="item" placeholder="e.g. documents, a phone, food"></div>
+  <button id="go" disabled>Confirm &amp; book 🛵</button>
+</div>
 <p class="muted">Powered by Lasalu Drop Logistics</p>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -410,6 +426,9 @@ function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 var picked={pickup:null,dropoff:null};
 var map,mP,mD;
 function initMap(){map=L.map('map').setView([4.82,7.03],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);}
+// Reveal the next step only when the previous one is done — one simple thing at a time.
+function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='none'){e.style.display='';e.className=(e.className?e.className+' ':'')+'reveal';if(id==='map'&&map){setTimeout(function(){map.invalidateSize();var pts=[];if(picked.pickup)pts.push([picked.pickup.lat,picked.pickup.lng]);if(picked.dropoff)pts.push([picked.dropoff.lat,picked.dropoff.lng]);if(pts.length)map.fitBounds(pts,{padding:[40,40],maxZoom:15});},60);}}}
+function step(){if(picked.pickup){reveal('map');reveal('step-drop');}if(picked.pickup&&picked.dropoff){reveal('step-details');}}
 function setPin(which,d){
   var ll=[d.lat,d.lng];
   var old=which==='pickup'?mP:mD; if(old)map.removeLayer(old);
@@ -417,6 +436,7 @@ function setPin(which,d){
   m.on('dragend',function(e){var p=e.target.getLatLng();reverseSet(which,p.lat,p.lng);});
   if(which==='pickup')mP=m;else mD=m;
   picked[which]={address:d.address,lat:d.lat,lng:d.lng};
+  step();
   var pts=[]; if(picked.pickup)pts.push([picked.pickup.lat,picked.pickup.lng]); if(picked.dropoff)pts.push([picked.dropoff.lat,picked.dropoff.lng]);
   if(pts.length)map.fitBounds(pts,{padding:[40,40],maxZoom:15});
   validate();
@@ -454,12 +474,17 @@ function validate(){
   var ok = picked.pickup&&picked.dropoff&&val('sname')&&val('sphone').length>=7&&val('rname')&&val('rphone').length>=7&&val('item');
   document.getElementById('go').disabled=!ok;
 }
+// Decode a Google-encoded polyline into [lat,lng] points (so we can draw the route, Bolt-style).
+function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,sh=0,res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lat+=((res&1)?~(res>>1):(res>>1)); sh=0;res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lng+=((res&1)?~(res>>1):(res>>1)); c.push([lat/1e5,lng/1e5]); } return c; }
+var routeLine=null;
+function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#25D366',weight:5,opacity:.85,lineJoin:'round'}).addTo(map); map.fitBounds(routeLine.getBounds(),{padding:[50,50],maxZoom:15}); }catch(e){} }
 function quote(){
   var f=document.getElementById('fee'); f.style.display='block'; f.textContent='Calculating fee…';
   fetch(api('action=price&plat='+picked.pickup.lat+'&plng='+picked.pickup.lng+'&dlat='+picked.dropoff.lat+'&dlng='+picked.dropoff.lng))
    .then(r=>r.json()).then(j=>{
      if(j.price){ f.style.display='block'; f.innerHTML='₦'+j.price.toLocaleString()+(j.km?('<small>Delivery fee • ~'+j.km+'km</small>'):'<small>Delivery fee</small>'); }
      else { f.style.display='none'; }
+     if(j.polyline) drawRoute(j.polyline);  // draw the actual road path pickup → drop-off
    }).catch(function(){ f.style.display='none'; });
 }
 function wire(inId,sugId,which){
@@ -488,10 +513,16 @@ else { initMap(); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
     if(!p) return;
     if(p.name) document.getElementById('sname').value=p.name;
     if(p.phone) document.getElementById('sphone').value=p.phone;
-    if(p.pickup&&p.pickup.lat) reuse('rpickup','↩ Same pickup — '+p.pickup.address,function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); });
-    if(p.dropoff&&p.dropoff.lat) reuse('rdrop','↩ Same drop-off — '+p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); });
-    if(p.receiver&&p.receiver.name) reuse('rrecv','↩ Same receiver — '+p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; });
-    validate();
+    if(p.item) document.getElementById('item').value=p.item;
+    // Pickup: if they already said it this chat → auto-fill + pin; else offer last one as a chip.
+    if(p.pickup){ if(p.pickup.from_chat){ document.getElementById('pin').value=p.pickup.address; if(p.pickup.lat) setPin('pickup',p.pickup); }
+      else if(p.pickup.lat){ reuse('rpickup','↩ Same pickup — '+p.pickup.address,function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); } }
+    // Drop-off: same — "how much to Woji" lands Woji here automatically.
+    if(p.dropoff){ if(p.dropoff.from_chat){ document.getElementById('din').value=p.dropoff.address; if(p.dropoff.lat) setPin('dropoff',p.dropoff); }
+      else if(p.dropoff.lat){ reuse('rdrop','↩ Same drop-off — '+p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); } }
+    if(p.receiver&&p.receiver.name){ if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }
+      else { reuse('rrecv','↩ Same receiver — '+p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
+    validate(); step();
   }).catch(function(){});
   document.getElementById('go').onclick=function(){
     var b=document.getElementById('go'); b.disabled=true; b.textContent='Booking…';
