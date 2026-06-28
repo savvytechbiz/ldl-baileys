@@ -353,69 +353,82 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="theme-color" content="#25D366">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-*{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
-body{margin:0;background:#f4f6f8;color:#111}
-.wrap{max-width:520px;margin:0 auto;padding:16px}
-h2{margin:8px 0 6px;font-size:21px}
-.fld{position:relative;margin-bottom:12px}
-.fld label{font-size:13px;color:#555;display:block;margin-bottom:5px;font-weight:600}
-.fld input{width:100%;padding:16px;border:1.5px solid #d6dbe0;border-radius:14px;font-size:17px;outline:none}
-.fld input:focus{border-color:#25D366;box-shadow:0 0 0 3px rgba(37,211,102,.15)}
-.sug{position:absolute;z-index:2000;left:0;right:0;background:#fff;border:1px solid #e2e6ea;border-radius:12px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,.08);overflow:hidden}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,sans-serif}
+body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
+.wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh}
+.maphero{position:relative}
+#map{height:300px;width:100%}
 .leaflet-container{z-index:1}
-.sug div{padding:15px 14px;font-size:16px;border-bottom:1px solid #f0f2f4}
-.sug div:active{background:#eafaf0}
-#map{height:260px;border-radius:14px;margin:12px 0;border:1px solid #e2e6ea}
-.feebig{font-size:24px;font-weight:800;text-align:center;color:#0a7d33;background:#eafaf0;border:1px solid #bce6cb;border-radius:14px;padding:16px;margin:14px 0;display:none}
-.feebig small{display:block;font-size:13px;font-weight:600;color:#5a8a6c;margin-top:3px}
-button{width:100%;padding:18px;border:0;border-radius:14px;background:#25D366;color:#fff;font-size:18px;font-weight:800}
-button:disabled{background:#b6e6c8}
-.done{text-align:center;padding:30px 14px}.done h2{font-size:22px;color:#0a7d33}
-.muted{color:#777;font-size:13px;text-align:center;margin-top:18px}
-.wabtn{display:inline-block;margin-top:18px;padding:16px 28px;background:#25D366;color:#fff;border-radius:14px;text-decoration:none;font-weight:700;font-size:17px}
-.reuse{margin:-2px 0 10px}
-.reuse a{display:inline-block;background:#eafaf0;color:#0a7d33;border:1px solid #bce6cb;border-radius:22px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer}
+.etabadge{position:absolute;top:14px;right:14px;z-index:1000;background:#fff;border-radius:14px;padding:9px 13px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:14px;font-weight:700;color:#0e1726;display:flex;align-items:center;gap:6px}
+.etabadge .d{color:#6b7280;font-weight:600;font-size:12.5px}
+.sheet{position:relative;z-index:2;margin-top:-26px;background:#fff;border-radius:26px 26px 0 0;box-shadow:0 -10px 30px rgba(14,23,38,.07);padding:6px 20px 28px}
+.grab{width:40px;height:5px;background:#e5e7eb;border-radius:3px;margin:10px auto 16px}
+h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
+.route{display:flex;gap:13px;background:#f5f6f8;border-radius:16px;padding:0 16px}
+.rail{display:flex;flex-direction:column;align-items:center;padding:22px 0}
+.rail .dot{width:11px;height:11px;border-radius:50%;background:#25D366;box-shadow:0 0 0 4px rgba(37,211,102,.16)}
+.rail .line{flex:1;width:2px;background:#d7dbe0;margin:5px 0;min-height:20px}
+.rail .sq{width:11px;height:11px;border-radius:3px;background:#0e1726}
+.ins{flex:1;min-width:0}
+.ri{position:relative}
+.ri input{width:100%;border:0;background:transparent;padding:17px 0;font-size:16px;outline:none;color:#0e1726;font-weight:500}
+.ri input::placeholder{color:#9aa0a6;font-weight:400}
+.divln{height:1px;background:#e6e9ed}
+.sug{position:absolute;z-index:2000;left:-16px;right:-16px;background:#fff;border:1px solid #edeff2;border-radius:16px;margin-top:4px;box-shadow:0 16px 40px rgba(14,23,38,.12);overflow:hidden}
+.sug div{padding:15px 16px;font-size:15px;border-bottom:1px solid #f2f4f6}
+.sug div:active{background:#f5f7f9}
+.ghost{width:100%;margin:14px 0 2px;padding:15px;border:1px solid #e6e9ed;background:#fff;color:#0e1726;border-radius:14px;font-size:15px;font-weight:600}
+.reuse a{display:inline-block;background:#eef6f1;color:#0e6b39;border:1px solid #d6e7dd;border-radius:20px;padding:9px 15px;font-size:13.5px;font-weight:600;cursor:pointer;margin-top:9px;margin-right:6px}
 .reuse a.on{background:#25D366;color:#fff;border-color:#25D366}
-.locbtn{width:100%;padding:20px;border:0;background:#25D366;color:#fff;border-radius:16px;font-size:19px;font-weight:800;box-shadow:0 5px 16px rgba(37,211,102,.38)}
-.intro{font-size:14px;color:#666;margin:0 0 16px}
-.or{text-align:center;color:#aaa;font-size:13px;margin:12px 0 10px}
-.step{font-size:16px;font-weight:800;color:#111;margin:22px 0 10px}
-.step:first-child{margin-top:8px}
+.feebig{display:none;align-items:center;justify-content:space-between;border:1px solid #e6e9ed;border-radius:16px;padding:16px 18px;margin:18px 0 2px}
+.feebig .lbl{font-size:13.5px;color:#6b7280;font-weight:600}
+.feebig .sub{font-size:12.5px;color:#9aa0a6;margin-top:2px}
+.feebig .amt{font-size:22px;font-weight:800;color:#0e1726;letter-spacing:-.01em}
+.sec{font-size:14px;font-weight:700;color:#0e1726;margin:24px 0 12px;letter-spacing:-.01em}
+.fld{margin-bottom:12px}
+.fld label{font-size:12.5px;color:#6b7280;display:block;margin-bottom:6px;font-weight:600}
+.fld input{width:100%;padding:15px 16px;border:1px solid #e6e9ed;background:#fff;border-radius:14px;font-size:16px;outline:none}
+.fld input:focus,.ri input:focus{border-color:#25D366}
+.fld input:focus{box-shadow:0 0 0 3px rgba(37,211,102,.12)}
+button{width:100%;padding:17px;border:0;border-radius:16px;background:#25D366;color:#fff;font-size:17px;font-weight:800;-webkit-appearance:none}
+button:disabled{background:#cfe9d8}
+#go{margin-top:10px}
+.done{text-align:center;padding:46px 22px}.done h2{font-size:22px;color:#0a7d33}
+.muted{color:#9aa0a6;font-size:12.5px;text-align:center;margin-top:22px}
+.wabtn{display:inline-block;margin-top:18px;padding:16px 28px;background:#25D366;color:#fff;border-radius:16px;text-decoration:none;font-weight:700;font-size:17px}
 .reveal{animation:fade .35s ease}
-@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 </style></head><body><div class="wrap" id="app">
-<h2>📦 Book your delivery</h2>
-<p class="intro">Just a few taps — we'll show your price and book your rider 🛵</p>
-
-<div id="step-pickup">
-  <div class="step">1 · Where are you sending FROM? 📍</div>
-  <button type="button" id="loc" class="locbtn">📍 Use my current location</button>
-  <div class="or">— or type the area —</div>
-  <div class="fld"><input id="pin" placeholder="e.g. Woji, Chicken Republic" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
-  <div class="reuse" id="rpickup"></div>
+<div class="maphero"><div id="map"></div><div id="eta" class="etabadge" style="display:none"></div></div>
+<div class="sheet">
+<div class="grab"></div>
+<h2>Where to?</h2>
+<div class="route">
+  <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
+  <div class="ins">
+    <div class="ri"><input id="pin" placeholder="Pickup location" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
+    <div class="divln"></div>
+    <div class="ri"><input id="din" placeholder="Drop-off location" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
+  </div>
 </div>
-
-<div id="map" style="display:none"></div>
-
-<div id="step-drop" style="display:none">
-  <div class="step">2 · Where is it going TO? 🏁</div>
-  <div class="fld"><input id="din" placeholder="e.g. GRA, Forces Avenue" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
-  <div class="reuse" id="rdrop"></div>
-</div>
+<button type="button" id="loc" class="ghost">📍 Use my current location</button>
+<div class="reuse" id="rpickup"></div>
+<div class="reuse" id="rdrop"></div>
 
 <div class="feebig" id="fee"></div>
 
 <div id="step-details" style="display:none">
-  <div class="step">3 · Who's it for? 📦</div>
+  <div class="sec">Delivery details</div>
   <div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
   <div class="fld"><label>Sender's phone</label><input id="sphone" type="tel" inputmode="tel" placeholder="0801…"></div>
   <div class="reuse" id="rrecv"></div>
   <div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
   <div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="0801…"></div>
   <div class="fld"><label>What are you sending?</label><input id="item" placeholder="e.g. documents, a phone, food"></div>
-  <button id="go" disabled>Confirm &amp; book 🛵</button>
+  <button id="go" disabled>Confirm &amp; book</button>
 </div>
 <p class="muted">Powered by Lasalu Drop Logistics</p>
+</div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -427,8 +440,8 @@ var picked={pickup:null,dropoff:null};
 var map,mP,mD;
 function initMap(){map=L.map('map').setView([4.82,7.03],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);}
 // Reveal the next step only when the previous one is done — one simple thing at a time.
-function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='none'){e.style.display='';e.className=(e.className?e.className+' ':'')+'reveal';if(id==='map'&&map){setTimeout(function(){map.invalidateSize();var pts=[];if(picked.pickup)pts.push([picked.pickup.lat,picked.pickup.lng]);if(picked.dropoff)pts.push([picked.dropoff.lat,picked.dropoff.lng]);if(pts.length)map.fitBounds(pts,{padding:[40,40],maxZoom:15});},60);}}}
-function step(){if(picked.pickup){reveal('map');reveal('step-drop');}if(picked.pickup&&picked.dropoff){reveal('step-details');}}
+function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='none'){e.style.display='';e.className=(e.className?e.className+' ':'')+'reveal';}}
+function step(){if(picked.pickup&&picked.dropoff)reveal('step-details');}
 function setPin(which,d){
   var ll=[d.lat,d.lng];
   var old=which==='pickup'?mP:mD; if(old)map.removeLayer(old);
@@ -479,12 +492,16 @@ function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,s
 var routeLine=null;
 function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#25D366',weight:5,opacity:.85,lineJoin:'round'}).addTo(map); map.fitBounds(routeLine.getBounds(),{padding:[50,50],maxZoom:15}); }catch(e){} }
 function quote(){
-  var f=document.getElementById('fee'); f.style.display='block'; f.textContent='Calculating fee…';
+  var f=document.getElementById('fee'); f.style.display='flex'; f.innerHTML='<div class="lbl">Calculating fee…</div>';
   fetch(api('action=price&plat='+picked.pickup.lat+'&plng='+picked.pickup.lng+'&dlat='+picked.dropoff.lat+'&dlng='+picked.dropoff.lng))
    .then(r=>r.json()).then(j=>{
-     if(j.price){ f.style.display='block'; f.innerHTML='₦'+j.price.toLocaleString()+(j.km?('<small>Delivery fee • ~'+j.km+'km</small>'):'<small>Delivery fee</small>'); }
-     else { f.style.display='none'; }
-     if(j.polyline) drawRoute(j.polyline);  // draw the actual road path pickup → drop-off
+     var e=document.getElementById('eta');
+     if(j.price){
+       var sub=[]; if(j.min)sub.push('~'+j.min+' min trip'); if(j.km)sub.push('~'+j.km+' km');
+       f.style.display='flex'; f.innerHTML='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+j.price.toLocaleString()+'</div>';
+       if(j.min){ e.style.display='flex'; e.innerHTML='🛵 '+j.min+' min <span class="d">trip</span>'; } else { e.style.display='none'; }
+     } else { f.style.display='none'; if(e)e.style.display='none'; }
+     if(j.polyline) drawRoute(j.polyline);
    }).catch(function(){ f.style.display='none'; });
 }
 function wire(inId,sugId,which){
