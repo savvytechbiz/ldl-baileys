@@ -438,14 +438,26 @@ var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/mapPicker";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 var picked={pickup:null,dropoff:null};
 var map,mP,mD;
-function initMap(){map=L.map('map').setView([4.82,7.03],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);}
+function initMap(){
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([4.82,7.03],12);
+  // Clean, modern basemap (CARTO Voyager) — soft tones, minimal clutter, sharp on retina phones.
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,detectRetina:true,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+  L.control.attribution({position:'bottomright',prefix:false}).addTo(map);
+}
+// Clean ride-app markers: a green dot for pickup, a dark rounded square for drop-off.
+function pinIcon(which){
+  var c = which==='pickup'
+    ? '<div style="width:18px;height:18px;border-radius:50%;background:#25D366;border:3px solid #fff;box-shadow:0 2px 6px rgba(14,23,38,.4)"></div>'
+    : '<div style="width:18px;height:18px;border-radius:5px;background:#0e1726;border:3px solid #fff;box-shadow:0 2px 6px rgba(14,23,38,.4)"></div>';
+  return L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],html:c});
+}
 // Reveal the next step only when the previous one is done — one simple thing at a time.
 function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='none'){e.style.display='';e.className=(e.className?e.className+' ':'')+'reveal';}}
 function step(){if(picked.pickup&&picked.dropoff)reveal('step-details');}
 function setPin(which,d){
   var ll=[d.lat,d.lng];
   var old=which==='pickup'?mP:mD; if(old)map.removeLayer(old);
-  var m=L.marker(ll,{draggable:true}).addTo(map).bindPopup(which==='pickup'?'Pickup — drag to adjust':'Drop-off — drag to adjust');
+  var m=L.marker(ll,{draggable:true,icon:pinIcon(which)}).addTo(map).bindPopup(which==='pickup'?'Pickup — drag to adjust':'Drop-off — drag to adjust');
   m.on('dragend',function(e){var p=e.target.getLatLng();reverseSet(which,p.lat,p.lng);});
   if(which==='pickup')mP=m;else mD=m;
   picked[which]={address:d.address,lat:d.lat,lng:d.lng};
