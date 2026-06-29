@@ -354,14 +354,15 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,sans-serif}
+html,body{height:100%}
 body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
-.wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh}
-.maphero{position:relative}
-#map{height:215px;width:100%}
+.wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+.maphero{position:relative;flex:1 1 auto;min-height:230px}
+#map{height:100%;width:100%}
 .leaflet-container{z-index:1}
 .etabadge{position:absolute;top:14px;right:14px;z-index:1000;background:#fff;border-radius:14px;padding:9px 13px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:14px;font-weight:700;color:#0e1726;display:flex;align-items:center;gap:6px}
 .etabadge .d{color:#6b7280;font-weight:600;font-size:12.5px}
-.sheet{position:relative;z-index:2;margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -10px 30px rgba(14,23,38,.07);padding:16px 16px 18px}
+.sheet{position:relative;z-index:2;flex:0 0 auto;margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -10px 30px rgba(14,23,38,.07);padding:16px 16px 18px}
 h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
 .route{display:flex;gap:11px;align-items:center;background:#f5f6f8;border-radius:16px;padding:0 12px 0 15px}
 .rail{display:flex;flex-direction:column;align-items:center;padding:17px 0}
@@ -441,6 +442,7 @@ function initMap(){
   // Clean, modern basemap (CARTO Voyager) — soft tones, minimal clutter, sharp on retina phones.
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,detectRetina:true,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
   L.control.attribution({position:'bottomright',prefix:false}).addTo(map);
+  setTimeout(function(){ map.invalidateSize(); },250);
 }
 // Clean ride-app markers: a green dot for pickup, a dark rounded square for drop-off.
 function pinIcon(which){
