@@ -358,7 +358,7 @@ html,body{height:100%}
 body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
 .wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
 .maphero{position:relative;flex:1 1 auto;min-height:230px}
-#map{height:100%;width:100%}
+#map{position:absolute;top:0;left:0;right:0;bottom:0}
 .leaflet-container{z-index:1}
 .etabadge{position:absolute;top:14px;right:14px;z-index:1000;background:#fff;border-radius:14px;padding:9px 13px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:14px;font-weight:700;color:#0e1726;display:flex;align-items:center;gap:6px}
 .etabadge .d{color:#6b7280;font-weight:600;font-size:12.5px}
