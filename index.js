@@ -362,6 +362,7 @@ body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
 .leaflet-container{z-index:1}
 .etabadge{position:absolute;top:14px;right:14px;z-index:1000;background:#fff;border-radius:14px;padding:9px 13px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:14px;font-weight:700;color:#0e1726;display:flex;align-items:center;gap:6px}
 .etabadge .d{color:#6b7280;font-weight:600;font-size:12.5px}
+.riderchip{position:absolute;top:14px;left:14px;z-index:1000;background:#fff;border-radius:14px;padding:8px 12px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:13px;font-weight:700;color:#0a7d33;display:none;align-items:center;gap:6px}
 .sheet{position:relative;z-index:2;flex:0 0 auto;margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -10px 30px rgba(14,23,38,.07);padding:16px 16px 18px}
 h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
 .route{display:flex;gap:11px;align-items:center;background:#f5f6f8;border-radius:16px;padding:0 12px 0 15px}
@@ -406,7 +407,7 @@ button:disabled{background:#cfe9d8}
 .reveal{animation:fade .35s ease}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 </style></head><body><div class="wrap" id="app">
-<div class="maphero"><div id="map"></div><div id="eta" class="etabadge" style="display:none"></div></div>
+<div class="maphero"><div id="map"></div><div id="riderchip" class="riderchip"></div><div id="eta" class="etabadge" style="display:none"></div></div>
 <div class="sheet">
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
@@ -449,6 +450,19 @@ function pinIcon(which){
     ? '<div style="width:18px;height:18px;border-radius:50%;background:#25D366;border:3px solid #fff;box-shadow:0 2px 6px rgba(14,23,38,.4)"></div>'
     : '<div style="width:18px;height:18px;border-radius:5px;background:#0e1726;border:3px solid #fff;box-shadow:0 2px 6px rgba(14,23,38,.4)"></div>';
   return L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],html:c});
+}
+// Real on-shift rider dots (anonymous + privacy-fuzzed by the server). Refreshes every ~25s so the
+// dots drift roughly with the riders — like Bolt/inDrive, but honest (no fake bikes, no ETA promises).
+var riderDots=[];
+function bikeIcon(){return L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],html:'<div style="width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 3px 11px rgba(14,23,38,.3);border:1px solid rgba(14,23,38,.06);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="#0e1726" aria-hidden="true"><path d="M19.44 9.03L15.41 5H11v2h3.59l2 2H5c-2.8 0-5 2.2-5 5s2.2 5 5 5c2.46 0 4.45-1.69 4.9-4h1.65l2.77-2.77c-.21.54-.32 1.14-.32 1.77 0 2.8 2.2 5 5 5s5-2.2 5-5c0-2.79-2.21-5-4.56-4.97zM7.82 15C7.4 16.15 6.28 17 5 17c-1.63 0-3-1.37-3-3s1.37-3 3-3c1.28 0 2.4.85 2.82 2H5v2h2.82zM19 17c-1.63 0-3-1.37-3-3s1.37-3 3-3 3 1.37 3 3-1.37 3-3 3z"/></svg></div>'});}
+function loadRiders(){
+  fetch(api('action=riders')).then(function(r){return r.json();}).then(function(j){
+    var rs=(j&&j.riders)||[];
+    riderDots.forEach(function(m){map.removeLayer(m);});riderDots=[];
+    rs.forEach(function(p){riderDots.push(L.marker([p.lat,p.lng],{icon:bikeIcon(),interactive:false,zIndexOffset:-200,opacity:.9}).addTo(map));});
+    var chip=document.getElementById('riderchip');
+    if(chip){if(rs.length){chip.style.display='flex';chip.textContent='🟢 '+rs.length+' rider'+(rs.length>1?'s':'')+' nearby';}else{chip.style.display='none';}}
+  }).catch(function(){});
 }
 // Reveal the next step only when the previous one is done — one simple thing at a time.
 function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='none'){e.style.display='';e.className=(e.className?e.className+' ':'')+'reveal';}}
@@ -554,7 +568,7 @@ function wire(inId,sugId,which){
   });
 }
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
-else { initMap(); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
+else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
   // One-tap reuse for returning customers ("same as last time").
@@ -591,47 +605,52 @@ app.get('/map', (req, res) => { res.type('html').send(MAP_PAGE); });
 
 // ── International / Waybill quote calculator (the INTL/WAYBILL twin of the map) ──
 // Pricing is recomputed server-side by the Supabase quotePicker function (intlPricing).
+// Shared premium styling for the no-map booking pages (international & waybill) — matches the
+// clean white + green look of the local map page.
+const QUOTE_CSS = `*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
+body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
+.wrap{max-width:480px;margin:0 auto;min-height:100vh}
+.hero{padding:24px 20px 16px}
+.hero h1{margin:0;font-size:23px;font-weight:700;letter-spacing:-.02em}
+.hero p{margin:8px 0 0;font-size:13.5px;color:#6b7280;line-height:1.55}
+.body{padding:4px 20px 28px}
+.lbl{font-size:12.5px;color:#6b7280;font-weight:700;margin:15px 2px 7px}
+.fld{margin-bottom:11px;position:relative}
+.fld input,.fld select{width:100%;padding:15px;border:1px solid #e6e9ed;border-radius:13px;font-size:16px;outline:none;background:#fff;-webkit-appearance:none}
+.fld input:focus,.fld select:focus{border-color:#25D366;box-shadow:0 0 0 3px rgba(37,211,102,.12)}
+.req{color:#25D366}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sugbox{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:13px;margin-top:4px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden}
+.sugbox div{padding:14px;font-size:15px;border-bottom:1px solid #f2f4f6;cursor:pointer}
+.sugbox div:active{background:#eef9f1}
+.states{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:4px}
+.st{padding:14px;border:1px solid #e6e9ed;border-radius:13px;text-align:center;cursor:pointer}
+.st b{display:block;font-size:15px;font-weight:700}
+.st span{font-size:12.5px;color:#6b7280}
+.st.on{border-color:#25D366;background:#eef9f1}.st.on b,.st.on span{color:#0a7d33}
+.feebig{display:none;align-items:center;justify-content:space-between;border:1px solid #e6e9ed;border-radius:14px;padding:15px 18px;margin:14px 0 2px}
+.feebig .l{font-size:13px;color:#6b7280;font-weight:600}
+.feebig .sub{font-size:12px;color:#9aa0a6;margin-top:2px}
+.feebig .amt{font-size:22px;font-weight:800;letter-spacing:-.01em}
+button{width:100%;padding:17px;border:0;border-radius:14px;background:#25D366;color:#fff;font-size:17px;font-weight:800;margin-top:14px;-webkit-appearance:none}
+button:disabled{background:#cfe9d8}
+.done{text-align:center;padding:48px 22px}.done h2{font-size:22px;color:#0a7d33}
+.muted{color:#9aa0a6;font-size:12.5px;text-align:center;margin-top:24px}
+.wabtn{display:inline-block;margin-top:18px;padding:16px 28px;background:#25D366;color:#fff;border-radius:14px;text-decoration:none;font-weight:700;font-size:17px}
+.err{color:#c0392b;font-size:13px;min-height:16px;margin-top:6px}`;
+
+// ── INTERNATIONAL shipping page (rider-first estimate) — premium look, no waybill ──
 const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Get your shipping quote — Lasalu Drop</title>
-<meta name="description" content="Pick destination, weight & value for an instant international or waybill price, and book in seconds.">
-<meta property="og:title" content="🌍 Get your shipping quote — Lasalu Drop">
-<meta property="og:description" content="Instant international & interstate prices — pick destination, weight & value, then book 📦">
-<meta property="og:type" content="website">
-<meta name="theme-color" content="#E23A7C">
-<style>
-*{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
-body{margin:0;background:#f4f6f8;color:#111}
-.wrap{max-width:520px;margin:0 auto;padding:14px}
-h2{margin:6px 0 4px;font-size:19px}
-.intro{font-size:13px;color:#666;margin:0 0 14px}
-.fld{margin-bottom:11px;position:relative}
-.fld label{font-size:12px;color:#555;display:block;margin-bottom:4px}
-.fld input,.fld select{width:100%;padding:12px;border:1px solid #d6dbe0;border-radius:10px;font-size:15px;outline:none;background:#fff;-webkit-appearance:none}
-.fld input:focus,.fld select:focus{border-color:#E23A7C;box-shadow:0 0 0 3px rgba(226,58,124,.15)}
-.sug{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #e2e6ea;border-radius:10px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,.1);overflow:hidden}
-.sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f0f2f4;cursor:pointer}
-.sug div:active,.sug div:hover{background:#fcebf2}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-.feebig{font-size:21px;font-weight:800;text-align:center;color:#a01457;background:#fcebf2;border:1px solid #f3c4da;border-radius:12px;padding:13px;margin:12px 0;display:none}
-.feebig small{display:block;font-size:12px;font-weight:600;color:#b56b8c;margin-top:2px}
-.sec{font-size:12px;color:#8a9099;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin:18px 0 8px}
-button{width:100%;padding:14px;border:0;border-radius:12px;background:#E23A7C;color:#fff;font-size:16px;font-weight:700}
-button:disabled{background:#f0a9c8}
-.done{text-align:center;padding:30px 14px}.done h2{font-size:20px;color:#a01457}
-.muted{color:#777;font-size:13px;text-align:center}
-.wabtn{display:inline-block;margin-top:18px;padding:15px 26px;background:#25D366;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px}
-.err{color:#c0392b;font-size:13px;text-align:center;min-height:16px}
-</style></head><body><div class="wrap" id="app">
-<h2>🌍 Get your shipping quote</h2>
-<p class="intro">Pick the service, destination, weight &amp; value for an instant price — then book.</p>
-<div class="fld"><label>Service</label><select id="svc">
-<option value="express">✈️ Air Express — worldwide, 3–7 days</option>
-<option value="cargo">📦 Air Cargo — UK/USA/Canada/Ghana, 10kg+</option>
-<option value="waybill">🚚 Waybill — interstate Nigeria</option>
-</select></div>
-<div class="fld" id="countryFld"><label>Destination country</label>
-<input id="country" list="countries" placeholder="Start typing… e.g. United Kingdom" autocomplete="off"></div>
+<title>Ship internationally — Lasalu Drop</title>
+<meta name="theme-color" content="#25D366">
+<style>${QUOTE_CSS}</style></head><body><div class="wrap" id="app">
+<div class="hero"><h1>🌍 Ship internationally</h1><p>Get your instant estimate — then our rider picks up &amp; weighs it, and you only pay after it's weighed.</p></div>
+<div class="body">
+<div class="lbl">Service</div>
+<div class="fld"><select id="svc"><option value="express">✈️ Air Express — worldwide, 3–7 days</option><option value="cargo">📦 Air Cargo — UK/USA/Canada/Ghana, 10kg+</option></select></div>
+<div class="lbl">Destination country</div>
+<div class="fld"><input id="country" list="countries" placeholder="Start typing… e.g. United Kingdom" autocomplete="off"></div>
 <datalist id="countries">
 <option value="UNITED KINGDOM (Z1)"><option value="IRELAND REP OF (Z1)"><option value="GUERNSEY (Z1)"><option value="JERSEY (Z1)">
 <option value="GHANA (Z2)"><option value="BENIN (Z2)"><option value="CAMEROON (Z2)"><option value="COTE D IVOIRE (Z2)"><option value="GABON (Z2)"><option value="GAMBIA (Z2)"><option value="GUINEA REP. (Z2)">
@@ -642,23 +661,21 @@ button:disabled{background:#f0a9c8}
 <option value="CHINA (Z7)"><option value="INDIA (Z7)"><option value="JAPAN (Z7)"><option value="SINGAPORE (Z7)"><option value="MALAYSIA (Z7)"><option value="HONG KONG (Z7)"><option value="AUSTRALIA (Z7)"><option value="PHILIPPINES (Z7)"><option value="THAILAND (Z7)"><option value="INDONESIA (Z7)"><option value="VIETNAM (Z7)"><option value="PAKISTAN (Z7)"><option value="BANGLADESH (Z7)"><option value="TAIWAN (Z7)">
 <option value="BRAZIL (Z8)"><option value="ARGENTINA (Z8)"><option value="CHILE (Z8)"><option value="COLOMBIA (Z8)"><option value="PERU (Z8)"><option value="JAMAICA (Z8)"><option value="NEW ZEALAND (Z8)"><option value="PANAMA (Z8)"><option value="VENEZUELA (Z8)">
 </datalist>
-<div class="fld" id="stateFld" style="display:none"><label>Destination state</label>
-<select id="state"><option value="">— Select a state —</option><option value="LAGOS">Lagos</option></select></div>
-<div class="two"><div class="fld"><label>Weight (kg)</label><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="2"></div>
-<div class="fld"><label>Item value (₦) <span style="color:#E23A7C">*</span></label><input id="value" type="number" min="1" inputmode="numeric" placeholder="What is it worth?" required></div></div>
+<div class="two"><div><div class="lbl">Weight (kg)</div><div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="2"></div></div>
+<div><div class="lbl">Item value (₦) <span class="req">*</span></div><div class="fld"><input id="value" type="number" min="1" inputmode="numeric" placeholder="What's it worth?"></div></div></div>
 <div class="feebig" id="fee"></div>
 <div class="err" id="err"></div>
-<div class="sec">Delivery details</div>
-<div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
-<div class="fld"><label>Your phone <span style="color:#E23A7C">*</span></label><input id="sphone" type="tel" inputmode="tel" placeholder="So our rider can reach you"></div>
-<div class="fld"><label>Pickup address — where our rider picks up <span style="color:#E23A7C">*</span></label><input id="paddr" placeholder="Start typing your address…" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
-<div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
-<div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="Their number"></div>
-<div class="fld"><label>Delivery address</label><input id="daddr" placeholder="Start typing the address abroad…" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
-<div class="fld"><label>What are you sending?</label><input id="item" placeholder="e.g. documents, clothes, a phone"></div>
-<button id="go" disabled>Confirm &amp; book</button>
+<div class="lbl">Sender</div>
+<div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Your phone *"></div></div>
+<div class="lbl">Pickup — where our rider collects <span class="req">*</span></div>
+<div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off"><div class="sugbox" id="psug" style="display:none"></div></div>
+<div class="lbl">Receiver (abroad)</div>
+<div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Their phone"></div></div>
+<div class="fld"><input id="daddr" placeholder="Delivery address abroad…" autocomplete="off"><div class="sugbox" id="dsug" style="display:none"></div></div>
+<div class="fld"><input id="item" placeholder="What are you sending?"></div>
+<button id="go" disabled>Get estimate &amp; request pickup</button>
 <p class="muted">Powered by Lasalu Drop Logistics</p>
-</div>
+</div></div>
 <script>
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
@@ -667,8 +684,7 @@ var lastPrice=null, t;
 function el(id){return document.getElementById(id);}
 function svc(){return el('svc').value;}
 function val(id){return (el(id).value||'').trim();}
-function dest(){return svc()==='waybill'?val('state'):val('country');}
-function pickupCity(){return /owerri|\bimo\b/i.test(val('paddr'))?'OWERRI':'PORT_HARCOURT';}
+function pickupCity(){return /owerri|\\bimo\\b/i.test(val('paddr'))?'OWERRI':'PORT_HARCOURT';}
 function wireAuto(inId,sugId,region){
   var inp=el(inId),sug=el(sugId),tt;
   inp.addEventListener('input',function(){
@@ -677,7 +693,7 @@ function wireAuto(inId,sugId,region){
       fetch(API+'?action=autocomplete&session='+encodeURIComponent(SESSION)+'&q='+encodeURIComponent(q)+(region?'&region='+region:'')).then(function(r){return r.json();}).then(function(j){
         sug.innerHTML='';(j.predictions||[]).forEach(function(p){
           var dv=document.createElement('div');dv.textContent=p.label;
-          dv.onclick=function(){inp.value=p.label;sug.style.display='none';validate();if(region==='ng')recalc();};
+          dv.onclick=function(){inp.value=p.label;sug.style.display='none';validate();};
           sug.appendChild(dv);
         });
         sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';
@@ -687,26 +703,19 @@ function wireAuto(inId,sugId,region){
   inp.addEventListener('blur',function(){setTimeout(function(){sug.style.display='none';},200);});
 }
 function snapWeight(){var w=parseFloat(el('weight').value);if(!isNaN(w)&&w>0)el('weight').value=(Math.ceil(w*2)/2).toFixed(1);}
-function toggleSvc(){
-  var wb=svc()==='waybill';
-  el('countryFld').style.display=wb?'none':'block';
-  el('stateFld').style.display=wb?'block':'none';
-  recalc();validate();
-}
 function recalc(){
   lastPrice=null;el('fee').style.display='none';el('err').textContent='';
-  var d=dest(),w=parseFloat(el('weight').value),v=parseFloat(el('value').value);
+  var d=val('country'),w=parseFloat(el('weight').value),v=parseFloat(el('value').value);
   if(!d||isNaN(w)||w<=0){validate();return;}
-  if(isNaN(v)||v<=0){el('err').textContent='Please enter the item\\'s value to see the price.';validate();return;}
-  el('fee').style.display='block';el('fee').textContent='Calculating…';
+  if(isNaN(v)||v<=0){el('err').textContent='Please enter the item\\'s value to see the estimate.';validate();return;}
+  el('fee').style.display='flex';el('fee').innerHTML='<div class="l">Calculating…</div>';
   var qs='action=price&session='+encodeURIComponent(SESSION)+'&mode='+svc()+'&destination='+encodeURIComponent(d)+'&weight='+w+'&value='+v+'&pickup_city='+pickupCity();
   fetch(API+'?'+qs).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.price){lastPrice=j.price;el('fee').style.display='block';el('fee').innerHTML=(j.ship_mode?'~₦':'₦')+Number(j.price).toLocaleString()+'<small>'+(j.ship_mode==='cargo'?'Air Cargo':j.ship_mode==='express'?'Air Express':'Waybill')+(j.ship_mode?' • estimate':'')+(j.etd?(' • delivery '+j.etd):'')+'</small>';}
+    if(j&&j.price){lastPrice=j.price;el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Estimate · '+(j.ship_mode==='cargo'?'Air Cargo':'Air Express')+'</div><div class="sub">confirmed after the rider weighs it'+(j.etd?(' • '+j.etd):'')+'</div></div><div class="amt">~₦'+Number(j.price).toLocaleString()+'</div>';}
     else{el('fee').style.display='none';
       if(j&&j.error==='cargo_min_weight')el('err').textContent='Air Cargo needs 10kg or more — try Express for lighter parcels.';
       else if(j&&j.error==='cargo_unavailable')el('err').textContent='Air Cargo is UK, USA, Canada & Ghana only — use Express here.';
       else if(j&&j.error==='unknown_country')el('err').textContent='Pick a destination from the list.';
-      else if(j&&j.error==='unknown_state')el('err').textContent='We currently run waybill to Lagos only.';
     }
     validate();
   }).catch(function(){el('fee').style.display='none';validate();});
@@ -718,8 +727,98 @@ function validate(){
 function book(){
   var b=el('go');b.disabled=true;b.textContent='Booking…';
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    session:SESSION,mode:svc(),destination:dest(),weight:parseFloat(el('weight').value),value:parseFloat(el('value').value)||0,pickup_city:pickupCity(),
+    session:SESSION,mode:svc(),destination:val('country'),weight:parseFloat(el('weight').value),value:parseFloat(el('value').value)||0,pickup_city:pickupCity(),
     sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item')
+  })}).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your estimate is waiting in your WhatsApp chat — reply YES there to send the rider.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';}
+    else{b.disabled=false;b.textContent='Get estimate & request pickup';el('err').textContent=(j&&j.error==='value_required')?'Please enter the item\\'s value.':(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
+  }).catch(function(){b.disabled=false;b.textContent='Get estimate & request pickup';alert('Network hiccup — try again.');});
+}
+if(VALID!=='1'){el('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for a quote again.</p></div>';}
+else{
+  el('svc').addEventListener('change',recalc);
+  el('weight').addEventListener('input',function(){snapWeight();recalc();});
+  ['country','value'].forEach(function(id){el(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});});
+  ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
+  wireAuto('paddr','psug','ng');wireAuto('daddr','dsug','');
+  el('go').onclick=book;
+}
+</script></body></html>`;
+app.get('/quote', (req, res) => { res.type('html').send(QUOTE_PAGE); });
+
+// ── WAYBILL page (interstate, flat under 5kg) — its own simple premium page ──
+const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Send a waybill — Lasalu Drop</title>
+<meta name="theme-color" content="#25D366">
+<style>${QUOTE_CSS}</style></head><body><div class="wrap" id="app">
+<div class="hero"><h1>🚚 Send a waybill</h1><p>Flat price for items under 5kg. We pick up from your door 🛵 — your receiver collects at the destination park.</p></div>
+<div class="body">
+<div class="lbl">Where is it going?</div>
+<div class="states" id="states">
+<div class="st" data-s="LAGOS"><b>Lagos</b><span>₦10,000</span></div>
+<div class="st" data-s="ABUJA"><b>Abuja</b><span>₦10,000</span></div>
+<div class="st" data-s="ABA"><b>Aba</b><span>₦5,000</span></div>
+<div class="st" data-s="OWERRI"><b>Owerri</b><span>₦6,000</span></div>
+</div>
+<div class="lbl">Weight (kg)</div>
+<div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="e.g. 2 (flat up to 5kg)"></div>
+<div class="feebig" id="fee"></div>
+<div class="err" id="err"></div>
+<div class="lbl">Pickup — where our rider collects <span class="req">*</span></div>
+<div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off"><div class="sugbox" id="psug" style="display:none"></div></div>
+<div class="lbl">Sender</div>
+<div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div></div>
+<div class="lbl">Receiver <span style="font-weight:500;color:#9aa0a6">— collects at the park</span></div>
+<div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone"></div></div>
+<div class="fld"><input id="item" placeholder="What are you sending?"></div>
+<button id="go" disabled>Confirm &amp; book</button>
+<p class="muted">Powered by Lasalu Drop Logistics</p>
+</div></div>
+<script>
+var SESSION=new URLSearchParams(location.search).get('session')||"";
+var VALID=SESSION?"1":"0";
+var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
+var lastPrice=null, state="", t;
+function el(id){return document.getElementById(id);}
+function val(id){return (el(id).value||'').trim();}
+function nice(s){return s?s.charAt(0)+s.slice(1).toLowerCase():s;}
+function wireAuto(inId,sugId){
+  var inp=el(inId),sug=el(sugId),tt;
+  inp.addEventListener('input',function(){
+    clearTimeout(tt);var q=inp.value.trim();if(q.length<2){sug.style.display='none';return;}
+    tt=setTimeout(function(){
+      fetch(API+'?action=autocomplete&session='+encodeURIComponent(SESSION)+'&q='+encodeURIComponent(q)+'&region=ng').then(function(r){return r.json();}).then(function(j){
+        sug.innerHTML='';(j.predictions||[]).forEach(function(p){
+          var dv=document.createElement('div');dv.textContent=p.label;
+          dv.onclick=function(){inp.value=p.label;sug.style.display='none';validate();};
+          sug.appendChild(dv);
+        });
+        sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';
+      }).catch(function(){sug.style.display='none';});
+    },300);
+  });
+  inp.addEventListener('blur',function(){setTimeout(function(){sug.style.display='none';},200);});
+}
+function recalc(){
+  lastPrice=null;el('fee').style.display='none';el('err').textContent='';
+  var w=parseFloat(el('weight').value);
+  if(!state){validate();return;}
+  if(isNaN(w)||w<=0){validate();return;}
+  if(w>5){el('err').textContent='Items over 5kg — our team will confirm a custom price. Reach us on WhatsApp.';validate();return;}
+  el('fee').style.display='flex';el('fee').innerHTML='<div class="l">Calculating…</div>';
+  fetch(API+'?action=price&session='+encodeURIComponent(SESSION)+'&mode=waybill&destination='+encodeURIComponent(state)+'&weight='+w).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.price){lastPrice=j.price;el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Waybill to '+nice(state)+'</div><div class="sub">up to 5kg • receiver collects at the park</div></div><div class="amt">₦'+Number(j.price).toLocaleString()+'</div>';}
+    else{el('fee').style.display='none';if(j&&j.error==='over_5kg')el('err').textContent='Items over 5kg — our team will confirm a custom price.';}
+    validate();
+  }).catch(function(){el('fee').style.display='none';validate();});
+}
+function validate(){var ok=lastPrice&&val('paddr')&&val('rname')&&val('rphone').length>=7&&val('item');el('go').disabled=!ok;}
+function book(){
+  var b=el('go');b.disabled=true;b.textContent='Booking…';
+  fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    session:SESSION,mode:'waybill',destination:state,weight:parseFloat(el('weight').value)||1,
+    sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:'',item:val('item')
   })}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';}
     else{b.disabled=false;b.textContent='Confirm & book';el('err').textContent=(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
@@ -727,16 +826,14 @@ function book(){
 }
 if(VALID!=='1'){el('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for a quote again.</p></div>';}
 else{
-  el('svc').addEventListener('change',toggleSvc);
-  el('weight').addEventListener('input',function(){snapWeight();recalc();});
-  ['country','value'].forEach(function(id){el(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});});
-  el('state').addEventListener('change',recalc);
-  ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
-  wireAuto('paddr','psug','ng');wireAuto('daddr','dsug','');
+  Array.prototype.forEach.call(document.querySelectorAll('.st'),function(b){b.onclick=function(){state=b.getAttribute('data-s');Array.prototype.forEach.call(document.querySelectorAll('.st'),function(x){x.className='st';});b.className='st on';recalc();};});
+  el('weight').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,300);});
+  ['sname','sphone','paddr','rname','rphone','item'].forEach(function(id){el(id).addEventListener('input',validate);});
+  wireAuto('paddr','psug');
   el('go').onclick=book;
 }
 </script></body></html>`;
-app.get('/quote', (req, res) => { res.type('html').send(QUOTE_PAGE); });
+app.get('/waybill', (req, res) => { res.type('html').send(WAYBILL_PAGE); });
 
 // Status
 app.get('/status', (req, res) => {
