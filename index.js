@@ -357,21 +357,27 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
 .wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh}
 .maphero{position:relative}
-#map{height:300px;width:100%}
+#map{height:215px;width:100%}
 .leaflet-container{z-index:1}
 .etabadge{position:absolute;top:14px;right:14px;z-index:1000;background:#fff;border-radius:14px;padding:9px 13px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:14px;font-weight:700;color:#0e1726;display:flex;align-items:center;gap:6px}
 .etabadge .d{color:#6b7280;font-weight:600;font-size:12.5px}
-.sheet{position:relative;z-index:2;margin-top:-26px;background:#fff;border-radius:26px 26px 0 0;box-shadow:0 -10px 30px rgba(14,23,38,.07);padding:6px 20px 28px}
-.grab{width:40px;height:5px;background:#e5e7eb;border-radius:3px;margin:10px auto 16px}
+.sheet{position:relative;z-index:2;margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -10px 30px rgba(14,23,38,.07);padding:16px 16px 18px}
 h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
-.route{display:flex;gap:13px;background:#f5f6f8;border-radius:16px;padding:0 16px}
-.rail{display:flex;flex-direction:column;align-items:center;padding:22px 0}
+.route{display:flex;gap:11px;align-items:center;background:#f5f6f8;border-radius:16px;padding:0 12px 0 15px}
+.rail{display:flex;flex-direction:column;align-items:center;padding:17px 0}
+.locmini{width:46px;height:46px;min-width:46px;padding:0;border-radius:13px;border:1px solid #e3e6ea;background:#fff;font-size:19px;color:#0e1726;align-self:center;box-shadow:0 1px 3px rgba(14,23,38,.06)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.lbl2{font-size:12.5px;color:#6b7280;font-weight:700;margin:13px 2px 6px}
+.lbl2 .hint{font-weight:500;color:#9aa0a6}
+.row2 input,.f1{width:100%;padding:13px 15px;border:1px solid #e6e9ed;background:#fff;border-radius:13px;font-size:15.5px;outline:none}
+.f1{margin-top:11px}
+.row2 input:focus,.f1:focus{border-color:#25D366}
 .rail .dot{width:11px;height:11px;border-radius:50%;background:#25D366;box-shadow:0 0 0 4px rgba(37,211,102,.16)}
 .rail .line{flex:1;width:2px;background:#d7dbe0;margin:5px 0;min-height:20px}
 .rail .sq{width:11px;height:11px;border-radius:3px;background:#0e1726}
 .ins{flex:1;min-width:0}
 .ri{position:relative}
-.ri input{width:100%;border:0;background:transparent;padding:17px 0;font-size:16px;outline:none;color:#0e1726;font-weight:500}
+.ri input{width:100%;border:0;background:transparent;padding:14px 0;font-size:16px;outline:none;color:#0e1726;font-weight:500}
 .ri input::placeholder{color:#9aa0a6;font-weight:400}
 .divln{height:1px;background:#e6e9ed}
 .sug{position:absolute;z-index:2000;left:-16px;right:-16px;background:#fff;border:1px solid #edeff2;border-radius:16px;margin-top:4px;box-shadow:0 16px 40px rgba(14,23,38,.12);overflow:hidden}
@@ -380,7 +386,7 @@ h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
 .ghost{width:100%;margin:14px 0 2px;padding:15px;border:1px solid #e6e9ed;background:#fff;color:#0e1726;border-radius:14px;font-size:15px;font-weight:600}
 .reuse a{display:inline-block;background:#eef6f1;color:#0e6b39;border:1px solid #d6e7dd;border-radius:20px;padding:9px 15px;font-size:13.5px;font-weight:600;cursor:pointer;margin-top:9px;margin-right:6px}
 .reuse a.on{background:#25D366;color:#fff;border-color:#25D366}
-.feebig{display:none;align-items:center;justify-content:space-between;border:1px solid #e6e9ed;border-radius:16px;padding:16px 18px;margin:18px 0 2px}
+.feebig{display:none;align-items:center;justify-content:space-between;border:1px solid #e6e9ed;border-radius:14px;padding:13px 16px;margin:12px 0 0}
 .feebig .lbl{font-size:13.5px;color:#6b7280;font-weight:600}
 .feebig .sub{font-size:12.5px;color:#9aa0a6;margin-top:2px}
 .feebig .amt{font-size:22px;font-weight:800;color:#0e1726;letter-spacing:-.01em}
@@ -401,33 +407,25 @@ button:disabled{background:#cfe9d8}
 </style></head><body><div class="wrap" id="app">
 <div class="maphero"><div id="map"></div><div id="eta" class="etabadge" style="display:none"></div></div>
 <div class="sheet">
-<div class="grab"></div>
-<h2>Where to?</h2>
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
   <div class="ins">
-    <div class="ri"><input id="pin" placeholder="Pickup location" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
+    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
     <div class="divln"></div>
-    <div class="ri"><input id="din" placeholder="Drop-off location" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
+    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
   </div>
+  <button type="button" id="loc" class="locmini" aria-label="Use my current location">📍</button>
 </div>
-<button type="button" id="loc" class="ghost">📍 Use my current location</button>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
-
+<div class="lbl2">Sender <span class="hint">— defaults to you, edit if it's someone else</span></div>
+<div class="row2"><input id="sname" placeholder="Sender's name"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div>
+<div class="lbl2">Receiver</div>
+<div class="row2"><input id="rname" placeholder="Receiver's name"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone"></div>
+<div class="reuse" id="rrecv"></div>
+<input id="item" class="f1" placeholder="What are you sending? (e.g. food, documents)">
 <div class="feebig" id="fee"></div>
-
-<div id="step-details" style="display:none">
-  <div class="sec">Delivery details</div>
-  <div class="fld"><label>Sender's name</label><input id="sname" placeholder="Who's sending it"></div>
-  <div class="fld"><label>Sender's phone</label><input id="sphone" type="tel" inputmode="tel" placeholder="0801…"></div>
-  <div class="reuse" id="rrecv"></div>
-  <div class="fld"><label>Receiver's name</label><input id="rname" placeholder="Who's receiving it"></div>
-  <div class="fld"><label>Receiver's phone</label><input id="rphone" type="tel" inputmode="tel" placeholder="0801…"></div>
-  <div class="fld"><label>What are you sending?</label><input id="item" placeholder="e.g. documents, a phone, food"></div>
-  <button id="go" disabled>Confirm &amp; book</button>
-</div>
-<p class="muted">Powered by Lasalu Drop Logistics</p>
+<button id="go" disabled>Confirm &amp; book</button>
 </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -441,7 +439,7 @@ var map,mP,mD;
 function initMap(){
   map=L.map('map',{zoomControl:false,attributionControl:false}).setView([4.82,7.03],12);
   // Clean, modern basemap (CARTO Voyager) — soft tones, minimal clutter, sharp on retina phones.
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,detectRetina:true,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,detectRetina:true,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
   L.control.attribution({position:'bottomright',prefix:false}).addTo(map);
 }
 // Clean ride-app markers: a green dot for pickup, a dark rounded square for drop-off.
@@ -481,22 +479,22 @@ function reverseSet(which,lat,lng){
 function useLoc(){
   var btn=document.getElementById('loc');
   if(!navigator.geolocation){ alert('Location is not available here — please type your area.'); return; }
-  btn.textContent='Locating you…'; btn.disabled=true;
+  btn.textContent='…'; btn.disabled=true;
   navigator.geolocation.getCurrentPosition(function(pos){
-    btn.textContent='📍 Use my current location'; btn.disabled=false;
+    btn.textContent='📍'; btn.disabled=false;
     var lat=pos.coords.latitude, lng=pos.coords.longitude;
     map.setView([lat,lng],16);
     document.getElementById('pin').value='Pinpointing…';
     setPin('pickup',{address:'My current location',lat:lat,lng:lng});
     reverseSet('pickup',lat,lng);
   }, function(){
-    btn.textContent='📍 Use my current location'; btn.disabled=false;
+    btn.textContent='📍'; btn.disabled=false;
     alert('Couldn\\'t get your location — please allow location access, or just type your area.');
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:0});
 }
 function val(id){return (document.getElementById(id).value||'').trim();}
 function validate(){
-  var ok = picked.pickup&&picked.dropoff&&val('sname')&&val('sphone').length>=7&&val('rname')&&val('rphone').length>=7&&val('item');
+  var ok = picked.pickup&&picked.dropoff&&val('rname')&&val('rphone').length>=7&&val('item');
   document.getElementById('go').disabled=!ok;
 }
 // Decode a Google-encoded polyline into [lat,lng] points (so we can draw the route, Bolt-style).
