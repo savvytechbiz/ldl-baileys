@@ -469,15 +469,19 @@ function setPin(which,d){
 // Reverse-geocode a moved/located pin and update the field.
 function reverseSet(which,lat,lng){
   picked[which]={address:(which==='pickup'?'Pickup point':'Drop-off point'),lat:lat,lng:lng};
+  var fld=document.getElementById(which==='pickup'?'pin':'din');
+  fld.value='Getting address…';
   validate(); if(picked.pickup&&picked.dropoff)quote();
   fetch(api('action=reverse&lat='+lat+'&lng='+lng)).then(function(r){return r.json();}).then(function(d){
-    var addr=d.address||picked[which].address;
-    document.getElementById(which==='pickup'?'pin':'din').value=addr;
-    picked[which].address=addr;
-  }).catch(function(){});
+    var addr=(d&&d.address)?d.address:picked[which].address;
+    fld.value=addr; picked[which].address=addr;   // show the REAL address, and save it for the order
+  }).catch(function(){ fld.value=picked[which].address; });
 }
 // The chatting customer's own name/number (from prefill) — placed on whichever side they locate.
 var YOU_NAME='', YOU_PHONE='';
+// Live location is ONE physical spot — only one end (pickup OR drop-off) can use it.
+var liveSide=null;
+function lockOtherLoc(){ Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ var f=b.getAttribute('data-for'); if(liveSide && f!==liveSide){ b.disabled=true; b.style.opacity='0.3'; b.title='Your live location is one spot — type the other end'; } else { b.disabled=false; b.style.opacity=''; b.title=''; } }); }
 // Use the customer's GPS for EITHER the pickup or the drop-off. Pickup = they're sending (their
 // details go to Sender); drop-off = they're receiving (their details go to Receiver).
 function useLoc(which){
@@ -504,8 +508,10 @@ function useLoc(which){
       if(YOU_PHONE && !val('sphone')) document.getElementById('sphone').value=YOU_PHONE;
     }
     validate();
+    liveSide=which; lockOtherLoc();   // your live location is one spot — lock the other end's 📍
   }, function(){
     btns.forEach(function(b){b.textContent='📍';b.disabled=false;});
+    lockOtherLoc();
     alert('Couldn\\'t get your location — please allow location access, or just type your area.');
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:0});
 }
