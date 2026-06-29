@@ -621,6 +621,7 @@ body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
 .req{color:#25D366}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sugbox{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:13px;margin-top:4px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden}
+.gpsbtn{position:absolute;top:0;right:0;height:52px;width:46px;border:0;background:transparent;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#25D366}.gpsbtn:disabled{opacity:.5}
 .sugbox div{padding:14px;font-size:15px;border-bottom:1px solid #f2f4f6;cursor:pointer}
 .sugbox div:active{background:#eef9f1}
 .states{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:4px}
@@ -668,7 +669,7 @@ const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <div class="lbl">Sender</div>
 <div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Your phone *"></div></div>
 <div class="lbl">Pickup — where our rider collects <span class="req">*</span></div>
-<div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off"><div class="sugbox" id="psug" style="display:none"></div></div>
+<div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">📍</button><div class="sugbox" id="psug" style="display:none"></div></div>
 <div class="lbl">Receiver (abroad)</div>
 <div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Their phone"></div></div>
 <div class="fld"><input id="daddr" placeholder="Delivery address abroad…" autocomplete="off"><div class="sugbox" id="dsug" style="display:none"></div></div>
@@ -684,6 +685,7 @@ var lastPrice=null, t;
 function el(id){return document.getElementById(id);}
 function svc(){return el('svc').value;}
 function val(id){return (el(id).value||'').trim();}
+function useLoc(){var b=el('ploc');if(!b)return;b.onclick=function(){if(!navigator.geolocation){alert('Location is not available here — please type your address.');return;}var prev=b.textContent;b.textContent='…';b.disabled=true;navigator.geolocation.getCurrentPosition(function(pos){el('paddr').value='Getting address…';fetch(API+'?action=reverse&session='+encodeURIComponent(SESSION)+'&lat='+pos.coords.latitude+'&lng='+pos.coords.longitude).then(function(r){return r.json();}).then(function(j){el('paddr').value=(j&&j.address)?j.address:'My current location';b.textContent=prev;b.disabled=false;validate();}).catch(function(){el('paddr').value='My current location';b.textContent=prev;b.disabled=false;validate();});},function(){b.textContent=prev;b.disabled=false;alert('Couldn\\'t get your location — please allow access or type your address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});};}
 function pickupCity(){return /owerri|\\bimo\\b/i.test(val('paddr'))?'OWERRI':'PORT_HARCOURT';}
 function wireAuto(inId,sugId,region){
   var inp=el(inId),sug=el(sugId),tt;
@@ -740,7 +742,7 @@ else{
   el('weight').addEventListener('input',function(){snapWeight();recalc();});
   ['country','value'].forEach(function(id){el(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});});
   ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
-  wireAuto('paddr','psug','ng');wireAuto('daddr','dsug','');
+  wireAuto('paddr','psug','ng');wireAuto('daddr','dsug','');useLoc();
   el('go').onclick=book;
 }
 </script></body></html>`;
@@ -766,7 +768,7 @@ const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <div class="feebig" id="fee"></div>
 <div class="err" id="err"></div>
 <div class="lbl">Pickup — where our rider collects <span class="req">*</span></div>
-<div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off"><div class="sugbox" id="psug" style="display:none"></div></div>
+<div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">📍</button><div class="sugbox" id="psug" style="display:none"></div></div>
 <div class="lbl">Sender</div>
 <div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div></div>
 <div class="lbl">Receiver <span style="font-weight:500;color:#9aa0a6">— collects at the park</span></div>
@@ -782,6 +784,7 @@ var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
 var lastPrice=null, state="", t;
 function el(id){return document.getElementById(id);}
 function val(id){return (el(id).value||'').trim();}
+function useLoc(){var b=el('ploc');if(!b)return;b.onclick=function(){if(!navigator.geolocation){alert('Location is not available here — please type your address.');return;}var prev=b.textContent;b.textContent='…';b.disabled=true;navigator.geolocation.getCurrentPosition(function(pos){el('paddr').value='Getting address…';fetch(API+'?action=reverse&session='+encodeURIComponent(SESSION)+'&lat='+pos.coords.latitude+'&lng='+pos.coords.longitude).then(function(r){return r.json();}).then(function(j){el('paddr').value=(j&&j.address)?j.address:'My current location';b.textContent=prev;b.disabled=false;validate();}).catch(function(){el('paddr').value='My current location';b.textContent=prev;b.disabled=false;validate();});},function(){b.textContent=prev;b.disabled=false;alert('Couldn\\'t get your location — please allow access or type your address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});};}
 function nice(s){return s?s.charAt(0)+s.slice(1).toLowerCase():s;}
 function wireAuto(inId,sugId){
   var inp=el(inId),sug=el(sugId),tt;
@@ -829,7 +832,7 @@ else{
   Array.prototype.forEach.call(document.querySelectorAll('.st'),function(b){b.onclick=function(){state=b.getAttribute('data-s');Array.prototype.forEach.call(document.querySelectorAll('.st'),function(x){x.className='st';});b.className='st on';recalc();};});
   el('weight').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,300);});
   ['sname','sphone','paddr','rname','rphone','item'].forEach(function(id){el(id).addEventListener('input',validate);});
-  wireAuto('paddr','psug');
+  wireAuto('paddr','psug');useLoc();
   el('go').onclick=book;
 }
 </script></body></html>`;
