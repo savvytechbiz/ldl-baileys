@@ -666,8 +666,10 @@ body{margin:0;background:#eef1f4;color:#0e1726;-webkit-font-smoothing:antialiase
 .pill.on .pt{color:#0a7d33}
 .lbl{font-size:12.5px;color:#6b7280;font-weight:600;margin:14px 2px 6px}
 .fld{position:relative;margin-bottom:11px}
-.fld input{width:100%;padding:14px 15px;border:1px solid #e6e9ed;border-radius:13px;font-size:16px;outline:none;background:#fff;-webkit-appearance:none}
-.fld input:focus{border-color:#25D366;box-shadow:0 0 0 3px rgba(37,211,102,.12)}
+.fld input,.fld select,.fld textarea{width:100%;padding:14px 15px;border:1px solid #e6e9ed;border-radius:13px;font-size:16px;outline:none;background:#fff;-webkit-appearance:none;appearance:none;font-family:inherit}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:#25D366;box-shadow:0 0 0 3px rgba(37,211,102,.12)}
+.fld select{padding-right:40px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 15px center}
+.fld textarea{min-height:64px;resize:none;line-height:1.4}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .req{color:#25D366}
 .sugbox{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:13px;margin-top:4px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden}
@@ -698,17 +700,17 @@ body{margin:0;background:#eef1f4;color:#0e1726;-webkit-font-smoothing:antialiase
 </div>
 <div class="sec">Shipment details</div>
 <div class="lbl">Destination country</div>
-<div class="fld"><input id="country" list="countries" placeholder="Start typing… e.g. United Kingdom" autocomplete="off"></div>
-<datalist id="countries">
-<option value="UNITED KINGDOM (Z1)"><option value="IRELAND REP OF (Z1)"><option value="GUERNSEY (Z1)"><option value="JERSEY (Z1)">
-<option value="GHANA (Z2)"><option value="BENIN (Z2)"><option value="CAMEROON (Z2)"><option value="COTE D IVOIRE (Z2)"><option value="GABON (Z2)"><option value="GAMBIA (Z2)"><option value="GUINEA REP. (Z2)">
-<option value="USA (Z3)"><option value="CANADA (Z3)"><option value="MEXICO (Z3)">
-<option value="GERMANY (Z4)"><option value="FRANCE (Z4)"><option value="ITALY (Z4)"><option value="SPAIN (Z4)"><option value="NETHERLANDS (Z4)"><option value="BELGIUM (Z4)"><option value="SWITZERLAND (Z4)"><option value="SWEDEN (Z4)"><option value="NORWAY (Z4)"><option value="DENMARK (Z4)"><option value="POLAND (Z4)"><option value="PORTUGAL (Z4)"><option value="AUSTRIA (Z4)"><option value="GREECE (Z4)"><option value="TURKEY (Z4)"><option value="FINLAND (Z4)"><option value="CZECH REPUBLIC (Z4)"><option value="ROMANIA (Z4)"><option value="HUNGARY (Z4)"><option value="RUSSIA (Z4)">
-<option value="SOUTH AFRICA (Z5)"><option value="EGYPT (Z5)"><option value="KENYA (Z5)"><option value="MOROCCO (Z5)"><option value="TANZANIA (Z5)"><option value="UGANDA (Z5)"><option value="RWANDA (Z5)"><option value="ETHIOPIA (Z5)"><option value="ZAMBIA (Z5)"><option value="ZIMBABWE (Z5)"><option value="NAMIBIA (Z5)"><option value="BOTSWANA (Z5)"><option value="ANGOLA (Z5)">
-<option value="UNITED ARAB EMIRATES (Z6)"><option value="SAUDI ARABIA (Z6)"><option value="QATAR (Z6)"><option value="KUWAIT (Z6)"><option value="OMAN (Z6)"><option value="BAHRAIN (Z6)"><option value="ISRAEL (Z6)"><option value="LEBANON (Z6)"><option value="JORDAN (Z6)">
-<option value="CHINA (Z7)"><option value="INDIA (Z7)"><option value="JAPAN (Z7)"><option value="SINGAPORE (Z7)"><option value="MALAYSIA (Z7)"><option value="HONG KONG (Z7)"><option value="AUSTRALIA (Z7)"><option value="PHILIPPINES (Z7)"><option value="THAILAND (Z7)"><option value="INDONESIA (Z7)"><option value="VIETNAM (Z7)"><option value="PAKISTAN (Z7)"><option value="BANGLADESH (Z7)"><option value="TAIWAN (Z7)">
-<option value="BRAZIL (Z8)"><option value="ARGENTINA (Z8)"><option value="CHILE (Z8)"><option value="COLOMBIA (Z8)"><option value="PERU (Z8)"><option value="JAMAICA (Z8)"><option value="NEW ZEALAND (Z8)"><option value="PANAMA (Z8)"><option value="VENEZUELA (Z8)">
-</datalist>
+<div class="fld"><select id="country">
+<option value="">Select destination…</option>
+<optgroup label="UK &amp; Ireland"><option value="UNITED KINGDOM (Z1)">United Kingdom</option><option value="IRELAND REP OF (Z1)">Ireland</option><option value="GUERNSEY (Z1)">Guernsey</option><option value="JERSEY (Z1)">Jersey</option></optgroup>
+<optgroup label="Africa (West &amp; Central)"><option value="GHANA (Z2)">Ghana</option><option value="BENIN (Z2)">Benin</option><option value="CAMEROON (Z2)">Cameroon</option><option value="COTE D IVOIRE (Z2)">Côte d'Ivoire</option><option value="GABON (Z2)">Gabon</option><option value="GAMBIA (Z2)">Gambia</option><option value="GUINEA REP. (Z2)">Guinea</option></optgroup>
+<optgroup label="North America"><option value="USA (Z3)">United States</option><option value="CANADA (Z3)">Canada</option><option value="MEXICO (Z3)">Mexico</option></optgroup>
+<optgroup label="Europe"><option value="GERMANY (Z4)">Germany</option><option value="FRANCE (Z4)">France</option><option value="ITALY (Z4)">Italy</option><option value="SPAIN (Z4)">Spain</option><option value="NETHERLANDS (Z4)">Netherlands</option><option value="BELGIUM (Z4)">Belgium</option><option value="SWITZERLAND (Z4)">Switzerland</option><option value="SWEDEN (Z4)">Sweden</option><option value="NORWAY (Z4)">Norway</option><option value="DENMARK (Z4)">Denmark</option><option value="POLAND (Z4)">Poland</option><option value="PORTUGAL (Z4)">Portugal</option><option value="AUSTRIA (Z4)">Austria</option><option value="GREECE (Z4)">Greece</option><option value="TURKEY (Z4)">Turkey</option><option value="FINLAND (Z4)">Finland</option><option value="CZECH REPUBLIC (Z4)">Czech Republic</option><option value="ROMANIA (Z4)">Romania</option><option value="HUNGARY (Z4)">Hungary</option><option value="RUSSIA (Z4)">Russia</option></optgroup>
+<optgroup label="Africa (East &amp; Southern)"><option value="SOUTH AFRICA (Z5)">South Africa</option><option value="EGYPT (Z5)">Egypt</option><option value="KENYA (Z5)">Kenya</option><option value="MOROCCO (Z5)">Morocco</option><option value="TANZANIA (Z5)">Tanzania</option><option value="UGANDA (Z5)">Uganda</option><option value="RWANDA (Z5)">Rwanda</option><option value="ETHIOPIA (Z5)">Ethiopia</option><option value="ZAMBIA (Z5)">Zambia</option><option value="ZIMBABWE (Z5)">Zimbabwe</option><option value="NAMIBIA (Z5)">Namibia</option><option value="BOTSWANA (Z5)">Botswana</option><option value="ANGOLA (Z5)">Angola</option></optgroup>
+<optgroup label="Middle East"><option value="UNITED ARAB EMIRATES (Z6)">United Arab Emirates</option><option value="SAUDI ARABIA (Z6)">Saudi Arabia</option><option value="QATAR (Z6)">Qatar</option><option value="KUWAIT (Z6)">Kuwait</option><option value="OMAN (Z6)">Oman</option><option value="BAHRAIN (Z6)">Bahrain</option><option value="ISRAEL (Z6)">Israel</option><option value="LEBANON (Z6)">Lebanon</option><option value="JORDAN (Z6)">Jordan</option></optgroup>
+<optgroup label="Asia &amp; Oceania"><option value="CHINA (Z7)">China</option><option value="INDIA (Z7)">India</option><option value="JAPAN (Z7)">Japan</option><option value="SINGAPORE (Z7)">Singapore</option><option value="MALAYSIA (Z7)">Malaysia</option><option value="HONG KONG (Z7)">Hong Kong</option><option value="AUSTRALIA (Z7)">Australia</option><option value="PHILIPPINES (Z7)">Philippines</option><option value="THAILAND (Z7)">Thailand</option><option value="INDONESIA (Z7)">Indonesia</option><option value="VIETNAM (Z7)">Vietnam</option><option value="PAKISTAN (Z7)">Pakistan</option><option value="BANGLADESH (Z7)">Bangladesh</option><option value="TAIWAN (Z7)">Taiwan</option></optgroup>
+<optgroup label="Latin America &amp; Caribbean"><option value="BRAZIL (Z8)">Brazil</option><option value="ARGENTINA (Z8)">Argentina</option><option value="CHILE (Z8)">Chile</option><option value="COLOMBIA (Z8)">Colombia</option><option value="PERU (Z8)">Peru</option><option value="JAMAICA (Z8)">Jamaica</option><option value="NEW ZEALAND (Z8)">New Zealand</option><option value="PANAMA (Z8)">Panama</option><option value="VENEZUELA (Z8)">Venezuela</option></optgroup>
+</select></div>
 <div class="two"><div><div class="lbl">Weight (kg)</div><div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="2"></div></div>
 <div><div class="lbl">Item value (₦) <span class="req">*</span></div><div class="fld"><input id="value" type="number" min="1" inputmode="numeric" placeholder="What's it worth?"></div></div></div>
 <div class="estcard" id="fee"></div>
@@ -722,6 +724,8 @@ body{margin:0;background:#eef1f4;color:#0e1726;-webkit-font-smoothing:antialiase
 <div class="fld"><input id="daddr" placeholder="Delivery address abroad…" autocomplete="off"><div class="sugbox" id="dsug" style="display:none"></div></div>
 <div class="lbl">What are you sending?</div>
 <div class="fld"><input id="item" placeholder="e.g. documents, clothes, a phone"></div>
+<div class="sec">Delivery instruction <span style="font-weight:600;text-transform:none;letter-spacing:0;color:#aab0b8">— optional</span></div>
+<div class="fld"><textarea id="dinstr" placeholder="Anything the rider should know? e.g. call on arrival, leave at reception, fragile…"></textarea></div>
 <p class="muted">🔒 Powered by Lasalu Drop Logistics</p>
 </div>
 <div class="bar"><div class="bamt"><div class="s">Estimate</div><div class="v" id="baramt">—</div></div><button id="go" disabled>Request pickup</button></div>
@@ -781,7 +785,7 @@ function book(){
   var b=el('go');b.disabled=true;b.textContent='Booking…';
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     session:SESSION,mode:svc(),destination:val('country'),weight:parseFloat(el('weight').value),value:parseFloat(el('value').value)||0,pickup_city:pickupCity(),
-    sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item')
+    sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item'),delivery_instruction:val('dinstr')
   })}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your estimate is waiting in your WhatsApp chat — reply YES there to send the rider.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';}
     else{b.disabled=false;b.textContent='Request pickup';el('err').textContent=(j&&j.error==='value_required')?'Please enter the item\\'s value.':(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
@@ -791,7 +795,8 @@ if(VALID!=='1'){el('app').innerHTML='<div class="done"><h2>Link expired</h2><p c
 else{
   Array.prototype.forEach.call(document.querySelectorAll('.pill'),function(p){p.onclick=function(){SVC=p.getAttribute('data-svc');Array.prototype.forEach.call(document.querySelectorAll('.pill'),function(x){x.className='pill';});p.className='pill on';recalc();};});
   el('weight').addEventListener('input',function(){snapWeight();recalc();});
-  ['country','value'].forEach(function(id){el(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});});
+  el('country').addEventListener('change',recalc);
+  el('value').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});
   ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
   wireAuto('paddr','psug','ng');wireAuto('daddr','dsug','');useLoc();
   el('go').onclick=book;
