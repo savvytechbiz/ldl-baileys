@@ -366,7 +366,7 @@ body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
 h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
 .route{display:flex;gap:11px;align-items:center;background:#f5f6f8;border-radius:16px;padding:0 12px 0 15px}
 .rail{display:flex;flex-direction:column;align-items:center;padding:17px 0}
-.locmini{width:46px;height:46px;min-width:46px;padding:0;border-radius:13px;border:1px solid #e3e6ea;background:#fff;font-size:19px;color:#0e1726;align-self:center;box-shadow:0 1px 3px rgba(14,23,38,.06)}
+.locp{width:38px;min-width:38px;height:38px;padding:0;border:0;background:transparent;font-size:18px;color:#25D366;cursor:pointer}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .lbl2{font-size:12.5px;color:#6b7280;font-weight:700;margin:13px 2px 6px}
 .lbl2 .hint{font-weight:500;color:#9aa0a6}
@@ -377,8 +377,8 @@ h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
 .rail .line{flex:1;width:2px;background:#d7dbe0;margin:5px 0;min-height:20px}
 .rail .sq{width:11px;height:11px;border-radius:3px;background:#0e1726}
 .ins{flex:1;min-width:0}
-.ri{position:relative}
-.ri input{width:100%;border:0;background:transparent;padding:14px 0;font-size:16px;outline:none;color:#0e1726;font-weight:500}
+.ri{position:relative;display:flex;align-items:center}
+.ri input{flex:1;min-width:0;border:0;background:transparent;padding:14px 0;font-size:16px;outline:none;color:#0e1726;font-weight:500}
 .ri input::placeholder{color:#9aa0a6;font-weight:400}
 .divln{height:1px;background:#e6e9ed}
 .sug{position:absolute;z-index:2000;left:-16px;right:-16px;background:#fff;border:1px solid #edeff2;border-radius:16px;margin-top:4px;box-shadow:0 16px 40px rgba(14,23,38,.12);overflow:hidden}
@@ -411,11 +411,10 @@ button:disabled{background:#cfe9d8}
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
   <div class="ins">
-    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><div class="sug" id="psug" style="display:none"></div></div>
+    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><button type="button" class="locp" data-for="pickup" aria-label="Use my location for pickup">📍</button><div class="sug" id="psug" style="display:none"></div></div>
     <div class="divln"></div>
-    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><div class="sug" id="dsug" style="display:none"></div></div>
+    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off">📍</button><div class="sug" id="dsug" style="display:none"></div></div>
   </div>
-  <button type="button" id="loc" class="locmini" aria-label="Use my current location">📍</button>
 </div>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
@@ -477,20 +476,36 @@ function reverseSet(which,lat,lng){
     picked[which].address=addr;
   }).catch(function(){});
 }
-// Get the customer's current GPS location and set it as the pickup.
-function useLoc(){
-  var btn=document.getElementById('loc');
+// The chatting customer's own name/number (from prefill) — placed on whichever side they locate.
+var YOU_NAME='', YOU_PHONE='';
+// Use the customer's GPS for EITHER the pickup or the drop-off. Pickup = they're sending (their
+// details go to Sender); drop-off = they're receiving (their details go to Receiver).
+function useLoc(which){
+  which = which==='dropoff' ? 'dropoff' : 'pickup';
+  var btns=document.querySelectorAll('.locp');
   if(!navigator.geolocation){ alert('Location is not available here — please type your area.'); return; }
-  btn.textContent='…'; btn.disabled=true;
+  btns.forEach(function(b){b.textContent='…';b.disabled=true;});
   navigator.geolocation.getCurrentPosition(function(pos){
-    btn.textContent='📍'; btn.disabled=false;
+    btns.forEach(function(b){b.textContent='📍';b.disabled=false;});
     var lat=pos.coords.latitude, lng=pos.coords.longitude;
     map.setView([lat,lng],16);
-    document.getElementById('pin').value='Pinpointing…';
-    setPin('pickup',{address:'My current location',lat:lat,lng:lng});
-    reverseSet('pickup',lat,lng);
+    document.getElementById(which==='pickup'?'pin':'din').value='Pinpointing…';
+    setPin(which,{address:'My current location',lat:lat,lng:lng});
+    reverseSet(which,lat,lng);
+    // Put the chatting customer's details on the side they just located.
+    if(which==='dropoff'){
+      if(YOU_NAME && !val('rname')) document.getElementById('rname').value=YOU_NAME;
+      if(YOU_PHONE && !val('rphone')) document.getElementById('rphone').value=YOU_PHONE;
+      // They're the RECEIVER, so the auto-filled "you" Sender details no longer apply — clear them.
+      if(val('sname')===YOU_NAME) document.getElementById('sname').value='';
+      if(YOU_PHONE && val('sphone')===YOU_PHONE) document.getElementById('sphone').value='';
+    } else {
+      if(YOU_NAME && !val('sname')) document.getElementById('sname').value=YOU_NAME;
+      if(YOU_PHONE && !val('sphone')) document.getElementById('sphone').value=YOU_PHONE;
+    }
+    validate();
   }, function(){
-    btn.textContent='📍'; btn.disabled=false;
+    btns.forEach(function(b){b.textContent='📍';b.disabled=false;});
     alert('Couldn\\'t get your location — please allow location access, or just type your area.');
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:0});
 }
@@ -534,12 +549,13 @@ function wire(inId,sugId,which){
 }
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
 else { initMap(); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
-  document.getElementById('loc').onclick=useLoc;
+  Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,label,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.textContent=label; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
   fetch(api('action=prefill')).then(function(r){return r.json();}).then(function(p){
     if(!p) return;
+    YOU_NAME=p.name||''; YOU_PHONE=p.phone||'';
     if(p.name) document.getElementById('sname').value=p.name;
     if(p.phone) document.getElementById('sphone').value=p.phone;
     if(p.item) document.getElementById('item').value=p.item;
