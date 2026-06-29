@@ -644,12 +644,59 @@ button:disabled{background:#cfe9d8}
 const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Ship internationally — Lasalu Drop</title>
-<meta name="theme-color" content="#25D366">
-<style>${QUOTE_CSS}</style></head><body><div class="wrap" id="app">
-<div class="hero"><h1>🌍 Ship internationally</h1><p>Get your instant estimate — then our rider picks up &amp; weighs it, and you only pay after it's weighed.</p></div>
-<div class="body">
-<div class="lbl">Service</div>
-<div class="fld"><select id="svc"><option value="express">✈️ Air Express — worldwide, 3–7 days</option><option value="cargo">📦 Air Cargo — UK/USA/Canada/Ghana, 10kg+</option></select></div>
+<meta name="theme-color" content="#0e1726">
+<style>
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#eef1f4;color:#0e1726;-webkit-font-smoothing:antialiased}
+.wrap{max-width:480px;margin:0 auto;min-height:100vh;background:#eef1f4;position:relative;padding-bottom:94px}
+.hero{background:#0e1726;color:#fff;padding:26px 22px 52px;position:relative;overflow:hidden}
+.hero .glow{position:absolute;right:-26px;top:-18px;font-size:150px;opacity:.06;transform:rotate(-12deg);pointer-events:none}
+.hero h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;position:relative}
+.hero p{margin:9px 0 0;font-size:13.5px;color:#aeb6c2;line-height:1.55;max-width:310px;position:relative}
+.chips{display:flex;gap:7px;margin-top:16px;flex-wrap:wrap;position:relative}
+.chip{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);color:#e3e8ee;font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:20px}
+.sheet{background:#fff;border-radius:22px 22px 0 0;margin-top:-30px;position:relative;padding:6px 18px 22px;box-shadow:0 -8px 24px rgba(14,23,38,.05)}
+.sec{font-size:11.5px;color:#9098a4;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin:22px 2px 11px}
+.sec:first-child{margin-top:16px}
+.pills{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pill{border:1.5px solid #e6e9ed;border-radius:15px;padding:13px 14px;cursor:pointer;transition:border-color .15s,background .15s;background:#fff}
+.pill.on{border-color:#25D366;background:#f0fbf4}
+.pill .pt{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;color:#0e1726}
+.pill .pd{font-size:11.5px;color:#7b828d;margin-top:4px;line-height:1.3}
+.pill.on .pt{color:#0a7d33}
+.lbl{font-size:12.5px;color:#6b7280;font-weight:600;margin:14px 2px 6px}
+.fld{position:relative;margin-bottom:11px}
+.fld input{width:100%;padding:14px 15px;border:1px solid #e6e9ed;border-radius:13px;font-size:16px;outline:none;background:#fff;-webkit-appearance:none}
+.fld input:focus{border-color:#25D366;box-shadow:0 0 0 3px rgba(37,211,102,.12)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.req{color:#25D366}
+.sugbox{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:13px;margin-top:4px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden}
+.sugbox div{padding:14px;font-size:15px;border-bottom:1px solid #f2f4f6;cursor:pointer}.sugbox div:active{background:#eef9f1}
+.gpsbtn{position:absolute;top:0;right:0;height:50px;width:46px;border:0;background:transparent;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center}.gpsbtn:disabled{opacity:.5}
+.estcard{display:none;align-items:center;justify-content:space-between;gap:12px;background:#0e1726;color:#fff;border-radius:16px;padding:15px 18px;margin:18px 0 4px}
+.estcard .l{font-size:12.5px;color:#aab4c2;font-weight:600}
+.estcard .sub{font-size:11px;color:#7e8a9a;margin-top:3px;line-height:1.3}
+.estcard .amt{font-size:23px;font-weight:800;letter-spacing:-.01em;white-space:nowrap}
+.err{color:#c0392b;font-size:13px;min-height:15px;margin-top:6px}
+.muted{color:#aab0b8;font-size:12px;text-align:center;margin:20px 0 2px}
+.bar{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;background:#fff;border-top:1px solid #eef0f3;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:14px;box-shadow:0 -6px 22px rgba(14,23,38,.07)}
+.bar .bamt .s{font-size:10.5px;color:#9098a4;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.bar .bamt .v{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.bar button{flex:1;padding:15px;border:0;border-radius:14px;background:#25D366;color:#fff;font-size:16px;font-weight:800;-webkit-appearance:none}
+.bar button:disabled{background:#cfe9d8}
+.done{text-align:center;padding:60px 24px}.done h2{font-size:23px;color:#0a7d33}
+.wabtn{display:inline-block;margin-top:18px;padding:16px 28px;background:#25D366;color:#fff;border-radius:14px;text-decoration:none;font-weight:700;font-size:17px}
+</style></head><body><div class="wrap" id="app">
+<div class="hero"><div class="glow">✈️</div>
+<h1>Ship internationally 🌍</h1>
+<p>Door pickup in Port Harcourt, delivered worldwide. You only pay after our rider weighs it.</p></div>
+<div class="sheet">
+<div class="sec">Choose your service</div>
+<div class="pills">
+<div class="pill on" data-svc="express"><div class="pt">✈️ Air Express</div><div class="pd">Worldwide · 3–7 days</div></div>
+<div class="pill" data-svc="cargo"><div class="pt">📦 Air Cargo</div><div class="pd">UK/US/CA/GH · 10kg+</div></div>
+</div>
+<div class="sec">Shipment details</div>
 <div class="lbl">Destination country</div>
 <div class="fld"><input id="country" list="countries" placeholder="Start typing… e.g. United Kingdom" autocomplete="off"></div>
 <datalist id="countries">
@@ -664,26 +711,28 @@ const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 </datalist>
 <div class="two"><div><div class="lbl">Weight (kg)</div><div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="2"></div></div>
 <div><div class="lbl">Item value (₦) <span class="req">*</span></div><div class="fld"><input id="value" type="number" min="1" inputmode="numeric" placeholder="What's it worth?"></div></div></div>
-<div class="feebig" id="fee"></div>
+<div class="estcard" id="fee"></div>
 <div class="err" id="err"></div>
-<div class="lbl">Sender</div>
+<div class="sec">Pickup — sender in Port Harcourt</div>
 <div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Your phone *"></div></div>
-<div class="lbl">Pickup — where our rider collects <span class="req">*</span></div>
+<div class="lbl">Pickup address — where our rider collects <span class="req">*</span></div>
 <div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">📍</button><div class="sugbox" id="psug" style="display:none"></div></div>
-<div class="lbl">Receiver (abroad)</div>
+<div class="sec">Receiver — abroad</div>
 <div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Their phone"></div></div>
 <div class="fld"><input id="daddr" placeholder="Delivery address abroad…" autocomplete="off"><div class="sugbox" id="dsug" style="display:none"></div></div>
-<div class="fld"><input id="item" placeholder="What are you sending?"></div>
-<button id="go" disabled>Get estimate &amp; request pickup</button>
-<p class="muted">Powered by Lasalu Drop Logistics</p>
-</div></div>
+<div class="lbl">What are you sending?</div>
+<div class="fld"><input id="item" placeholder="e.g. documents, clothes, a phone"></div>
+<p class="muted">🔒 Powered by Lasalu Drop Logistics</p>
+</div>
+<div class="bar"><div class="bamt"><div class="s">Estimate</div><div class="v" id="baramt">—</div></div><button id="go" disabled>Request pickup</button></div>
+</div>
 <script>
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
-var lastPrice=null, t;
+var lastPrice=null, t, SVC='express';
 function el(id){return document.getElementById(id);}
-function svc(){return el('svc').value;}
+function svc(){return SVC;}
 function val(id){return (el(id).value||'').trim();}
 function useLoc(){var b=el('ploc');if(!b)return;b.onclick=function(){if(!navigator.geolocation){alert('Location is not available here — please type your address.');return;}var prev=b.textContent;b.textContent='…';b.disabled=true;navigator.geolocation.getCurrentPosition(function(pos){el('paddr').value='Getting address…';fetch(API+'?action=reverse&session='+encodeURIComponent(SESSION)+'&lat='+pos.coords.latitude+'&lng='+pos.coords.longitude).then(function(r){return r.json();}).then(function(j){el('paddr').value=(j&&j.address)?j.address:'My current location';b.textContent=prev;b.disabled=false;validate();}).catch(function(){el('paddr').value='My current location';b.textContent=prev;b.disabled=false;validate();});},function(){b.textContent=prev;b.disabled=false;alert('Couldn\\'t get your location — please allow access or type your address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});};}
 function pickupCity(){return /owerri|\\bimo\\b/i.test(val('paddr'))?'OWERRI':'PORT_HARCOURT';}
@@ -706,21 +755,23 @@ function wireAuto(inId,sugId,region){
 }
 function snapWeight(){var w=parseFloat(el('weight').value);if(!isNaN(w)&&w>0)el('weight').value=(Math.ceil(w*2)/2).toFixed(1);}
 function recalc(){
-  lastPrice=null;el('fee').style.display='none';el('err').textContent='';
+  lastPrice=null;el('fee').style.display='none';el('baramt').textContent='—';el('err').textContent='';
   var d=val('country'),w=parseFloat(el('weight').value),v=parseFloat(el('value').value);
   if(!d||isNaN(w)||w<=0){validate();return;}
   if(isNaN(v)||v<=0){el('err').textContent='Please enter the item\\'s value to see the estimate.';validate();return;}
-  el('fee').style.display='flex';el('fee').innerHTML='<div class="l">Calculating…</div>';
+  el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Calculating…</div></div><div class="amt">…</div>';
   var qs='action=price&session='+encodeURIComponent(SESSION)+'&mode='+svc()+'&destination='+encodeURIComponent(d)+'&weight='+w+'&value='+v+'&pickup_city='+pickupCity();
   fetch(API+'?'+qs).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.price){lastPrice=j.price;el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Estimate · '+(j.ship_mode==='cargo'?'Air Cargo':'Air Express')+'</div><div class="sub">confirmed after the rider weighs it'+(j.etd?(' • '+j.etd):'')+'</div></div><div class="amt">~₦'+Number(j.price).toLocaleString()+'</div>';}
-    else{el('fee').style.display='none';
+    if(j&&j.price){lastPrice=j.price;var amt='~₦'+Number(j.price).toLocaleString();
+      el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Estimate · '+(j.ship_mode==='cargo'?'Air Cargo':'Air Express')+'</div><div class="sub">confirmed after the rider weighs it'+(j.etd?(' • '+j.etd):'')+'</div></div><div class="amt">'+amt+'</div>';
+      el('baramt').textContent=amt;}
+    else{el('fee').style.display='none';el('baramt').textContent='—';
       if(j&&j.error==='cargo_min_weight')el('err').textContent='Air Cargo needs 10kg or more — try Express for lighter parcels.';
       else if(j&&j.error==='cargo_unavailable')el('err').textContent='Air Cargo is UK, USA, Canada & Ghana only — use Express here.';
       else if(j&&j.error==='unknown_country')el('err').textContent='Pick a destination from the list.';
     }
     validate();
-  }).catch(function(){el('fee').style.display='none';validate();});
+  }).catch(function(){el('fee').style.display='none';el('baramt').textContent='—';validate();});
 }
 function validate(){
   var ok=lastPrice&&val('sname')&&val('sphone').length>=7&&val('paddr')&&val('rname')&&val('rphone').length>=7&&val('daddr')&&val('item');
@@ -733,12 +784,12 @@ function book(){
     sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item')
   })}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your estimate is waiting in your WhatsApp chat — reply YES there to send the rider.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';}
-    else{b.disabled=false;b.textContent='Get estimate & request pickup';el('err').textContent=(j&&j.error==='value_required')?'Please enter the item\\'s value.':(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
-  }).catch(function(){b.disabled=false;b.textContent='Get estimate & request pickup';alert('Network hiccup — try again.');});
+    else{b.disabled=false;b.textContent='Request pickup';el('err').textContent=(j&&j.error==='value_required')?'Please enter the item\\'s value.':(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
+  }).catch(function(){b.disabled=false;b.textContent='Request pickup';alert('Network hiccup — try again.');});
 }
 if(VALID!=='1'){el('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for a quote again.</p></div>';}
 else{
-  el('svc').addEventListener('change',recalc);
+  Array.prototype.forEach.call(document.querySelectorAll('.pill'),function(p){p.onclick=function(){SVC=p.getAttribute('data-svc');Array.prototype.forEach.call(document.querySelectorAll('.pill'),function(x){x.className='pill';});p.className='pill on';recalc();};});
   el('weight').addEventListener('input',function(){snapWeight();recalc();});
   ['country','value'].forEach(function(id){el(id).addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});});
   ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
