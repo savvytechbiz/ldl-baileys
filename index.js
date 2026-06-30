@@ -382,7 +382,8 @@ h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
 .ri input{flex:1;min-width:0;border:0;background:transparent;padding:14px 0;font-size:16px;outline:none;color:#0e1726;font-weight:500}
 .ri input::placeholder{color:#9aa0a6;font-weight:400}
 .divln{height:1px;background:#e6e9ed}
-.sug{position:absolute;z-index:2000;left:-16px;right:-16px;background:#fff;border:1px solid #edeff2;border-radius:16px;margin-top:4px;box-shadow:0 16px 40px rgba(14,23,38,.12);overflow:hidden}
+.sug{position:absolute;z-index:2000;top:100%;left:-16px;right:-16px;background:#fff;border:1px solid #edeff2;border-radius:16px;margin-top:4px;box-shadow:0 16px 40px rgba(14,23,38,.12);overflow:hidden;max-height:220px;overflow-y:auto}
+.clr{width:30px;min-width:30px;height:30px;padding:0;border:0;background:transparent;color:#aeb4bb;font-size:15px;cursor:pointer;display:none}
 .sug div{padding:15px 16px;font-size:15px;border-bottom:1px solid #f2f4f6}
 .sug div:active{background:#f5f7f9}
 .ghost{width:100%;margin:14px 0 2px;padding:15px;border:1px solid #e6e9ed;background:#fff;color:#0e1726;border-radius:14px;font-size:15px;font-weight:600}
@@ -412,9 +413,9 @@ button:disabled{background:#cfe9d8}
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
   <div class="ins">
-    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><button type="button" class="locp" data-for="pickup" aria-label="Use my location for pickup">📍</button><div class="sug" id="psug" style="display:none"></div></div>
+    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><button type="button" class="clr" data-clr="pickup" aria-label="Clear pickup">✕</button><button type="button" class="locp" data-for="pickup" aria-label="Use my location for pickup">📍</button><div class="sug" id="psug" style="display:none"></div></div>
     <div class="divln"></div>
-    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off">📍</button><div class="sug" id="dsug" style="display:none"></div></div>
+    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="clr" data-clr="dropoff" aria-label="Clear drop-off">✕</button><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off">📍</button><div class="sug" id="dsug" style="display:none"></div></div>
   </div>
 </div>
 <div class="reuse" id="rpickup"></div>
@@ -474,6 +475,7 @@ function setPin(which,d){
   m.on('dragend',function(e){var p=e.target.getLatLng();reverseSet(which,p.lat,p.lng);});
   if(which==='pickup')mP=m;else mD=m;
   picked[which]={address:d.address,lat:d.lat,lng:d.lng};
+  showClr(which,true);
   step();
   var pts=[]; if(picked.pickup)pts.push([picked.pickup.lat,picked.pickup.lng]); if(picked.dropoff)pts.push([picked.dropoff.lat,picked.dropoff.lng]);
   if(pts.length)map.fitBounds(pts,{padding:[40,40],maxZoom:15});
@@ -490,6 +492,20 @@ function reverseSet(which,lat,lng){
     var addr=(d&&d.address)?d.address:picked[which].address;
     fld.value=addr; picked[which].address=addr;   // show the REAL address, and save it for the order
   }).catch(function(){ fld.value=picked[which].address; });
+}
+// Show/hide the little ✕ clear button when a field has text.
+function showClr(which,on){ var b=document.querySelector('.clr[data-clr="'+which+'"]'); if(b)b.style.display=on?'block':'none'; }
+// Wipe one end so the customer can re-enter it cleanly (the ✕ button + when they retype).
+function clearLoc(which){
+  var inp=document.getElementById(which==='pickup'?'pin':'din'); inp.value='';
+  var old=which==='pickup'?mP:mD; if(old)map.removeLayer(old); if(which==='pickup')mP=null;else mD=null;
+  picked[which]=null;
+  var sug=document.getElementById(which==='pickup'?'psug':'dsug'); if(sug)sug.style.display='none';
+  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  var fe=document.getElementById('fee'); if(fe)fe.style.display='none';
+  var et=document.getElementById('eta'); if(et)et.style.display='none';
+  if(liveSide===which){ liveSide=null; lockOtherLoc(); }   // release the one-spot live-location lock
+  showClr(which,false); validate(); inp.focus();
 }
 // The chatting customer's own name/number (from prefill) — placed on whichever side they locate.
 var YOU_NAME='', YOU_PHONE='';
@@ -554,7 +570,7 @@ function quote(){
 function wire(inId,sugId,which){
   var inp=document.getElementById(inId), sug=document.getElementById(sugId), t;
   inp.addEventListener('input',function(){
-    clearTimeout(t); var q=inp.value.trim(); if(q.length<2){sug.style.display='none';return;}
+    clearTimeout(t); var q=inp.value.trim(); showClr(which,q.length>0); if(q.length<2){sug.style.display='none';return;}
     t=setTimeout(function(){
       fetch(api('action=autocomplete&q='+encodeURIComponent(q))).then(r=>r.json()).then(j=>{
         sug.innerHTML=''; (j.predictions||[]).forEach(function(p){
@@ -570,6 +586,7 @@ function wire(inId,sugId,which){
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
 else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('.clr'),function(b){ b.onclick=function(){ clearLoc(b.getAttribute('data-clr')); }; });
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,label,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.textContent=label; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
@@ -588,6 +605,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       else if(p.dropoff.lat){ reuse('rdrop','↩ Same drop-off — '+p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); } }
     if(p.receiver&&p.receiver.name){ if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }
       else { reuse('rrecv','↩ Same receiver — '+p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
+    showClr('pickup',(document.getElementById('pin').value||'').length>0);
+    showClr('dropoff',(document.getElementById('din').value||'').length>0);
     validate(); step();
   }).catch(function(){});
   document.getElementById('go').onclick=function(){
