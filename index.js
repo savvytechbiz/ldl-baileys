@@ -426,6 +426,15 @@ button:disabled{background:#cfe9d8}
 <div class="row2"><input id="rname" placeholder="Receiver's name"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone"></div>
 <div class="reuse" id="rrecv"></div>
 <input id="item" class="f1" placeholder="What are you sending? (e.g. food, documents)">
+<div id="codbox" style="display:none;margin-top:11px;padding:13px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:13px">
+  <label style="display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:600;color:#0e1726;cursor:pointer">
+    <input type="checkbox" id="codchk" style="width:18px;height:18px;accent-color:#f59e0b"> Receiver pays on delivery (goods + fee)
+  </label>
+  <div id="codamt" style="display:none;margin-top:10px">
+    <input id="goods" type="number" inputmode="numeric" min="1" placeholder="Goods amount the receiver pays (₦)" style="width:100%;padding:12px 14px;border:1px solid #e6e9ed;border-radius:11px;font-size:15px;outline:none">
+    <div style="font-size:12px;color:#9a7b3a;margin-top:6px">You pay nothing now — the receiver pays on delivery, and your goods money lands in your next-day payout.</div>
+  </div>
+</div>
 <div class="feebig" id="fee"></div>
 <button id="go" disabled>Confirm &amp; book</button>
 </div>
@@ -607,13 +616,21 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       else { reuse('rrecv','↩ Same receiver — '+p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
     showClr('dropoff',(document.getElementById('din').value||'').length>0);
+    // Goods-COD is offered only to trusted vendors (the server says cod_allowed).
+    if(p.cod_allowed){ document.getElementById('codbox').style.display='block'; }
     validate(); step();
   }).catch(function(){});
+  // Reveal the goods-amount field only when the vendor ticks "receiver pays for the goods".
+  (function(){ var c=document.getElementById('codchk'); if(c){ c.addEventListener('change',function(){ document.getElementById('codamt').style.display=c.checked?'block':'none'; }); } })();
   document.getElementById('go').onclick=function(){
+    var codOn=(function(){ var c=document.getElementById('codchk'); return c&&c.checked; })();
+    var goodsVal=codOn?Number((document.getElementById('goods').value||'').replace(/[^0-9.]/g,'')):0;
+    if(codOn&&!(goodsVal>0)){ alert('Please enter the amount the receiver pays for the goods.'); return; }
     var b=document.getElementById('go'); b.disabled=true; b.textContent='Booking…';
     fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       session:SESSION,pickup:picked.pickup,dropoff:picked.dropoff,
-      sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),item:val('item')
+      sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),item:val('item'),
+      cod:codOn,goods_value:goodsVal
     })})
      .then(r=>r.json()).then(j=>{
        document.getElementById('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
