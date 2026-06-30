@@ -579,13 +579,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(p.name) document.getElementById('sname').value=p.name;
     if(p.phone) document.getElementById('sphone').value=p.phone;
     if(p.item) document.getElementById('item').value=p.item;
-    // Pickup: a typed area from chat (e.g. "woji") is IMPRECISE — prefill ONLY the text and open its
-    // suggestions so the customer taps the EXACT spot. We never auto-pin/auto-price a typed area (that
-    // mispriced Woji→Iwofe as a "1 min trip"). A saved address (history, with real coords) is still a chip.
-    if(p.pickup){ if(p.pickup.from_chat){ var _pi=document.getElementById('pin'); _pi.value=p.pickup.address; setTimeout(function(){ _pi.dispatchEvent(new Event('input')); },300); }
+    // Pickup: the chat already quoted this route, so open the map ON it (pin + price), and the customer
+    // can drag the pin to fine-tune. Else offer their last pickup as a chip.
+    if(p.pickup){ if(p.pickup.from_chat){ document.getElementById('pin').value=p.pickup.address; if(p.pickup.lat) setPin('pickup',p.pickup); }
       else if(p.pickup.lat){ reuse('rpickup','↩ Same pickup — '+p.pickup.address,function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); } }
-    // Drop-off: same — prefill the text only; the customer pins the exact spot.
-    if(p.dropoff){ if(p.dropoff.from_chat){ document.getElementById('din').value=p.dropoff.address; }
+    // Drop-off: same — open on the quoted spot, draggable to fine-tune.
+    if(p.dropoff){ if(p.dropoff.from_chat){ document.getElementById('din').value=p.dropoff.address; if(p.dropoff.lat) setPin('dropoff',p.dropoff); }
       else if(p.dropoff.lat){ reuse('rdrop','↩ Same drop-off — '+p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); } }
     if(p.receiver&&p.receiver.name){ if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }
       else { reuse('rrecv','↩ Same receiver — '+p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
