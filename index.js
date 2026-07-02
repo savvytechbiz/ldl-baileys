@@ -384,6 +384,9 @@ h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
 .divln{height:1px;background:#e6e9ed}
 .sug{position:absolute;z-index:2000;top:100%;left:-16px;right:-16px;background:#fff;border:1px solid #edeff2;border-radius:16px;margin-top:4px;box-shadow:0 16px 40px rgba(14,23,38,.12);overflow:hidden;max-height:220px;overflow-y:auto}
 .clr{width:30px;min-width:30px;height:30px;padding:0;border:0;background:transparent;color:#aeb4bb;font-size:15px;cursor:pointer;display:none}
+.payopt{display:flex;align-items:center;gap:10px;padding:12px 13px;border:1px solid #e6e9ed;border-radius:12px;margin-bottom:8px;font-size:14.5px;font-weight:500;color:#0e1726;cursor:pointer}
+.payopt:has(input:checked){border-color:#25D366;background:#f1fbf5}
+.payopt#opt-cod:has(input:checked){border-color:#f59e0b;background:#fff8ec}
 .sug div{padding:15px 16px;font-size:15px;border-bottom:1px solid #f2f4f6}
 .sug div:active{background:#f5f7f9}
 .ghost{width:100%;margin:14px 0 2px;padding:15px;border:1px solid #e6e9ed;background:#fff;color:#0e1726;border-radius:14px;font-size:15px;font-weight:600}
@@ -426,12 +429,13 @@ button:disabled{background:#cfe9d8}
 <div class="row2"><input id="rname" placeholder="Receiver's name"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone"></div>
 <div class="reuse" id="rrecv"></div>
 <input id="item" class="f1" placeholder="What are you sending? (e.g. food, documents)">
-<div id="codbox" style="display:none;margin-top:11px;padding:13px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:13px">
-  <label style="display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:600;color:#0e1726;cursor:pointer">
-    <input type="checkbox" id="codchk" style="width:18px;height:18px;accent-color:#f59e0b"> Receiver pays on delivery (goods + fee)
-  </label>
-  <div id="codamt" style="display:none;margin-top:10px">
-    <input id="goods" type="number" inputmode="numeric" min="1" placeholder="Goods amount the receiver pays (₦)" style="width:100%;padding:12px 14px;border:1px solid #e6e9ed;border-radius:11px;font-size:15px;outline:none">
+<div id="paysel" style="margin-top:13px">
+  <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 8px">Payment</div>
+  <label class="payopt"><input type="radio" name="pay" value="now" checked style="width:18px;height:18px;accent-color:#25D366"> 💳 Pay now (card or transfer)</label>
+  <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod" style="width:18px;height:18px;accent-color:#25D366"> 🛵 Pay on delivery — cash to the rider</label>
+  <label class="payopt" id="opt-cod" style="display:none"><input type="radio" name="pay" value="cod" style="width:18px;height:18px;accent-color:#f59e0b"> 🏬 Receiver pays for the goods (COD)</label>
+  <div id="codamt" style="display:none;margin:2px 2px 0">
+    <input id="goods" type="number" inputmode="numeric" min="1" placeholder="Goods amount the receiver pays (₦)" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
     <div style="font-size:12px;color:#9a7b3a;margin-top:6px">You pay nothing now — the receiver pays on delivery, and your goods money lands in your next-day payout.</div>
   </div>
 </div>
@@ -616,21 +620,23 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       else { reuse('rrecv','↩ Same receiver — '+p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
     showClr('dropoff',(document.getElementById('din').value||'').length>0);
-    // Goods-COD is offered only to trusted vendors (the server says cod_allowed).
-    if(p.cod_allowed){ document.getElementById('codbox').style.display='block'; }
+    // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
+    if(p.pod_allowed){ document.getElementById('opt-pod').style.display='flex'; }
+    if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
     validate(); step();
   }).catch(function(){});
-  // Reveal the goods-amount field only when the vendor ticks "receiver pays for the goods".
-  (function(){ var c=document.getElementById('codchk'); if(c){ c.addEventListener('change',function(){ document.getElementById('codamt').style.display=c.checked?'block':'none'; }); } })();
+  // Reveal the goods-amount field only when "Receiver pays for the goods (COD)" is selected.
+  Array.prototype.forEach.call(document.querySelectorAll('input[name=pay]'),function(r){ r.addEventListener('change',function(){ var v=(document.querySelector('input[name=pay]:checked')||{}).value; document.getElementById('codamt').style.display=(v==='cod')?'block':'none'; }); });
   document.getElementById('go').onclick=function(){
-    var codOn=(function(){ var c=document.getElementById('codchk'); return c&&c.checked; })();
+    var payVal=(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })();
+    var codOn=payVal==='cod';
     var goodsVal=codOn?Number((document.getElementById('goods').value||'').replace(/[^0-9.]/g,'')):0;
     if(codOn&&!(goodsVal>0)){ alert('Please enter the amount the receiver pays for the goods.'); return; }
     var b=document.getElementById('go'); b.disabled=true; b.textContent='Booking…';
     fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       session:SESSION,pickup:picked.pickup,dropoff:picked.dropoff,
       sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),item:val('item'),
-      cod:codOn,goods_value:goodsVal
+      pay_method:payVal,cod:codOn,goods_value:goodsVal
     })})
      .then(r=>r.json()).then(j=>{
        document.getElementById('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
@@ -930,6 +936,85 @@ else{
 }
 </script></body></html>`;
 app.get('/waybill', (req, res) => { res.type('html').send(WAYBILL_PAGE); });
+
+// ── Vendor bulk order form (trusted vendors) — add several buyer orders, we book + collect COD ──
+const VENDOR_PAGE = `<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Send orders — Lasalu Drop</title>
+<style>
+*{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+body{margin:0;background:#f4f6f8;color:#0e1726}
+.wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;min-height:100dvh}
+.hero{background:#0e1726;color:#fff;padding:22px 20px 16px}
+.hero h1{margin:0;font-size:22px;font-weight:700}
+.hero p{margin:7px 0 0;font-size:13px;color:#aeb6c2;line-height:1.5}
+.body{padding:16px}
+.lbl{font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 6px}
+input{width:100%;padding:12px 13px;border:1px solid #e6e9ed;border-radius:11px;font-size:15px;outline:none}
+input:focus{border-color:#25D366}
+.ord{border:1px solid #e6e9ed;border-radius:14px;padding:12px;margin:12px 0;position:relative;background:#fbfcfd}
+.ord .rm{position:absolute;top:6px;right:8px;color:#c0392b;background:none;border:0;font-size:20px;cursor:pointer;line-height:1}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mt{margin-top:8px}
+.sug{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:12px;margin-top:2px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden;max-height:200px;overflow-y:auto}
+.sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f2f4f6;cursor:pointer}
+.add{width:100%;margin:6px 0 2px;padding:13px;border:1px dashed #c7ccd2;background:#fff;color:#0e1726;border-radius:12px;font-size:14.5px;font-weight:600;cursor:pointer}
+.go{width:100%;margin-top:14px;padding:15px;border:0;border-radius:13px;background:#25D366;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+.go:disabled{background:#cfe9d8}
+.done{text-align:center;padding:48px 22px}.done h2{font-size:22px;color:#0a7d33;margin:0}
+.wabtn{display:inline-block;margin-top:18px;padding:15px 26px;background:#25D366;color:#fff;border-radius:14px;text-decoration:none;font-weight:700}
+.muted{color:#9aa0a6;font-size:13px}
+</style></head><body>
+<div class="wrap" id="app">
+  <div class="hero"><h1>Send your orders 🛵</h1><p>Add each customer's order — we pick up from your shop, deliver, and collect their payment. You get paid out daily.</p></div>
+  <div class="body">
+    <div class="lbl">Your shop address (we pick up here)</div>
+    <input id="shop" placeholder="e.g. 12 Aggrey Road, Port Harcourt">
+    <div id="orders"></div>
+    <button class="add" id="add">+ Add another order</button>
+    <button class="go" id="go" disabled>Book all orders</button>
+    <div id="out" style="margin-top:10px"></div>
+  </div>
+</div>
+<script>
+var SESSION=new URLSearchParams(location.search).get('session')||"";
+var VALID=SESSION?"1":"0";
+var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/vendorOrders";
+function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
+function el(id){return document.getElementById(id)}
+var n=0;
+function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim();});out.push(o);});return out;}
+function validate(){var os=collect();var ok=el('shop').value.trim()&&os.length>0&&os.every(function(o){return o.buyer_name&&o.buyer_phone&&o.address&&o.item&&Number((o.goods_value||'').replace(/[^0-9.]/g,''))>0;});el('go').disabled=!ok;}
+function addOrder(){
+  n++;var d=document.createElement('div');d.className='ord';
+  d.innerHTML='<button class="rm" title="Remove">×</button>'
+    +'<div class="row2"><input placeholder="Buyer name" data-f="buyer_name"><input placeholder="Buyer phone" data-f="buyer_phone" inputmode="tel"></div>'
+    +'<div style="position:relative" class="mt"><input placeholder="Delivery address" data-f="address" autocomplete="off"><div class="sug" style="display:none"></div></div>'
+    +'<div class="row2 mt"><input placeholder="Item (e.g. wig)" data-f="item"><input placeholder="Buyer pays ₦" data-f="goods_value" inputmode="numeric"></div>';
+  el('orders').appendChild(d);
+  d.querySelector('.rm').onclick=function(){d.remove();validate();};
+  var ai=d.querySelector('input[data-f=address]'),sug=d.querySelector('.sug'),t;
+  ai.addEventListener('input',function(){clearTimeout(t);var q=ai.value.trim();validate();if(q.length<2){sug.style.display='none';return;}t=setTimeout(function(){fetch(api('action=autocomplete&q='+encodeURIComponent(q))).then(function(r){return r.json()}).then(function(j){sug.innerHTML='';(j.predictions||[]).forEach(function(p){var x=document.createElement('div');x.textContent=p.label;x.onclick=function(){ai.value=p.label;sug.style.display='none';validate();};sug.appendChild(x);});sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';});},300);});
+  d.querySelectorAll('input').forEach(function(i){i.addEventListener('input',validate);});
+  validate();
+}
+el('add').onclick=addOrder;el('shop').addEventListener('input',validate);
+if(VALID!=='1'){el('app').innerHTML='<div class="hero"><h1>Link expired</h1><p>Head back to your chat and ask for a new order link.</p></div>';}
+else{
+  fetch(api('action=prefill')).then(function(r){return r.json()}).then(function(p){if(p&&p.shop_address)el('shop').value=p.shop_address;});
+  addOrder();
+  el('go').onclick=function(){
+    var b=el('go');b.disabled=true;b.textContent='Booking…';
+    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:SESSION,shop_address:el('shop').value.trim(),orders:collect()})})
+     .then(function(r){return r.json()}).then(function(j){
+       if(j.error){b.disabled=false;b.textContent='Book all orders';el('out').innerHTML='<p style="color:#c0392b">'+j.error+'</p>';return;}
+       var lines=(j.results||[]).map(function(r){return r.ok?('✅ '+r.buyer+' — booked, buyer pays ₦'+r.total.toLocaleString()):('⚠️ '+(r.buyer||'an order')+' — '+r.error);}).join('<br>');
+       el('app').innerHTML='<div class="done"><h2>Done! 🙌</h2><p class="muted">'+j.booked+' order(s) booked. We\\'ve sent each buyer their payment link.</p><div style="text-align:left;font-size:14px;margin:14px 0">'+lines+'</div><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
+     }).catch(function(){b.disabled=false;b.textContent='Book all orders';alert('Network hiccup — try again.');});
+  };
+}
+</script></body></html>`;
+app.get('/vendor', (req, res) => { res.type('html').send(VENDOR_PAGE); });
 
 // Status
 app.get('/status', (req, res) => {
