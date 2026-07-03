@@ -864,7 +864,8 @@ function book(){
 if(VALID!=='1'){el('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for a quote again.</p></div>';}
 else{
   Array.prototype.forEach.call(document.querySelectorAll('.pill'),function(p){p.onclick=function(){SVC=p.getAttribute('data-svc');Array.prototype.forEach.call(document.querySelectorAll('.pill'),function(x){x.className='pill';});p.className='pill on';recalc();};});
-  el('weight').addEventListener('input',function(){snapWeight();recalc();});
+  el('weight').addEventListener('input',function(){recalc();});
+  el('weight').addEventListener('blur',function(){snapWeight();recalc();});
   el('country').addEventListener('change',recalc);
   el('value').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});
   ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
