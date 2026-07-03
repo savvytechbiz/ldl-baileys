@@ -229,6 +229,12 @@ async function connectWhatsApp() {
       if (type !== 'notify') return;
 
       for (const msg of messages) {
+        // Skip WhatsApp Status posts, broadcast lists and channel/newsletter updates.
+        // These are one-to-many broadcasts, NOT real conversations — ADANOVA must never
+        // reply to them (was answering people's Status uploads on status@broadcast).
+        const _bcast = msg.key.remoteJid || '';
+        if (_bcast === 'status@broadcast' || _bcast.endsWith('@broadcast') || _bcast.endsWith('@newsletter')) continue;
+
         const phoneNumber = msg.key.remoteJid?.replace('@s.whatsapp.net', '') || msg.key.remoteJid;
 
         // WhatsApp increasingly hides the real number behind an @lid. Best-effort resolve it to
@@ -584,8 +590,10 @@ function useLoc(which){
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:0});
 }
 function val(id){return (document.getElementById(id).value||'').trim();}
+function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
+function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',u);}
 function validate(){
-  var ok = picked.pickup&&picked.dropoff&&val('rname')&&val('rphone').length>=7&&val('item');
+  var ok = picked.pickup&&picked.dropoff&&val('rname')&&phoneOk(val('rphone'))&&(!val('sphone')||phoneOk(val('sphone')))&&val('item');
   document.getElementById('go').disabled=!ok;
 }
 // Decode a Google-encoded polyline into [lat,lng] points (so we can draw the route, Bolt-style).
@@ -626,6 +634,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
   Array.prototype.forEach.call(document.querySelectorAll('.clr'),function(b){ b.onclick=function(){ clearLoc(b.getAttribute('data-clr')); }; });
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
+  flagPhone('sphone');flagPhone('rphone');
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,label,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.textContent=label; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
   fetch(api('action=prefill')).then(function(r){return r.json();}).then(function(p){
@@ -847,8 +856,10 @@ function recalc(){
     validate();
   }).catch(function(){el('fee').style.display='none';el('baramt').textContent='—';validate();});
 }
+function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
+function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',u);}
 function validate(){
-  var ok=lastPrice&&val('sname')&&val('sphone').length>=7&&val('paddr')&&val('rname')&&val('rphone').length>=7&&val('daddr')&&val('item');
+  var ok=lastPrice&&val('sname')&&phoneOk(val('sphone'))&&val('paddr')&&val('rname')&&phoneOk(val('rphone'))&&val('daddr')&&val('item');
   el('go').disabled=!ok;
 }
 function book(){
@@ -869,6 +880,7 @@ else{
   el('country').addEventListener('change',recalc);
   el('value').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});
   ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
+  flagPhone('sphone');flagPhone('rphone');
   wireAuto('paddr','psug','ng');wireAuto('daddr','dsug','');useLoc();
   el('go').onclick=book;
 }
@@ -946,7 +958,9 @@ function recalc(){
     validate();
   }).catch(function(){el('fee').style.display='none';validate();});
 }
-function validate(){var ok=lastPrice&&val('paddr')&&val('rname')&&val('rphone').length>=7&&val('item');el('go').disabled=!ok;}
+function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
+function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',u);}
+function validate(){var ok=lastPrice&&val('paddr')&&val('rname')&&phoneOk(val('rphone'))&&(!val('sphone')||phoneOk(val('sphone')))&&val('item');el('go').disabled=!ok;}
 function book(){
   var b=el('go');b.disabled=true;b.textContent='Booking…';
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -962,6 +976,7 @@ else{
   Array.prototype.forEach.call(document.querySelectorAll('.st'),function(b){b.onclick=function(){state=b.getAttribute('data-s');Array.prototype.forEach.call(document.querySelectorAll('.st'),function(x){x.className='st';});b.className='st on';recalc();};});
   el('weight').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,300);});
   ['sname','sphone','paddr','rname','rphone','item'].forEach(function(id){el(id).addEventListener('input',validate);});
+  flagPhone('sphone');flagPhone('rphone');
   wireAuto('paddr','psug');useLoc();
   el('go').onclick=book;
 }
@@ -1016,8 +1031,10 @@ var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/vendorOrders";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 function el(id){return document.getElementById(id)}
 var n=0;
+function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
+function flagPhoneEl(bp){if(!bp)return;function u(){var v=(bp.value||'').trim();var bad=v&&!phoneOk(v);bp.style.borderColor=bad?'#dc2626':'';var box=bp.closest('.row2')||bp.parentNode;var w=box.parentNode.querySelector('.bpe-'+(box.dataset.pe||''));if(bad){if(!w){var tag=String(n);box.dataset.pe=tag;w=document.createElement('div');w.className='bpe-'+tag;w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}bp.addEventListener('input',u);bp.addEventListener('blur',u);}
 function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim();});out.push(o);});return out;}
-function validate(){var os=collect();var ok=el('shop').value.trim()&&os.length>0&&os.every(function(o){return o.buyer_name&&o.buyer_phone&&o.address&&o.item&&Number((o.goods_value||'').replace(/[^0-9.]/g,''))>0;});el('go').disabled=!ok;}
+function validate(){var os=collect();var ok=el('shop').value.trim()&&os.length>0&&os.every(function(o){return o.buyer_name&&phoneOk(o.buyer_phone)&&o.address&&o.item&&Number((o.goods_value||'').replace(/[^0-9.]/g,''))>0;});el('go').disabled=!ok;}
 function addOrder(){
   n++;var d=document.createElement('div');d.className='ord';
   d.innerHTML='<button class="rm" title="Remove">×</button>'
@@ -1029,6 +1046,7 @@ function addOrder(){
   var ai=d.querySelector('input[data-f=address]'),sug=d.querySelector('.sug'),t;
   ai.addEventListener('input',function(){clearTimeout(t);var q=ai.value.trim();validate();if(q.length<2){sug.style.display='none';return;}t=setTimeout(function(){fetch(api('action=autocomplete&q='+encodeURIComponent(q))).then(function(r){return r.json()}).then(function(j){sug.innerHTML='';(j.predictions||[]).forEach(function(p){var x=document.createElement('div');x.textContent=p.label;x.onclick=function(){ai.value=p.label;sug.style.display='none';validate();};sug.appendChild(x);});sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';});},300);});
   d.querySelectorAll('input').forEach(function(i){i.addEventListener('input',validate);});
+  flagPhoneEl(d.querySelector('input[data-f=buyer_phone]'));
   validate();
 }
 el('add').onclick=addOrder;el('shop').addEventListener('input',validate);
