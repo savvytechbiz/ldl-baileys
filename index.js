@@ -131,21 +131,24 @@ async function clearSupabaseAuth() {
 // ─── Voice notes: transcribe with Groq Whisper (free) so ADANOVA can understand them ───
 async function transcribeVoice(msg, sock) {
   try {
-    if (!GROQ_API_KEY) return '';
     const buffer = await downloadMediaMessage(
       msg, 'buffer', {},
       { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage }
     );
-    const form = new FormData();
-    form.append('file', new Blob([buffer], { type: 'audio/ogg' }), 'voice.ogg');
-    form.append('model', 'whisper-large-v3-turbo');
-    form.append('response_format', 'text');
-    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST', headers: { Authorization: `Bearer ${GROQ_API_KEY}` }, body: form
+    if (!buffer || !buffer.length) { console.error('transcribeVoice: empty audio download'); return ''; }
+    const mime = (msg.message && msg.message.audioMessage && msg.message.audioMessage.mimetype) || 'audio/ogg';
+    // Transcribe via the Supabase transcribeVoice function — it uses the SAME Groq key that powers chat
+    // (app_settings), so voice no longer depends on a separate GROQ_API_KEY being set on this host.
+    const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/transcribeVoice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-webhook-secret': WEBHOOK_SECRET },
+      body: JSON.stringify({ audio_base64: buffer.toString('base64'), mime })
     });
-    if (!res.ok) { console.error('Whisper error:', res.status, (await res.text()).slice(0, 200)); return ''; }
-    const text = (await res.text()).trim();
-    console.log('Voice note transcribed:', text);
+    const j = await res.json().catch(function(){ return null; });
+    if (!res.ok || !j) { console.error('transcribeVoice http', res.status); return ''; }
+    if (j.error) console.error('transcribeVoice service error:', j.error);
+    var text = (j.text || '').trim();
+    console.log('Voice note transcribed:', text.slice(0, 120));
     return text;
   } catch (e) {
     console.error('transcribeVoice error:', e.message);
