@@ -255,7 +255,7 @@ async function connectWhatsApp() {
             }
           : null;
 
-        // Detect media messages (images count as payment proof)
+        // Detect media messages (an image is usually the ITEM the customer wants to ship)
         const hasMedia = !!(msg.message?.imageMessage || msg.message?.documentMessage || msg.message?.videoMessage);
         const mediaCaption = msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || '';
 
@@ -286,6 +286,23 @@ async function connectWhatsApp() {
           continue;
         }
 
+        // Download an image so ADANOVA can actually SEE it (usually the item being shipped, sometimes an
+        // address). Images only, size-capped so the webhook payload stays small; best-effort (a failure
+        // just means no picture is sent, and she'll ask what it shows).
+        let mediaBase64 = null, mediaMime = null;
+        if (msg.message?.imageMessage && !msg.key.fromMe) {
+          try {
+            const imgBuf = await downloadMediaMessage(
+              msg, 'buffer', {},
+              { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage }
+            );
+            if (imgBuf && imgBuf.length <= 1500000) {          // ~1.5 MB cap
+              mediaBase64 = imgBuf.toString('base64');
+              mediaMime = msg.message.imageMessage.mimetype || 'image/jpeg';
+            }
+          } catch (e) { console.log('image download failed:', e.message); }
+        }
+
         const direction = msg.key.fromMe ? 'outbound' : 'inbound';
         console.log(`Message [${direction}] ${msg.key.fromMe ? 'to' : 'from'} ${phoneNumber}:`, text);
 
@@ -302,11 +319,13 @@ async function connectWhatsApp() {
             interactive_selection: interactiveSelection,
             has_media: hasMedia,
             media_url: null,
+            media_base64: mediaBase64,   // image bytes so ADANOVA can SEE the item (null if none / too big)
+            media_mime: mediaMime,
             location: location
           };
           const webhookUrl = `${SUPABASE_FUNCTIONS_URL}/receiveMessage`;
           console.log('Sending webhook to:', webhookUrl);
-          console.log('Payload:', payload);
+          console.log('Payload:', { ...payload, media_base64: mediaBase64 ? `[image ~${Math.round(mediaBase64.length / 1024)}kb]` : null });
           console.log('Webhook secret set:', WEBHOOK_SECRET ? 'YES' : 'NO');
 
           const response = await fetch(webhookUrl, {
