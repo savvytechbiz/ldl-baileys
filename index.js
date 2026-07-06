@@ -1192,9 +1192,9 @@ app.post('/typing', async (req, res) => {
 });
 
 // Send message
-// A booking link gets a clean tappable PREVIEW CARD (title + description) instead of a bare URL.
-// WhatsApp can't do "click here" hyperlinks, but a link-preview card is the closest thing — the
-// customer taps the card. No image asset / no extra dependency needed (built manually).
+// A booking link gets a clean tappable PREVIEW CARD (title + description) above the message. The URL
+// STAYS in the text — WhatsApp only renders the card when the URL is present in the body (hiding it
+// makes the card vanish). So: card on top (nice), the link still there and tappable (safe).
 function bookingPreview(text) {
   const m = String(text || '').match(/https?:\/\/[^\s]+\/(map|waybill|quote|vendor)\b[^\s]*/i);
   if (!m) return null;
@@ -1216,29 +1216,16 @@ app.post('/send', async (req, res) => {
       return res.status(503).json({ error: 'WhatsApp not connected' });
     }
     const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
-    // Booking link → send a clean tappable PREVIEW CARD as the call-to-action, and DROP the raw URL +
-    // its "just tap here 👉" scaffolding from the visible text (that clutter is what looked unpolished).
-    // Tapping the card opens the link. Wrapped so ANY failure falls back to the original text (with the
-    // URL) so a booking message is never lost.
+    // Booking link → attach a preview card (nicer header) while keeping the full message incl. the URL,
+    // so the link is always tappable. Wrapped: any failure falls back to a plain text send.
     const pv = bookingPreview(message);
     if (pv) {
       try {
-        // Keep everything BEFORE the URL, then peel off trailing call-to-action / arrow lines.
-        const lines = message.split(pv.url)[0].split('\n');
-        const isCta = (s) => {
-          const t = s.trim();
-          if (/^[👉👇➡️🔗•\-\s]*$/.test(t)) return true;        // a pure arrow / bullet / blank line
-          if (t.length > 60) return false;                     // long informative line → keep it
-          return /^[👉👇➡️🔗]/.test(t) ||
-            (/\b(tap|click|open|book\s+it|go\s+ahead|here'?s\s+the|use\s+the|follow\s+the|complete\s+payment)\b/i.test(t) && /\b(here|link|form|book|below|it|this|now)\b/i.test(t));
-        };
-        while (lines.length && isCta(lines[lines.length - 1])) lines.pop();
-        const body = (lines.join('\n').replace(/[\s\n👉👇➡️🔗]+$/g, '').trim()) || pv.title;
-        const content = { extendedTextMessage: { text: body, matchedText: pv.url, canonicalUrl: pv.url, title: pv.title, description: pv.description } };
+        const content = { extendedTextMessage: { text: message, matchedText: pv.url, canonicalUrl: pv.url, title: pv.title, description: pv.description } };
         const wam = await generateWAMessageFromContent(jid, content, {});
         await sock.relayMessage(jid, wam.message, { messageId: wam.key.id });
         return res.json({ status: 'sent' });
-      } catch (e) { /* preview failed → fall through to a plain send (URL intact) */ }
+      } catch (e) { /* preview failed → fall through to a plain send */ }
     }
     await sock.sendMessage(jid, { text: message });
     res.json({ status: 'sent' });
