@@ -1211,7 +1211,7 @@ function bookingPreview(text) {
   if (!m) return null;
   const kind = ({ m: 'map', q: 'quote', w: 'waybill', v: 'vendor' }[m[1].toLowerCase()] || m[1].toLowerCase());
   const meta = {
-    map:     { title: '📍 Book your delivery',        description: 'Tap to set pickup & drop-off — takes 10 seconds' },
+    map:     { title: '📍 Create your delivery',      description: 'Tap to set pickup & drop-off — takes 10 seconds' },
     waybill: { title: '🚚 Get your waybill price',     description: 'Tap to pick the state & weight' },
     quote:   { title: '🌍 Get your shipping estimate', description: 'Tap to pick country, weight & value' },
     vendor:  { title: '🛍️ Send your orders',          description: 'Tap to add your buyers & addresses' }
@@ -1244,7 +1244,7 @@ app.post('/send', async (req, res) => {
         body = body.replace(/^[ \t]*[👉👇➡️🔗]+[ \t]*/gmu, '').replace(/[ \t]*[👉👇➡️🔗]+[ \t]*$/gmu, '').replace(/\n{3,}/g, '\n\n').replace(/[\s\n]+$/, '').trim();
         if (!body.includes(pv.url)) body = message;   // safety: never lose the link
         // Re-add ONE clean call-to-action right before the link (a clear "tap the link" nudge).
-        else body = body.replace(pv.url, `👇 *Tap the link below to book*\n${pv.url}`);
+        else body = body.replace(pv.url, `👇 *Tap the link below to create your delivery*\n${pv.url}`);
         const content = { extendedTextMessage: { text: body, matchedText: pv.url, canonicalUrl: pv.url, title: pv.title, description: pv.description, ...(BOOK_CARD_JPEG ? { jpegThumbnail: BOOK_CARD_JPEG } : {}) } };
         const wam = await generateWAMessageFromContent(jid, content, {});
         await sock.relayMessage(jid, wam.message, { messageId: wam.key.id });
