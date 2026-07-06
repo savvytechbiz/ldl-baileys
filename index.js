@@ -1,7 +1,7 @@
 /* global process */
 import express from 'express';
 import makeWASocket from '@whiskeysockets/baileys';
-import { DisconnectReason, makeCacheableSignalKeyStore, Browsers, downloadMediaMessage, initAuthCreds, BufferJSON, proto } from '@whiskeysockets/baileys';
+import { DisconnectReason, makeCacheableSignalKeyStore, Browsers, downloadMediaMessage, initAuthCreds, BufferJSON, proto, generateWAMessageFromContent } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import qrcode from 'qrcode';
 import Groq from 'groq-sdk';
@@ -1192,6 +1192,22 @@ app.post('/typing', async (req, res) => {
 });
 
 // Send message
+// A booking link gets a clean tappable PREVIEW CARD (title + description) instead of a bare URL.
+// WhatsApp can't do "click here" hyperlinks, but a link-preview card is the closest thing — the
+// customer taps the card. No image asset / no extra dependency needed (built manually).
+function bookingPreview(text) {
+  const m = String(text || '').match(/https?:\/\/[^\s]+\/(map|waybill|quote|vendor)\b[^\s]*/i);
+  if (!m) return null;
+  const kind = m[1].toLowerCase();
+  const meta = {
+    map:     { title: '📍 Book your delivery',        description: 'Tap to set pickup & drop-off — takes 10 seconds' },
+    waybill: { title: '🚚 Get your waybill price',     description: 'Tap to pick the state & weight' },
+    quote:   { title: '🌍 Get your shipping estimate', description: 'Tap to pick country, weight & value' },
+    vendor:  { title: '🛍️ Send your orders',          description: 'Tap to add your buyers & addresses' }
+  }[kind] || { title: '📦 Lasalu Drop Logistics', description: 'Tap to continue' };
+  return { url: m[0], ...meta };
+}
+
 app.post('/send', async (req, res) => {
   try {
     const { phone, message } = req.body;
@@ -1200,6 +1216,17 @@ app.post('/send', async (req, res) => {
       return res.status(503).json({ error: 'WhatsApp not connected' });
     }
     const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
+    // Booking link → send with a tappable preview card. Wrapped so ANY failure falls back to a
+    // normal text send (the URL is still in the text, so the message is never lost).
+    const pv = bookingPreview(message);
+    if (pv) {
+      try {
+        const content = { extendedTextMessage: { text: message, matchedText: pv.url, canonicalUrl: pv.url, title: pv.title, description: pv.description } };
+        const wam = await generateWAMessageFromContent(jid, content, {});
+        await sock.relayMessage(jid, wam.message, { messageId: wam.key.id });
+        return res.json({ status: 'sent' });
+      } catch (e) { /* preview failed → fall through to a plain send */ }
+    }
     await sock.sendMessage(jid, { text: message });
     res.json({ status: 'sent' });
   } catch (err) {
