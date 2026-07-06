@@ -1216,16 +1216,29 @@ app.post('/send', async (req, res) => {
       return res.status(503).json({ error: 'WhatsApp not connected' });
     }
     const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
-    // Booking link → send with a tappable preview card. Wrapped so ANY failure falls back to a
-    // normal text send (the URL is still in the text, so the message is never lost).
+    // Booking link → send a clean tappable PREVIEW CARD as the call-to-action, and DROP the raw URL +
+    // its "just tap here 👉" scaffolding from the visible text (that clutter is what looked unpolished).
+    // Tapping the card opens the link. Wrapped so ANY failure falls back to the original text (with the
+    // URL) so a booking message is never lost.
     const pv = bookingPreview(message);
     if (pv) {
       try {
-        const content = { extendedTextMessage: { text: message, matchedText: pv.url, canonicalUrl: pv.url, title: pv.title, description: pv.description } };
+        // Keep everything BEFORE the URL, then peel off trailing call-to-action / arrow lines.
+        const lines = message.split(pv.url)[0].split('\n');
+        const isCta = (s) => {
+          const t = s.trim();
+          if (/^[👉👇➡️🔗•\-\s]*$/.test(t)) return true;        // a pure arrow / bullet / blank line
+          if (t.length > 60) return false;                     // long informative line → keep it
+          return /^[👉👇➡️🔗]/.test(t) ||
+            (/\b(tap|click|open|book\s+it|go\s+ahead|here'?s\s+the|use\s+the|follow\s+the|complete\s+payment)\b/i.test(t) && /\b(here|link|form|book|below|it|this|now)\b/i.test(t));
+        };
+        while (lines.length && isCta(lines[lines.length - 1])) lines.pop();
+        const body = (lines.join('\n').replace(/[\s\n👉👇➡️🔗]+$/g, '').trim()) || pv.title;
+        const content = { extendedTextMessage: { text: body, matchedText: pv.url, canonicalUrl: pv.url, title: pv.title, description: pv.description } };
         const wam = await generateWAMessageFromContent(jid, content, {});
         await sock.relayMessage(jid, wam.message, { messageId: wam.key.id });
         return res.json({ status: 'sent' });
-      } catch (e) { /* preview failed → fall through to a plain send */ }
+      } catch (e) { /* preview failed → fall through to a plain send (URL intact) */ }
     }
     await sock.sendMessage(jid, { text: message });
     res.json({ status: 'sent' });
