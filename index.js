@@ -1243,8 +1243,14 @@ app.post('/send', async (req, res) => {
         }).join('\n');
         body = body.replace(/^[ \t]*[👉👇➡️🔗]+[ \t]*/gmu, '').replace(/[ \t]*[👉👇➡️🔗]+[ \t]*$/gmu, '').replace(/\n{3,}/g, '\n\n').replace(/[\s\n]+$/, '').trim();
         if (!body.includes(pv.url)) body = message;   // safety: never lose the link
-        // Re-add ONE clean call-to-action right before the link (a clear "tap the link" nudge).
-        else body = body.replace(pv.url, `👇 *Tap the link below to create your delivery*\n${pv.url}`);
+        else {
+          // Re-add ONE clean call-to-action, with a BLANK LINE before it so the message breathes:
+          //   <message>\n\n👇 *Tap the link below to create your delivery*\n<url>
+          const i = body.indexOf(pv.url);
+          const before = body.slice(0, i).replace(/[\s\n]+$/, '');
+          const after = body.slice(i + pv.url.length);
+          body = `${before}\n\n👇 *Tap the link below to create your delivery*\n${pv.url}${after}`;
+        }
         const content = { extendedTextMessage: { text: body, matchedText: pv.url, canonicalUrl: pv.url, title: pv.title, description: pv.description, ...(BOOK_CARD_JPEG ? { jpegThumbnail: BOOK_CARD_JPEG } : {}) } };
         const wam = await generateWAMessageFromContent(jid, content, {});
         await sock.relayMessage(jid, wam.message, { messageId: wam.key.id });
