@@ -684,6 +684,11 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
 }
 </script></body></html>`;
 app.get('/map', (req, res) => { res.type('html').send(MAP_PAGE); });
+// Short-link redirects so booking links are tidy in chat: /m/:t → /map?session=:t (etc.)
+app.get('/m/:t', (req, res) => res.redirect(302, `/map?session=${encodeURIComponent(req.params.t)}`));
+app.get('/q/:t', (req, res) => res.redirect(302, `/quote?session=${encodeURIComponent(req.params.t)}`));
+app.get('/w/:t', (req, res) => res.redirect(302, `/waybill?session=${encodeURIComponent(req.params.t)}`));
+app.get('/v/:t', (req, res) => res.redirect(302, `/vendor?session=${encodeURIComponent(req.params.t)}`));
 
 // ── International / Waybill quote calculator (the INTL/WAYBILL twin of the map) ──
 // Pricing is recomputed server-side by the Supabase quotePicker function (intlPricing).
@@ -1201,9 +1206,10 @@ app.post('/typing', async (req, res) => {
 // STAYS in the text — WhatsApp only renders the card when the URL is present in the body (hiding it
 // makes the card vanish). So: card on top (nice), the link still there and tappable (safe).
 function bookingPreview(text) {
-  const m = String(text || '').match(/https?:\/\/[^\s]+\/(map|waybill|quote|vendor)\b[^\s]*/i);
+  // Matches both the long form (/map?session=…) and the short form (/m/…, /q/…, /w/…, /v/…).
+  const m = String(text || '').match(/https?:\/\/[^\s]+\/(map|waybill|quote|vendor|m|q|w|v)(?:\/|\?session=)[^\s]*/i);
   if (!m) return null;
-  const kind = m[1].toLowerCase();
+  const kind = ({ m: 'map', q: 'quote', w: 'waybill', v: 'vendor' }[m[1].toLowerCase()] || m[1].toLowerCase());
   const meta = {
     map:     { title: '📍 Book your delivery',        description: 'Tap to set pickup & drop-off — takes 10 seconds' },
     waybill: { title: '🚚 Get your waybill price',     description: 'Tap to pick the state & weight' },
@@ -1237,6 +1243,8 @@ app.post('/send', async (req, res) => {
         }).join('\n');
         body = body.replace(/^[ \t]*[👉👇➡️🔗]+[ \t]*/gmu, '').replace(/[ \t]*[👉👇➡️🔗]+[ \t]*$/gmu, '').replace(/\n{3,}/g, '\n\n').replace(/[\s\n]+$/, '').trim();
         if (!body.includes(pv.url)) body = message;   // safety: never lose the link
+        // Re-add ONE clean call-to-action right before the link (a clear "tap the link" nudge).
+        else body = body.replace(pv.url, `👇 *Tap the link below to book*\n${pv.url}`);
         const content = { extendedTextMessage: { text: body, matchedText: pv.url, canonicalUrl: pv.url, title: pv.title, description: pv.description, ...(BOOK_CARD_JPEG ? { jpegThumbnail: BOOK_CARD_JPEG } : {}) } };
         const wam = await generateWAMessageFromContent(jid, content, {});
         await sock.relayMessage(jid, wam.message, { messageId: wam.key.id });
