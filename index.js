@@ -1077,6 +1077,132 @@ else{
 </script></body></html>`;
 app.get('/vendor', (req, res) => { res.type('html').send(VENDOR_PAGE); });
 
+// ── Bulk deliveries page: a client with SEVERAL deliveries adds them all (each its own pickup →
+// drop-off), reviews the total, then pays once (or pay-on-delivery). Talks to the bulkOrders fn. ──
+const BULK_PAGE = `<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Multiple deliveries — Lasalu Drop</title>
+<style>
+*{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+body{margin:0;background:#f4f6f8;color:#0e1726}
+.wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;min-height:100dvh}
+.hero{background:#4F074C;color:#fff;padding:22px 20px 16px}
+.hero h1{margin:0;font-size:22px;font-weight:700}
+.hero p{margin:7px 0 0;font-size:13px;color:#f3c9e7;line-height:1.5}
+.body{padding:16px}
+.lbl{font-size:12.5px;color:#6b7280;font-weight:700;margin:12px 2px 6px}
+input{width:100%;padding:12px 13px;border:1px solid #e6e9ed;border-radius:11px;font-size:15px;outline:none}
+input:focus{border-color:#4F074C}
+.ord{border:1px solid #e6e9ed;border-radius:14px;padding:12px;margin:12px 0;position:relative;background:#fbfcfd}
+.ord .rm{position:absolute;top:6px;right:8px;color:#c0392b;background:none;border:0;font-size:20px;cursor:pointer;line-height:1}
+.ord .cap{font-size:12px;font-weight:800;color:#4F074C;letter-spacing:.5px;margin:0 0 8px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mt{margin-top:8px}
+.same{background:none;border:0;color:#E23A7C;font-size:12.5px;font-weight:700;cursor:pointer;padding:5px 2px 0}
+.sug{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:12px;margin-top:2px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden;max-height:200px;overflow-y:auto}
+.sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f2f4f6;cursor:pointer}
+.add{width:100%;margin:6px 0 2px;padding:13px;border:1px dashed #c7ccd2;background:#fff;color:#0e1726;border-radius:12px;font-size:14.5px;font-weight:600;cursor:pointer}
+.payopt{display:flex;align-items:center;gap:10px;border:1px solid #e6e9ed;border-radius:12px;padding:12px 13px;margin:8px 0;font-size:14.5px;cursor:pointer}
+.payopt input{width:18px;height:18px;accent-color:#4F074C}
+.go{width:100%;margin-top:14px;padding:15px;border:0;border-radius:13px;background:#4F074C;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+.go:disabled{background:#F0D9E8}
+.review{border:1px solid #F0D9E8;background:#FBF3F9;border-radius:14px;padding:14px;margin-top:14px}
+.review .rr{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;color:#3A0537}
+.review .tot{display:flex;justify-content:space-between;font-size:17px;font-weight:800;color:#4F074C;border-top:1px solid #F0D9E8;margin-top:8px;padding-top:10px}
+.done{text-align:center;padding:48px 22px}.done h2{font-size:22px;color:#3A0537;margin:0}
+.wabtn{display:inline-block;margin-top:18px;padding:15px 26px;background:#4F074C;color:#fff;border-radius:14px;text-decoration:none;font-weight:700}
+.muted{color:#9aa0a6;font-size:13px}
+.err{color:#c0392b;font-size:13px;margin-top:8px}
+</style></head><body>
+<div class="wrap" id="app">
+  <div class="hero"><h1>Multiple deliveries 🛵</h1><p>Add each delivery — pickup, drop-off, who's receiving and what you're sending. We price them all and send a rider to each.</p></div>
+  <div class="body">
+    <div class="row2"><input id="sname" placeholder="Your name"><input id="sphone" placeholder="Your phone" inputmode="tel"></div>
+    <div id="deliveries"></div>
+    <button class="add" id="add">+ Add another delivery</button>
+    <div class="lbl">Payment</div>
+    <label class="payopt"><input type="radio" name="pay" value="now" checked> 💳 Pay all now — one payment</label>
+    <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod"> 🛵 Pay on delivery — cash to each rider</label>
+    <button class="go" id="go" disabled>Review &amp; book</button>
+    <div id="out"></div>
+  </div>
+</div>
+<script>
+var SESSION=new URLSearchParams(location.search).get('session')||"";
+var VALID=SESSION?"1":"0";
+var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/bulkOrders";
+function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
+function el(id){return document.getElementById(id)}
+(function(){if(!SESSION)return;setTimeout(function(){fetch(api("action=check")).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}}).catch(function(){});},0);})();
+var n=0, PODOK=false, quoted=null;
+function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
+function flagPhone(inp){if(!inp)return;function u(){var v=(inp.value||'').trim();var bad=v&&!phoneOk(v);inp.style.borderColor=bad?'#dc2626':'';}inp.addEventListener('input',u);inp.addEventListener('blur',u);}
+function wireAuto(inp,sug){var t;inp.addEventListener('input',function(){clearTimeout(t);var q=inp.value.trim();quoted=null;syncGo();if(q.length<2){sug.style.display='none';return;}t=setTimeout(function(){fetch(api('action=autocomplete&q='+encodeURIComponent(q))).then(function(r){return r.json()}).then(function(j){sug.innerHTML='';(j.predictions||[]).forEach(function(p){var x=document.createElement('div');x.textContent=p.label;x.onclick=function(){inp.value=p.label;sug.style.display='none';syncGo();};sug.appendChild(x);});sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';});},300);});}
+function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim();});out.push(o);});return out;}
+function rowsValid(){var os=collect();return os.length>0&&os.every(function(o){return o.pickup_address&&o.delivery_address&&o.receiver_name&&phoneOk(o.receiver_phone)&&o.item;});}
+function senderValid(){return el('sname').value.trim()&&phoneOk(el('sphone').value);}
+function syncGo(){quoted=null;el('go').textContent='Review \\u0026 book';var ok=senderValid()&&rowsValid();el('go').disabled=!ok;var r=el('review');if(r)r.remove();}
+function addDelivery(){
+  n++;var d=document.createElement('div');d.className='ord';
+  d.innerHTML='<button class="rm" title="Remove">×</button>'
+    +'<div class="cap">DELIVERY '+n+'</div>'
+    +'<div style="position:relative"><input placeholder="Pickup address" data-f="pickup_address" autocomplete="off"><div class="sug" style="display:none"></div></div>'
+    +'<button class="same" type="button">↑ same pickup as above</button>'
+    +'<div style="position:relative" class="mt"><input placeholder="Drop-off address" data-f="delivery_address" autocomplete="off"><div class="sug" style="display:none"></div></div>'
+    +'<div class="row2 mt"><input placeholder="Receiver name" data-f="receiver_name"><input placeholder="Receiver phone" data-f="receiver_phone" inputmode="tel"></div>'
+    +'<input class="mt" placeholder="What are you sending? (e.g. food, documents)" data-f="item">';
+  el('deliveries').appendChild(d);
+  d.querySelector('.rm').onclick=function(){d.remove();syncGo();};
+  var ins=d.querySelectorAll('input[data-f]');
+  var pins=d.querySelectorAll('.sug');
+  wireAuto(d.querySelector('input[data-f=pickup_address]'),pins[0]);
+  wireAuto(d.querySelector('input[data-f=delivery_address]'),pins[1]);
+  d.querySelector('.same').onclick=function(){var prev=d.previousElementSibling;var src=prev?prev.querySelector('input[data-f=pickup_address]'):null;if(src&&src.value){d.querySelector('input[data-f=pickup_address]').value=src.value;syncGo();}};
+  flagPhone(d.querySelector('input[data-f=receiver_phone]'));
+  ins.forEach(function(i){i.addEventListener('input',syncGo);});
+  syncGo();
+}
+function payMethod(){var r=document.querySelector('input[name=pay]:checked');return r?r.value:'now';}
+function doBook(){
+  var b=el('go');b.disabled=true;b.textContent='Booking…';
+  fetch(api(''),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender_name:el('sname').value.trim(),sender_phone:el('sphone').value.trim(),pay_method:payMethod(),deliveries:collect()})})
+   .then(function(r){return r.json()}).then(function(j){
+     if(j.error){b.disabled=false;b.textContent='Confirm';el('out').innerHTML='<div class="err">Couldn\\'t book: '+j.error+'</div>';return;}
+     if(j.mode==='now'&&j.payment_url){el('app').innerHTML='<div class="done"><h2>Redirecting to payment… 💳</h2><p class="muted">Total ₦'+Number(j.total).toLocaleString()+' for '+j.count+' deliveries.</p></div>';location.href=j.payment_url;return;}
+     el('app').innerHTML='<div class="done"><h2>All set! 🙌</h2><p class="muted">'+j.booked+' deliveries created — a rider is being assigned to each. Each rider collects the fee (total ₦'+Number(j.total).toLocaleString()+') in cash on delivery.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
+   }).catch(function(){b.disabled=false;b.textContent='Confirm';alert('Network hiccup — try again.');});
+}
+function doReview(){
+  var b=el('go');b.disabled=true;b.textContent='Pricing…';
+  fetch(api('action=quote'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deliveries:collect()})})
+   .then(function(r){return r.json()}).then(function(j){
+     b.disabled=false;
+     if(!j.ok||!j.count){b.textContent='Review \\u0026 book';el('out').innerHTML='<div class="err">Couldn\\'t price these — check the addresses (pick a suggestion from the list).</div>';return;}
+     quoted=j;
+     var rows=(j.priced||[]).map(function(r){return '<div class="rr"><span>'+r.receiver_name+' — '+String(r.delivery_address).split(',')[0]+'</span><b>₦'+Number(r.delivery_fee).toLocaleString()+'</b></div>';}).join('');
+     var warn=(j.errors&&j.errors.length)?'<div class="err">'+j.errors.length+' row(s) couldn\\'t be priced and were skipped — fix the address & try again.</div>':'';
+     var pm=payMethod();
+     var oldr=el('review');if(oldr)oldr.remove();
+     var div=document.createElement('div');div.className='review';div.id='review';
+     div.innerHTML=rows+'<div class="tot"><span>Total ('+j.count+')</span><span>₦'+Number(j.total).toLocaleString()+'</span></div>'+warn;
+     el('out').appendChild(div);
+     el('go').textContent=pm==='pod'?('Confirm '+j.count+' deliveries — pay on delivery'):('Confirm \\u0026 pay ₦'+Number(j.total).toLocaleString());
+   }).catch(function(){b.disabled=false;b.textContent='Review \\u0026 book';alert('Network hiccup — try again.');});
+}
+el('add').onclick=addDelivery;
+['sname','sphone'].forEach(function(id){el(id).addEventListener('input',syncGo);});
+flagPhone(el('sphone'));
+document.querySelectorAll('input[name=pay]').forEach(function(r){r.addEventListener('change',function(){if(quoted){el('go').textContent=payMethod()==='pod'?('Confirm '+quoted.count+' deliveries — pay on delivery'):('Confirm \\u0026 pay ₦'+Number(quoted.total).toLocaleString());}});});
+el('go').onclick=function(){if(quoted)doBook();else doReview();};
+if(VALID!=='1'){el('app').innerHTML='<div class="hero"><h1>Link expired</h1><p>Head back to your chat and ask for a new bulk-delivery link.</p></div>';}
+else{
+  fetch(api('action=prefill')).then(function(r){return r.json()}).then(function(p){if(!p)return;if(p.name)el('sname').value=p.name;if(p.phone)el('sphone').value=p.phone;if(p.pod_allowed){PODOK=true;el('opt-pod').style.display='flex';}syncGo();});
+  addDelivery();
+}
+</script></body></html>`;
+app.get('/bulk', (req, res) => { res.type('html').send(BULK_PAGE); });
+app.get('/b/:t', (req, res) => res.redirect(302, `/bulk?session=${encodeURIComponent(req.params.t)}`));
+
 // Status
 app.get('/status', (req, res) => {
   res.json({ status: connectionStatus, phone: connectedPhone, qr: currentQR });
@@ -1206,15 +1332,16 @@ app.post('/typing', async (req, res) => {
 // STAYS in the text — WhatsApp only renders the card when the URL is present in the body (hiding it
 // makes the card vanish). So: card on top (nice), the link still there and tappable (safe).
 function bookingPreview(text) {
-  // Matches both the long form (/map?session=…) and the short form (/m/…, /q/…, /w/…, /v/…).
-  const m = String(text || '').match(/https?:\/\/[^\s]+\/(map|waybill|quote|vendor|m|q|w|v)(?:\/|\?session=)[^\s]*/i);
+  // Matches both the long form (/map?session=…) and the short form (/m/…, /q/…, /w/…, /v/…, /b/…).
+  const m = String(text || '').match(/https?:\/\/[^\s]+\/(map|waybill|quote|vendor|bulk|m|q|w|v|b)(?:\/|\?session=)[^\s]*/i);
   if (!m) return null;
-  const kind = ({ m: 'map', q: 'quote', w: 'waybill', v: 'vendor' }[m[1].toLowerCase()] || m[1].toLowerCase());
+  const kind = ({ m: 'map', q: 'quote', w: 'waybill', v: 'vendor', b: 'bulk' }[m[1].toLowerCase()] || m[1].toLowerCase());
   const meta = {
     map:     { title: '📍 Create your delivery',      description: 'Tap to set pickup & drop-off — takes 10 seconds' },
     waybill: { title: '🚚 Get your waybill price',     description: 'Tap to pick the state & weight' },
     quote:   { title: '🌍 Get your shipping estimate', description: 'Tap to pick country, weight & value' },
-    vendor:  { title: '🛍️ Send your orders',          description: 'Tap to add your buyers & addresses' }
+    vendor:  { title: '🛍️ Send your orders',          description: 'Tap to add your buyers & addresses' },
+    bulk:    { title: '📦 Your deliveries',           description: 'Tap to add each pickup & drop-off — pay once' }
   }[kind] || { title: '📦 Lasalu Drop Logistics', description: 'Tap to continue' };
   return { url: m[0], ...meta };
 }
