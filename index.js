@@ -467,10 +467,10 @@ button:disabled{background:#F0D9E8}
   <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 8px">Payment</div>
   <label class="payopt"><input type="radio" name="pay" value="now" checked style="width:18px;height:18px;accent-color:#4F074C"> 💳 Pay now (card or transfer)</label>
   <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod" style="width:18px;height:18px;accent-color:#4F074C"> 🛵 Pay on delivery — cash to the rider</label>
-  <label class="payopt" id="opt-cod" style="display:none"><input type="radio" name="pay" value="cod" style="width:18px;height:18px;accent-color:#f59e0b"> 🏬 Receiver pays for the goods (COD)</label>
+  <label class="payopt" id="opt-cod" style="display:none"><input type="radio" name="pay" value="cod" style="width:18px;height:18px;accent-color:#f59e0b"> 🏬 Not paid yet — we collect the payment for you</label>
   <div id="codamt" style="display:none;margin:2px 2px 0">
     <input id="goods" type="number" inputmode="numeric" min="1" placeholder="Goods amount the receiver pays (₦)" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
-    <div style="font-size:12px;color:#9a7b3a;margin-top:6px">You pay nothing now — the receiver pays on delivery, and your goods money lands in your next-day payout.</div>
+    <div style="font-size:12px;color:#9a7b3a;margin-top:6px">💡 The receiver pays on delivery and <b>Lasalu collects it</b> — it comes to us, <b>not your account</b>, and the goods are released once it's paid. Our fee: <b>2% (max ₦3,000)</b>. You get the rest in your next-day payout.</div>
   </div>
 </div>
 <div class="feebig" id="fee"></div>
@@ -1043,7 +1043,7 @@ function el(id){return document.getElementById(id)}
 var n=0;
 function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
 function flagPhoneEl(bp){if(!bp)return;function u(){var v=(bp.value||'').trim();var bad=v&&!phoneOk(v);bp.style.borderColor=bad?'#dc2626':'';var box=bp.closest('.row2')||bp.parentNode;var w=box.parentNode.querySelector('.bpe-'+(box.dataset.pe||''));if(bad){if(!w){var tag=String(n);box.dataset.pe=tag;w=document.createElement('div');w.className='bpe-'+tag;w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}bp.addEventListener('input',u);bp.addEventListener('blur',u);}
-function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim();});out.push(o);});return out;}
+function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim().replace(/^📍\\s*/,'');});var pk=d.querySelector('input[data-f=pickup_address]'),dr=d.querySelector('input[data-f=delivery_address]');if(pk&&pk.dataset.coords)o.pickup_coords=pk.dataset.coords;if(dr&&dr.dataset.coords)o.delivery_coords=dr.dataset.coords;out.push(o);});return out;}
 function validate(){var os=collect();var ok=el('shop').value.trim()&&os.length>0&&os.every(function(o){return o.buyer_name&&phoneOk(o.buyer_phone)&&o.address&&o.item&&Number((o.goods_value||'').replace(/[^0-9.]/g,''))>0;});el('go').disabled=!ok;}
 function addOrder(){
   n++;var d=document.createElement('div');d.className='ord';
@@ -1099,6 +1099,8 @@ input:focus{border-color:#4F074C}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .mt{margin-top:8px}
 .same{background:none;border:0;color:#E23A7C;font-size:12.5px;font-weight:700;cursor:pointer;padding:5px 2px 0}
+.locin{padding-right:42px}
+.locp{position:absolute;right:5px;top:9px;width:34px;height:34px;border:0;background:transparent;font-size:19px;color:#4F074C;cursor:pointer;line-height:1}
 .sug{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:12px;margin-top:2px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden;max-height:200px;overflow-y:auto}
 .sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f2f4f6;cursor:pointer}
 .add{width:100%;margin:6px 0 2px;padding:13px;border:1px dashed #c7ccd2;background:#fff;color:#0e1726;border-radius:12px;font-size:14.5px;font-weight:600;cursor:pointer}
@@ -1137,8 +1139,9 @@ function el(id){return document.getElementById(id)}
 var n=0, PODOK=false, quoted=null;
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
 function flagPhone(inp){if(!inp)return;function u(){var v=(inp.value||'').trim();var bad=v&&!phoneOk(v);inp.style.borderColor=bad?'#dc2626':'';}inp.addEventListener('input',u);inp.addEventListener('blur',u);}
-function wireAuto(inp,sug){var t;inp.addEventListener('input',function(){clearTimeout(t);var q=inp.value.trim();quoted=null;syncGo();if(q.length<2){sug.style.display='none';return;}t=setTimeout(function(){fetch(api('action=autocomplete&q='+encodeURIComponent(q))).then(function(r){return r.json()}).then(function(j){sug.innerHTML='';(j.predictions||[]).forEach(function(p){var x=document.createElement('div');x.textContent=p.label;x.onclick=function(){inp.value=p.label;sug.style.display='none';syncGo();};sug.appendChild(x);});sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';});},300);});}
-function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim();});out.push(o);});return out;}
+function wireAuto(inp,sug){var t;inp.addEventListener('input',function(){inp.dataset.coords='';clearTimeout(t);var q=inp.value.trim();quoted=null;syncGo();if(q.length<2){sug.style.display='none';return;}t=setTimeout(function(){fetch(api('action=autocomplete&q='+encodeURIComponent(q))).then(function(r){return r.json()}).then(function(j){sug.innerHTML='';(j.predictions||[]).forEach(function(p){var x=document.createElement('div');x.textContent=p.label;x.onclick=function(){inp.value=p.label;inp.dataset.coords='';sug.style.display='none';syncGo();};sug.appendChild(x);});sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';});},300);});}
+function useLoc(inp){if(!inp)return;if(!navigator.geolocation){alert('Location not available on this device — please type the address.');return;}var old=inp.value;inp.value='📍 Locating…';navigator.geolocation.getCurrentPosition(function(pos){var la=pos.coords.latitude,ln=pos.coords.longitude;inp.dataset.coords=la+','+ln;inp.value='📍 My current location';fetch(api('action=reverse&lat='+la+'&lng='+ln)).then(function(r){return r.json()}).then(function(j){if(j&&j.label)inp.value='📍 '+j.label;syncGo();}).catch(function(){syncGo();});},function(){inp.value=old;alert('Couldn\\'t get your location — please allow location access, or type the address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});}
+function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim().replace(/^📍\\s*/,'');});var pk=d.querySelector('input[data-f=pickup_address]'),dr=d.querySelector('input[data-f=delivery_address]');if(pk&&pk.dataset.coords)o.pickup_coords=pk.dataset.coords;if(dr&&dr.dataset.coords)o.delivery_coords=dr.dataset.coords;out.push(o);});return out;}
 function rowsValid(){var os=collect();return os.length>0&&os.every(function(o){return o.pickup_address&&o.delivery_address&&o.receiver_name&&phoneOk(o.receiver_phone)&&o.item;});}
 function senderValid(){return el('sname').value.trim()&&phoneOk(el('sphone').value);}
 function syncGo(){quoted=null;el('go').textContent='Review \\u0026 book';var ok=senderValid()&&rowsValid();el('go').disabled=!ok;var r=el('review');if(r)r.remove();}
@@ -1146,9 +1149,9 @@ function addDelivery(){
   n++;var d=document.createElement('div');d.className='ord';
   d.innerHTML='<button class="rm" title="Remove">×</button>'
     +'<div class="cap">DELIVERY '+n+'</div>'
-    +'<div style="position:relative"><input placeholder="Pickup address" data-f="pickup_address" autocomplete="off"><div class="sug" style="display:none"></div></div>'
+    +'<div style="position:relative"><input class="locin" placeholder="Pickup address" data-f="pickup_address" autocomplete="off"><button type="button" class="locp" title="Use my location">📍</button><div class="sug" style="display:none"></div></div>'
     +'<button class="same" type="button">↑ same pickup as above</button>'
-    +'<div style="position:relative" class="mt"><input placeholder="Drop-off address" data-f="delivery_address" autocomplete="off"><div class="sug" style="display:none"></div></div>'
+    +'<div style="position:relative" class="mt"><input class="locin" placeholder="Drop-off address" data-f="delivery_address" autocomplete="off"><button type="button" class="locp" title="Use my location">📍</button><div class="sug" style="display:none"></div></div>'
     +'<div class="row2 mt"><input placeholder="Receiver name" data-f="receiver_name"><input placeholder="Receiver phone" data-f="receiver_phone" inputmode="tel"></div>'
     +'<input class="mt" placeholder="What are you sending? (e.g. food, documents)" data-f="item">';
   el('deliveries').appendChild(d);
@@ -1157,7 +1160,8 @@ function addDelivery(){
   var pins=d.querySelectorAll('.sug');
   wireAuto(d.querySelector('input[data-f=pickup_address]'),pins[0]);
   wireAuto(d.querySelector('input[data-f=delivery_address]'),pins[1]);
-  d.querySelector('.same').onclick=function(){var prev=d.previousElementSibling;var src=prev?prev.querySelector('input[data-f=pickup_address]'):null;if(src&&src.value){d.querySelector('input[data-f=pickup_address]').value=src.value;syncGo();}};
+  d.querySelectorAll('.locp').forEach(function(b){b.onclick=function(){useLoc(b.previousElementSibling);};});
+  d.querySelector('.same').onclick=function(){var prev=d.previousElementSibling;var src=prev?prev.querySelector('input[data-f=pickup_address]'):null;var tgt=d.querySelector('input[data-f=pickup_address]');if(src&&src.value){tgt.value=src.value;tgt.dataset.coords=src.dataset.coords||'';syncGo();}};
   flagPhone(d.querySelector('input[data-f=receiver_phone]'));
   ins.forEach(function(i){i.addEventListener('input',syncGo);});
   syncGo();
