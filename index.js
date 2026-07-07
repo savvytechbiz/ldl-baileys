@@ -465,12 +465,23 @@ button:disabled{background:#F0D9E8}
 <input id="dinstr" class="f1" placeholder="Delivery instructions — optional (e.g. call on arrival, gate code)" maxlength="200" style="margin-top:10px">
 <div id="paysel" style="margin-top:13px">
   <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 8px">Payment</div>
-  <label class="payopt"><input type="radio" name="pay" value="now" checked style="width:18px;height:18px;accent-color:#4F074C"> 💳 Pay now (card or transfer)</label>
-  <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod" style="width:18px;height:18px;accent-color:#4F074C"> 🛵 Pay on delivery — cash to the rider</label>
-  <label class="payopt" id="opt-cod" style="display:none"><input type="radio" name="pay" value="cod" style="width:18px;height:18px;accent-color:#f59e0b"> 🏬 Not paid yet — we collect the payment for you</label>
-  <div id="codamt" style="display:none;margin:2px 2px 0">
-    <input id="goods" type="number" inputmode="numeric" min="1" placeholder="Goods amount the receiver pays (₦)" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
-    <div style="font-size:12px;color:#9a7b3a;margin-top:6px">💡 The receiver pays on delivery and <b>Lasalu collects it</b> — it comes to us, <b>not your account</b>, and the goods are released once it's paid. Our fee: <b>2% (max ₦3,000)</b>. You get the rest in your next-day payout.</div>
+  <div id="payradios">
+    <label class="payopt"><input type="radio" name="pay" value="now" checked style="width:18px;height:18px;accent-color:#4F074C"> 💳 Pay now (card or transfer)</label>
+    <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod" style="width:18px;height:18px;accent-color:#4F074C"> 🛵 Pay on delivery — cash to the rider</label>
+  </div>
+  <label class="payopt" id="opt-cod" style="display:none"><input type="checkbox" id="codbox" style="width:18px;height:18px;accent-color:#f59e0b"> 📦 The buyer hasn't paid for the item yet — we collect it for you</label>
+  <div id="codamt" style="display:none;margin-top:4px">
+    <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:8px 2px 6px">How much should we collect from the buyer? (₦)</div>
+    <input id="goods" type="number" inputmode="numeric" min="1" placeholder="e.g. 100000" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
+    <div id="codbreak" style="display:none;margin-top:8px;background:#fff8ec;border:1px solid #ffe0a6;border-radius:12px;padding:12px 14px"></div>
+    <div style="font-size:11.5px;color:#9a7b3a;margin-top:7px">The buyer pays this on delivery, <b>Lasalu collects it</b> (comes to us — <b>not your account</b>), and the rider hands over the item only once it's paid.</div>
+    <div id="bankbox" style="display:none;margin-top:14px;border-top:1px dashed #ffe0a6;padding-top:12px">
+      <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 6px">💳 Where should we pay you? <span style="font-weight:500;color:#9a7b3a">(so we can settle you same-day)</span></div>
+      <input id="acctno" type="text" inputmode="numeric" maxlength="10" placeholder="Account number (10 digits)" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
+      <select id="bankcode" style="width:100%;margin-top:8px;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none;-webkit-appearance:none"><option value="">Loading banks…</option></select>
+      <div id="acctname" style="display:none;margin-top:8px;font-size:13px;font-weight:700"></div>
+    </div>
+    <div id="banksaved" style="display:none;margin-top:14px;border-top:1px dashed #ffe0a6;padding-top:12px;font-size:13px;color:#166534">✅ We'll pay you to <b><span id="banklabel"></span></b>. <a href="#" id="bankchange" style="color:#E23A7C;text-decoration:underline;font-weight:600">change</a></div>
   </div>
 </div>
 <div class="feebig" id="fee"></div>
@@ -599,11 +610,36 @@ function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,
 function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',u);}
 function validate(){
   var ok = picked.pickup&&picked.dropoff&&val('rname')&&phoneOk(val('rphone'))&&(!val('sphone')||phoneOk(val('sphone')))&&val('item');
+  // COD without a saved account needs a verified payout account before we can settle the seller.
+  var cb=document.getElementById('codbox');
+  if(ok&&cb&&cb.checked&&!BANK_SAVED) ok=ACCT_OK;
   document.getElementById('go').disabled=!ok;
 }
 // Decode a Google-encoded polyline into [lat,lng] points (so we can draw the route, Bolt-style).
 function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,sh=0,res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lat+=((res&1)?~(res>>1):(res>>1)); sh=0;res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lng+=((res&1)?~(res>>1):(res>>1)); c.push([lat/1e5,lng/1e5]); } return c; }
-var routeLine=null;
+var routeLine=null, mapFee=null;
+// COD payout bank: BANK_SAVED means we already have this vendor's account on file (no re-entry).
+var BANK_SAVED=false, BANKS_LOADED=false, ACCT_OK=false;
+function loadBanks(){
+  if(BANKS_LOADED) return; BANKS_LOADED=true;
+  fetch(api('action=banks')).then(function(r){return r.json();}).then(function(j){
+    var sel=document.getElementById('bankcode'); if(!sel) return;
+    sel.innerHTML='<option value="">Select your bank</option>';
+    (j.banks||[]).forEach(function(b){ var o=document.createElement('option'); o.value=b.code; o.textContent=b.name; sel.appendChild(o); });
+  }).catch(function(){ BANKS_LOADED=false; });
+}
+function resolveAcct(){
+  var acctEl=document.getElementById('acctno'), bankEl=document.getElementById('bankcode'), nm=document.getElementById('acctname');
+  var acct=(acctEl.value||'').replace(/\\D/g,''), code=bankEl.value;
+  ACCT_OK=false; nm.style.display='none';
+  if(acct.length!==10||!code) return;
+  nm.style.display='block'; nm.style.color='#7a5b1a'; nm.textContent='Checking account…';
+  fetch(api('action=resolve_account&account_number='+encodeURIComponent(acct)+'&bank_code='+encodeURIComponent(code)))
+   .then(function(r){return r.json();}).then(function(j){
+     if(j&&j.name){ ACCT_OK=true; nm.style.color='#166534'; nm.textContent='✅ '+j.name; }
+     else { ACCT_OK=false; nm.style.color='#c0392b'; nm.textContent='Couldn\\'t verify that account — check the number and bank.'; }
+   }).catch(function(){ nm.style.display='none'; });
+}
 function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#E23A7C',weight:5,opacity:.85,lineJoin:'round'}).addTo(map); map.fitBounds(routeLine.getBounds(),{padding:[50,50],maxZoom:15}); }catch(e){} }
 function quote(){
   var f=document.getElementById('fee'); f.style.display='flex'; f.innerHTML='<div class="lbl">Calculating fee…</div>';
@@ -611,10 +647,12 @@ function quote(){
    .then(r=>r.json()).then(j=>{
      var e=document.getElementById('eta');
      if(j.price){
+       mapFee=j.price;
        var sub=[]; if(j.min)sub.push('~'+j.min+' min trip'); if(j.km)sub.push('~'+j.km+' km');
        f.style.display='flex'; f.innerHTML='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+j.price.toLocaleString()+'</div>';
        if(j.min){ e.style.display='flex'; e.innerHTML='🛵 '+j.min+' min <span class="d">trip</span>'; } else { e.style.display='none'; }
-     } else { f.style.display='none'; if(e)e.style.display='none'; }
+     } else { mapFee=null; f.style.display='none'; if(e)e.style.display='none'; }
+     if(typeof codBreak==='function') codBreak();
      if(j.polyline) drawRoute(j.polyline);
    }).catch(function(){ f.style.display='none'; });
 }
@@ -662,20 +700,53 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
     if(p.pod_allowed){ document.getElementById('opt-pod').style.display='flex'; }
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
+    if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
     validate(); step();
   }).catch(function(){});
-  // Reveal the goods-amount field only when "Receiver pays for the goods (COD)" is selected.
-  Array.prototype.forEach.call(document.querySelectorAll('input[name=pay]'),function(r){ r.addEventListener('change',function(){ var v=(document.querySelector('input[name=pay]:checked')||{}).value; document.getElementById('codamt').style.display=(v==='cod')?'block':'none'; }); });
+  // COD: live "you'll be credited" = amount − our 2% (max ₦3,000) − the delivery fee.
+  function codBreak(){
+    var A=Number((document.getElementById('goods').value||'').replace(/[^0-9.]/g,''))||0;
+    var box=document.getElementById('codbreak');
+    if(!document.getElementById('codbox').checked||!(A>0)){ box.style.display='none'; return; }
+    var fee=Math.min(3000,Math.round(A*0.02));
+    var F=Number(mapFee)||0;
+    var credit=A-fee-F;
+    var fLine=F>0?('₦'+F.toLocaleString()+' delivery'):'delivery fee (set pickup &amp; drop-off to see it)';
+    box.style.display='block';
+    if(credit>0){
+      box.innerHTML='<div style="font-size:12px;color:#7a5b1a">You\\'ll be credited</div><div style="font-size:23px;font-weight:800;color:#4F074C;margin:2px 0 6px">₦'+credit.toLocaleString()+'</div><div style="font-size:12px;color:#7a5b1a">₦'+A.toLocaleString()+' − ₦'+fee.toLocaleString()+' (our 2%) − '+fLine+'</div>';
+    } else {
+      box.innerHTML='<div style="font-size:13px;color:#c0392b;font-weight:700">Too low — the amount must cover our 2% fee (₦'+fee.toLocaleString()+')'+(F>0?(' + the ₦'+F.toLocaleString()+' delivery'):'')+'. Enter a higher amount.</div>';
+    }
+  }
+  document.getElementById('codbox').addEventListener('change',function(){
+    var on=this.checked;
+    document.getElementById('codamt').style.display=on?'block':'none';
+    document.getElementById('payradios').style.display=on?'none':'block';
+    // Ask for a payout account only if we don't already have one saved for this vendor.
+    document.getElementById('banksaved').style.display=(on&&BANK_SAVED)?'block':'none';
+    document.getElementById('bankbox').style.display=(on&&!BANK_SAVED)?'block':'none';
+    if(on&&!BANK_SAVED) loadBanks();
+    codBreak(); validate();
+  });
+  document.getElementById('goods').addEventListener('input',codBreak);
+  document.getElementById('acctno').addEventListener('input',function(){ resolveAcct(); validate(); });
+  document.getElementById('bankcode').addEventListener('change',function(){ resolveAcct(); validate(); });
+  document.getElementById('bankchange').onclick=function(e){ e.preventDefault(); BANK_SAVED=false; ACCT_OK=false;
+    document.getElementById('banksaved').style.display='none'; document.getElementById('bankbox').style.display='block'; loadBanks(); validate(); };
   document.getElementById('go').onclick=function(){
-    var payVal=(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })();
-    var codOn=payVal==='cod';
+    var codOn=document.getElementById('codbox').checked;
+    var payVal=codOn?'cod':(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })();
     var goodsVal=codOn?Number((document.getElementById('goods').value||'').replace(/[^0-9.]/g,'')):0;
-    if(codOn&&!(goodsVal>0)){ alert('Please enter the amount the receiver pays for the goods.'); return; }
+    if(codOn&&!(goodsVal>0)){ alert('Please enter how much we should collect from the buyer.'); return; }
+    if(codOn&&mapFee&&(goodsVal-Math.min(3000,Math.round(goodsVal*0.02))-Number(mapFee))<=0){ alert('That amount is too low to cover our fee and the delivery — please enter a higher amount.'); return; }
+    var acctNo='',bankCode='',bankName='';
+    if(codOn&&!BANK_SAVED){ acctNo=(document.getElementById('acctno').value||'').replace(/\\D/g,''); var bs=document.getElementById('bankcode'); bankCode=bs.value; bankName=bs.options[bs.selectedIndex]?bs.options[bs.selectedIndex].text:''; }
     var b=document.getElementById('go'); b.disabled=true; b.textContent='Booking…';
     fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       session:SESSION,pickup:picked.pickup,dropoff:picked.dropoff,
       sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),item:val('item'),delivery_instruction:val('dinstr'),
-      pay_method:payVal,cod:codOn,goods_value:goodsVal
+      pay_method:payVal,cod:codOn,goods_value:goodsVal,account_number:acctNo,bank_code:bankCode,bank_name:bankName
     })})
      .then(r=>r.json()).then(j=>{
        document.getElementById('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
