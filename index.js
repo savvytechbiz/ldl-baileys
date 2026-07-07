@@ -443,6 +443,11 @@ button:disabled{background:#F0D9E8}
 .wabtn{display:inline-block;margin-top:18px;padding:16px 28px;background:#4F074C;color:#fff;border-radius:16px;text-decoration:none;font-weight:700;font-size:17px}
 .reveal{animation:fade .35s ease}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.modepill{width:100%;border:1px dashed #E23A7C;background:#FCEBF2;color:#B02467;border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;margin-top:14px;-webkit-tap-highlight-color:transparent}
+.mechip{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#E7F5EE;border:1px solid #b9e2cf;border-radius:12px;padding:12px 13px;margin-top:12px}
+.mechip .who{font-size:13px;color:#0f6e56;font-weight:700}
+.mechip a{color:#E23A7C;font-size:12.5px;cursor:pointer;text-decoration:underline;white-space:nowrap;font-weight:600}
+.revlink{color:#6b7280;font-size:12px;cursor:pointer;text-decoration:underline;display:inline-block;margin:7px 2px 0}
 </style></head><body><div class="wrap" id="app">
 <div class="maphero"><div id="map"></div><div id="riderchip" class="riderchip"></div><div id="eta" class="etabadge" style="display:none"></div></div>
 <div class="sheet">
@@ -456,12 +461,11 @@ button:disabled{background:#F0D9E8}
 </div>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
-<div class="lbl2">Sender <span class="hint">— defaults to you, edit if it's someone else</span></div>
-<div class="row2"><input id="sname" placeholder="Sender's name"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div>
-<div class="lbl2">Receiver</div>
-<div class="row2"><input id="rname" placeholder="Receiver's name"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone"></div>
-<div class="reuse" id="rrecv"></div>
-<input id="item" class="f1" placeholder="What are you sending? (e.g. food, documents)">
+<button type="button" id="modeBtn" class="modepill">📥 I'm receiving it — pick it up for me</button>
+<div id="meBox"></div>
+<div class="lbl2" id="otherLbl">Receiver's phone</div>
+<input id="ophone" class="f1" type="tel" inputmode="tel" placeholder="Receiver's phone number">
+<input id="item" class="f1" placeholder="What are you sending? (e.g. food, documents)" style="margin-top:10px">
 <input id="dinstr" class="f1" placeholder="Delivery instructions — optional (e.g. call on arrival, gate code)" maxlength="200" style="margin-top:10px">
 <div id="paysel" style="margin-top:13px">
   <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 8px">Payment</div>
@@ -478,7 +482,10 @@ button:disabled{background:#F0D9E8}
     <div id="bankbox" style="display:none;margin-top:14px;border-top:1px dashed #ffe0a6;padding-top:12px">
       <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 6px">💳 Where should we pay you? <span style="font-weight:500;color:#9a7b3a">(so we can settle you same-day)</span></div>
       <input id="acctno" type="text" inputmode="numeric" maxlength="10" placeholder="Account number (10 digits)" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
-      <select id="bankcode" style="width:100%;margin-top:8px;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none;-webkit-appearance:none"><option value="">Loading banks…</option></select>
+      <div style="position:relative;margin-top:8px">
+        <input id="bankcode" type="text" autocomplete="off" placeholder="Type your bank name…" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
+        <div id="banksug" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:20;margin-top:4px;max-height:220px;overflow-y:auto;background:#fff;border:1px solid #ffe0a6;border-radius:11px;box-shadow:0 8px 24px rgba(14,23,38,.14)"></div>
+      </div>
       <div id="acctname" style="display:none;margin-top:8px;font-size:13px;font-weight:700"></div>
     </div>
     <div id="banksaved" style="display:none;margin-top:14px;border-top:1px dashed #ffe0a6;padding-top:12px;font-size:13px;color:#166534">✅ We'll pay you to <b><span id="banklabel"></span></b>. <a href="#" id="bankchange" style="color:#E23A7C;text-decoration:underline;font-weight:600">change</a></div>
@@ -569,6 +576,9 @@ function clearLoc(which){
 }
 // The chatting customer's own name/number (from prefill) — placed on whichever side they locate.
 var YOU_NAME='', YOU_PHONE='';
+// Booking direction: 'send' (you're the sender, default) or 'recv' (you're receiving — pickup for you).
+// ME_CHANGED = the auto-filled "you" side was overridden (you're arranging between two other people).
+var BOOK_MODE='send', ME_CHANGED=false, COD_ALLOWED=false;
 // Live location is ONE physical spot — only one end (pickup OR drop-off) can use it.
 var liveSide=null;
 function lockOtherLoc(){ Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ var f=b.getAttribute('data-for'); if(liveSide && f!==liveSide){ b.disabled=true; b.style.opacity='0.3'; b.title='Your live location is one spot — type the other end'; } else { b.disabled=false; b.style.opacity=''; b.title=''; } }); }
@@ -586,17 +596,8 @@ function useLoc(which){
     document.getElementById(which==='pickup'?'pin':'din').value='Pinpointing…';
     setPin(which,{address:'My current location',lat:lat,lng:lng});
     reverseSet(which,lat,lng);
-    // Put the chatting customer's details on the side they just located.
-    if(which==='dropoff'){
-      if(YOU_NAME && !val('rname')) document.getElementById('rname').value=YOU_NAME;
-      if(YOU_PHONE && !val('rphone')) document.getElementById('rphone').value=YOU_PHONE;
-      // They're the RECEIVER, so the auto-filled "you" Sender details no longer apply — clear them.
-      if(val('sname')===YOU_NAME) document.getElementById('sname').value='';
-      if(YOU_PHONE && val('sphone')===YOU_PHONE) document.getElementById('sphone').value='';
-    } else {
-      if(YOU_NAME && !val('sname')) document.getElementById('sname').value=YOU_NAME;
-      if(YOU_PHONE && !val('sphone')) document.getElementById('sphone').value=YOU_PHONE;
-    }
+    // Locating your OWN drop-off is a strong signal you're the one receiving → flip to pickup-for-me.
+    if(which==='dropoff' && BOOK_MODE!=='recv'){ BOOK_MODE='recv'; ME_CHANGED=false; renderMode(); }
     validate();
     liveSide=which; lockOtherLoc();   // your live location is one spot — lock the other end's 📍
   }, function(){
@@ -608,8 +609,41 @@ function useLoc(which){
 function val(id){return (document.getElementById(id).value||'').trim();}
 function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
 function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',u);}
+// Render the direction switch + the "you" side chip. In 'send' you're the sender (pickup=you); in 'recv'
+// you're the receiver (drop-off=you). ME_CHANGED reveals a phone field so you can name the third party.
+function renderMode(){
+  var pill=document.getElementById('modeBtn'); if(!pill) return;
+  var send=BOOK_MODE==='send';
+  pill.textContent = send ? '📥 I\\'m receiving it — pick it up for me' : '📤 I\\'m sending it to someone instead';
+  pill.style.background = send?'#FCEBF2':'#EEE8F5';
+  pill.style.borderColor = send?'#E23A7C':'#4F074C';
+  pill.style.color = send?'#B02467':'#4F074C';
+  document.getElementById('otherLbl').textContent = send ? 'Receiver\\'s phone' : 'Pickup contact\\'s phone';
+  document.getElementById('ophone').placeholder = send ? 'Receiver\\'s phone number' : 'Who we call to collect (park, shop, friend)';
+  document.getElementById('pin').placeholder = send ? 'Pickup' : 'Pickup — park, shop, a friend';
+  document.getElementById('din').placeholder = send ? 'Drop-off' : 'Deliver to (your address)';
+  // COD (collect for unpaid goods) only applies when you're SENDING. Hide + reset it in receive mode.
+  var oc=document.getElementById('opt-cod');
+  if(oc){ if(send && COD_ALLOWED){ oc.style.display='flex'; }
+    else { var cb=document.getElementById('codbox'); if(cb&&cb.checked){ cb.checked=false; document.getElementById('codamt').style.display='none'; document.getElementById('payradios').style.display='block'; } oc.style.display='none'; } }
+  renderMe();
+}
+function renderMe(){
+  var meBox=document.getElementById('meBox'); if(!meBox) return;
+  var meLabel = BOOK_MODE==='send' ? 'Pickup from' : 'Deliver to';
+  var mePhoneLabel = BOOK_MODE==='send' ? 'Sender\\'s phone' : 'Receiver\\'s phone';
+  if(!ME_CHANGED){
+    meBox.innerHTML='<div class="mechip"><span class="who">✅ '+meLabel+': You <span style="font-weight:400">· from WhatsApp</span></span><a id="chgMe">not you?</a></div>';
+    document.getElementById('chgMe').onclick=function(){ ME_CHANGED=true; renderMe(); validate(); };
+  } else {
+    meBox.innerHTML='<div class="lbl2" style="margin-top:12px">'+mePhoneLabel+'</div><input id="mephone" class="f1" type="tel" inputmode="tel" placeholder="'+mePhoneLabel+' number"><a class="revlink" id="revMe">↩ actually, it\\'s me</a>';
+    document.getElementById('mephone').addEventListener('input',validate);
+    flagPhone('mephone');
+    document.getElementById('revMe').onclick=function(){ ME_CHANGED=false; renderMe(); validate(); };
+  }
+}
 function validate(){
-  var ok = picked.pickup&&picked.dropoff&&val('rname')&&phoneOk(val('rphone'))&&(!val('sphone')||phoneOk(val('sphone')))&&val('item');
+  var ok = picked.pickup&&picked.dropoff&&val('item')&&phoneOk(val('ophone'))&&(!ME_CHANGED||phoneOk(val('mephone')));
   // COD without a saved account needs a verified payout account before we can settle the seller.
   var cb=document.getElementById('codbox');
   if(ok&&cb&&cb.checked&&!BANK_SAVED) ok=ACCT_OK;
@@ -620,17 +654,32 @@ function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,s
 var routeLine=null, mapFee=null;
 // COD payout bank: BANK_SAVED means we already have this vendor's account on file (no re-entry).
 var BANK_SAVED=false, BANKS_LOADED=false, ACCT_OK=false;
+// Searchable bank picker: keep the full list in memory and filter as they type (no endless scrolling).
+var BANK_LIST=[], SEL_BANK_CODE='', SEL_BANK_NAME='';
 function loadBanks(){
   if(BANKS_LOADED) return; BANKS_LOADED=true;
   fetch(api('action=banks')).then(function(r){return r.json();}).then(function(j){
-    var sel=document.getElementById('bankcode'); if(!sel) return;
-    sel.innerHTML='<option value="">Select your bank</option>';
-    (j.banks||[]).forEach(function(b){ var o=document.createElement('option'); o.value=b.code; o.textContent=b.name; sel.appendChild(o); });
+    BANK_LIST=j.banks||[];
   }).catch(function(){ BANKS_LOADED=false; });
 }
+function renderBankSug(q){
+  var box=document.getElementById('banksug'); if(!box) return;
+  var s=(q||'').trim().toLowerCase();
+  var list=BANK_LIST.filter(function(b){ return !s||b.name.toLowerCase().indexOf(s)>-1; }).slice(0,40);
+  box.innerHTML='';
+  if(!list.length){ box.style.display='none'; return; }
+  list.forEach(function(b){
+    var d=document.createElement('div'); d.textContent=b.name;
+    d.style.cssText='padding:11px 14px;font-size:14.5px;cursor:pointer;border-bottom:1px solid #f5e6cf';
+    d.onmousedown=function(e){ e.preventDefault(); SEL_BANK_CODE=b.code; SEL_BANK_NAME=b.name;
+      document.getElementById('bankcode').value=b.name; box.style.display='none'; resolveAcct(); validate(); };
+    box.appendChild(d);
+  });
+  box.style.display='block';
+}
 function resolveAcct(){
-  var acctEl=document.getElementById('acctno'), bankEl=document.getElementById('bankcode'), nm=document.getElementById('acctname');
-  var acct=(acctEl.value||'').replace(/\\D/g,''), code=bankEl.value;
+  var acctEl=document.getElementById('acctno'), nm=document.getElementById('acctname');
+  var acct=(acctEl.value||'').replace(/\\D/g,''), code=SEL_BANK_CODE;
   ACCT_OK=false; nm.style.display='none';
   if(acct.length!==10||!code) return;
   nm.style.display='block'; nm.style.color='#7a5b1a'; nm.textContent='Checking account…';
@@ -676,15 +725,16 @@ if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2
 else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
   Array.prototype.forEach.call(document.querySelectorAll('.clr'),function(b){ b.onclick=function(){ clearLoc(b.getAttribute('data-clr')); }; });
-  ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
-  flagPhone('sphone');flagPhone('rphone');
+  document.getElementById('item').addEventListener('input',validate);
+  document.getElementById('ophone').addEventListener('input',validate);
+  flagPhone('ophone');
+  document.getElementById('modeBtn').onclick=function(){ BOOK_MODE=(BOOK_MODE==='send'?'recv':'send'); ME_CHANGED=false; renderMode(); validate(); };
+  renderMode();
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,label,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.textContent=label; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
   fetch(api('action=prefill')).then(function(r){return r.json();}).then(function(p){
     if(!p) return;
     YOU_NAME=p.name||''; YOU_PHONE=p.phone||'';
-    if(p.name) document.getElementById('sname').value=p.name;
-    if(p.phone) document.getElementById('sphone').value=p.phone;
     if(p.item) document.getElementById('item').value=p.item;
     // Pickup: the chat already quoted this route, so open the map ON it (pin + price), and the customer
     // can drag the pin to fine-tune. Else offer their last pickup as a chip.
@@ -693,15 +743,15 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Drop-off: same — open on the quoted spot, draggable to fine-tune.
     if(p.dropoff){ if(p.dropoff.from_chat){ document.getElementById('din').value=p.dropoff.address; if(p.dropoff.lat) setPin('dropoff',p.dropoff); }
       else if(p.dropoff.lat){ reuse('rdrop','↩ Same drop-off — '+p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); } }
-    if(p.receiver&&p.receiver.name){ if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }
-      else { reuse('rrecv','↩ Same receiver — '+p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
+    // A receiver named in THIS chat → prefill the "other party" phone (send mode = receiver's phone).
+    if(p.receiver&&p.receiver.from_chat&&p.receiver.phone&&BOOK_MODE==='send'){ document.getElementById('ophone').value=p.receiver.phone; }
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
     showClr('dropoff',(document.getElementById('din').value||'').length>0);
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
     if(p.pod_allowed){ document.getElementById('opt-pod').style.display='flex'; }
-    if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
+    COD_ALLOWED=!!p.cod_allowed;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
-    validate(); step();
+    renderMode(); validate(); step();
   }).catch(function(){});
   // COD: live "you'll be credited" = amount − our 2% (max ₦3,000) − the delivery fee.
   function codBreak(){
@@ -731,8 +781,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   });
   document.getElementById('goods').addEventListener('input',codBreak);
   document.getElementById('acctno').addEventListener('input',function(){ resolveAcct(); validate(); });
-  document.getElementById('bankcode').addEventListener('change',function(){ resolveAcct(); validate(); });
-  document.getElementById('bankchange').onclick=function(e){ e.preventDefault(); BANK_SAVED=false; ACCT_OK=false;
+  // Searchable bank field: typing filters the list; a fresh edit clears any previous selection.
+  var bankInp=document.getElementById('bankcode');
+  bankInp.addEventListener('input',function(){ SEL_BANK_CODE=''; SEL_BANK_NAME=''; renderBankSug(bankInp.value); resolveAcct(); validate(); });
+  bankInp.addEventListener('focus',function(){ renderBankSug(bankInp.value); });
+  bankInp.addEventListener('blur',function(){ setTimeout(function(){ var b=document.getElementById('banksug'); if(b)b.style.display='none'; },150); });
+  document.getElementById('bankchange').onclick=function(e){ e.preventDefault(); BANK_SAVED=false; ACCT_OK=false; SEL_BANK_CODE=''; SEL_BANK_NAME=''; bankInp.value='';
     document.getElementById('banksaved').style.display='none'; document.getElementById('bankbox').style.display='block'; loadBanks(); validate(); };
   document.getElementById('go').onclick=function(){
     var codOn=document.getElementById('codbox').checked;
@@ -741,11 +795,17 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(codOn&&!(goodsVal>0)){ alert('Please enter how much we should collect from the buyer.'); return; }
     if(codOn&&mapFee&&(goodsVal-Math.min(3000,Math.round(goodsVal*0.02))-Number(mapFee))<=0){ alert('That amount is too low to cover our fee and the delivery — please enter a higher amount.'); return; }
     var acctNo='',bankCode='',bankName='';
-    if(codOn&&!BANK_SAVED){ acctNo=(document.getElementById('acctno').value||'').replace(/\\D/g,''); var bs=document.getElementById('bankcode'); bankCode=bs.value; bankName=bs.options[bs.selectedIndex]?bs.options[bs.selectedIndex].text:''; }
+    if(codOn&&!BANK_SAVED){ acctNo=(document.getElementById('acctno').value||'').replace(/\\D/g,''); bankCode=SEL_BANK_CODE; bankName=SEL_BANK_NAME; }
+    // Resolve who's on each end from the direction + the "you" override. The "me" side is the WhatsApp
+    // customer (auto), unless they tapped "not you?" and typed a third party. No names are asked.
+    var oPhone=val('ophone'), mePhone=ME_CHANGED?val('mephone'):YOU_PHONE;
+    var sPhone,rPhone,sName,rName;
+    if(BOOK_MODE==='send'){ sPhone=mePhone; sName=ME_CHANGED?'':YOU_NAME; rPhone=oPhone; rName=''; }
+    else { rPhone=mePhone; rName=ME_CHANGED?'':YOU_NAME; sPhone=oPhone; sName=''; }
     var b=document.getElementById('go'); b.disabled=true; b.textContent='Booking…';
     fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       session:SESSION,pickup:picked.pickup,dropoff:picked.dropoff,
-      sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),item:val('item'),delivery_instruction:val('dinstr'),
+      sender_name:sName,sender_phone:sPhone,receiver_name:rName,receiver_phone:rPhone,item:val('item'),delivery_instruction:val('dinstr'),
       pay_method:payVal,cod:codOn,goods_value:goodsVal,account_number:acctNo,bank_code:bankCode,bank_name:bankName
     })})
      .then(r=>r.json()).then(j=>{
