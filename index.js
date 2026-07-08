@@ -1079,28 +1079,40 @@ const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Send a waybill — Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
-${FONT_LINK}<style>${BASE_CSS}</style></head><body><div class="wrap" id="app">
-<div class="hero"><h1>🚚 Send a waybill</h1><p>Flat price for items under 5kg. We pick up from your door 🛵 — your receiver collects at the destination park.</p></div>
+${FONT_LINK}<style>${BASE_CSS}
+.parkinfo{display:none;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:var(--r-lg);padding:14px 16px;margin:14px 0 2px;font-size:13px;color:#7a4d10;line-height:1.55}
+.parkinfo b{color:#5c3a0c;font-weight:700}
+.orsplit{display:flex;align-items:center;gap:12px;color:var(--ink-3);font-size:11px;font-weight:700;margin:16px 2px 12px;text-transform:uppercase;letter-spacing:.08em}
+.orsplit::before,.orsplit::after{content:"";flex:1;height:1px;background:var(--line)}</style></head><body><div class="wrap" id="app">
+<div class="hero"><div class="glow">🚚</div>
+<h1>Send a waybill</h1>
+<p>Nationwide via our trusted parks — GUO · GIG · Rivers Joy. We pick up from your door 🛵, your receiver collects at the destination park.</p></div>
 <div class="body">
-<div class="lbl">Where is it going?</div>
+<div class="sec" style="margin-top:6px">Where is it going?</div>
 <div class="states" id="states">
 <div class="st" data-s="LAGOS"><b>Lagos</b><span>₦10,000</span></div>
 <div class="st" data-s="ABUJA"><b>Abuja</b><span>₦10,000</span></div>
 <div class="st" data-s="ABA"><b>Aba</b><span>₦5,000</span></div>
 <div class="st" data-s="OWERRI"><b>Owerri</b><span>₦6,000</span></div>
 </div>
-<div class="lbl">Weight (kg)</div>
-<div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="e.g. 2 (flat up to 5kg)"></div>
+<div class="orsplit">or any other state</div>
+<div class="fld"><select id="otherstate">
+<option value="">Choose another state — via partner park…</option>
+<option value="ADAMAWA">Adamawa</option><option value="AKWA IBOM">Akwa Ibom</option><option value="ANAMBRA">Anambra</option><option value="BAUCHI">Bauchi</option><option value="BAYELSA">Bayelsa</option><option value="BENUE">Benue</option><option value="BORNO">Borno</option><option value="CROSS RIVER">Cross River</option><option value="DELTA">Delta</option><option value="EBONYI">Ebonyi</option><option value="EDO">Edo</option><option value="EKITI">Ekiti</option><option value="ENUGU">Enugu</option><option value="GOMBE">Gombe</option><option value="JIGAWA">Jigawa</option><option value="KADUNA">Kaduna</option><option value="KANO">Kano</option><option value="KATSINA">Katsina</option><option value="KEBBI">Kebbi</option><option value="KOGI">Kogi</option><option value="KWARA">Kwara</option><option value="NASARAWA">Nasarawa</option><option value="NIGER">Niger</option><option value="OGUN">Ogun</option><option value="ONDO">Ondo</option><option value="OSUN">Osun</option><option value="OYO">Oyo</option><option value="PLATEAU">Plateau</option><option value="SOKOTO">Sokoto</option><option value="TARABA">Taraba</option><option value="YOBE">Yobe</option><option value="ZAMFARA">Zamfara</option>
+</select></div>
+<div class="lbl">Weight (kg) <span class="req">*</span></div>
+<div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="e.g. 2"></div>
 <div class="feebig" id="fee"></div>
+<div class="parkinfo" id="parkinfo"></div>
 <div class="err" id="err"></div>
-<div class="lbl">Pickup — where our rider collects <span class="req">*</span></div>
+<div class="sec">Pickup — where our rider collects <span class="req">*</span></div>
 <div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">📍</button><div class="sugbox" id="psug" style="display:none"></div></div>
-<div class="lbl">Sender</div>
+<div class="sec">Sender</div>
 <div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div></div>
-<div class="lbl">Receiver <span style="font-weight:500;color:#9aa0a6">— collects at the park</span></div>
-<div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone"></div></div>
+<div class="sec">Receiver <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-3)">— collects at the park</span></div>
+<div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone *"></div></div>
 <div class="fld"><input id="item" placeholder="What are you sending?"></div>
-<div class="fld"><input id="dinstr" placeholder="Delivery instructions — optional" maxlength="200"></div>
+<div class="fld"><input id="dinstr" placeholder="Note for our rider — optional" maxlength="200"></div>
 <button id="go" disabled>Confirm &amp; book</button>
 <p class="muted">Powered by Lasalu Drop Logistics</p>
 </div></div>
@@ -1110,11 +1122,15 @@ var VALID=SESSION?"1":"0";
 // A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
 (function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
-var lastPrice=null, state="", t;
+var lastPrice=null, state="", isPark=false, t;
+var FLAT={LAGOS:1,ABUJA:1,ABA:1,OWERRI:1};
+var NAMES={LAGOS:'Lagos',ABUJA:'Abuja',ABA:'Aba',OWERRI:'Owerri','AKWA IBOM':'Akwa Ibom','CROSS RIVER':'Cross River'};
 function el(id){return document.getElementById(id);}
 function val(id){return (el(id).value||'').trim();}
 function useLoc(){var b=el('ploc');if(!b)return;b.onclick=function(){if(!navigator.geolocation){alert('Location is not available here — please type your address.');return;}var prev=b.textContent;b.textContent='…';b.disabled=true;navigator.geolocation.getCurrentPosition(function(pos){el('paddr').value='Getting address…';fetch(API+'?action=reverse&session='+encodeURIComponent(SESSION)+'&lat='+pos.coords.latitude+'&lng='+pos.coords.longitude).then(function(r){return r.json();}).then(function(j){el('paddr').value=(j&&j.address)?j.address:'My current location';b.textContent=prev;b.disabled=false;validate();}).catch(function(){el('paddr').value='My current location';b.textContent=prev;b.disabled=false;validate();});},function(){b.textContent=prev;b.disabled=false;alert('Couldn\\'t get your location — please allow access or type your address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});};}
-function nice(s){return s?s.charAt(0)+s.slice(1).toLowerCase():s;}
+function nameOf(s){return NAMES[s]||(s?s.charAt(0)+s.slice(1).toLowerCase():s);}
+function parkHTML(dest,over5){return over5?'📦 For a heavier item (over 5kg), our team works out the best price and confirms it in your chat 🙏 Your receiver collects at the <b>'+dest+' park</b> — <b>no home delivery</b>.':'🚚 We waybill to <b>'+dest+'</b> through our partner parks. Our rider takes your item to the park and <b>confirms we can waybill it there</b>, then sends you the <b>exact fee</b> (worked out by weight). Your receiver collects it at the <b>'+dest+' park</b> — <b>no home delivery</b>.';}
+function selectState(s,fromCard){state=s;lastPrice=null;isPark=false;Array.prototype.forEach.call(document.querySelectorAll('.st'),function(x){x.className='st'+(x.getAttribute('data-s')===s?' on':'');});if(fromCard)el('otherstate').value='';recalc();}
 function wireAuto(inId,sugId){
   var inp=el(inId),sug=el(sugId),tt;
   inp.addEventListener('input',function(){
@@ -1133,34 +1149,38 @@ function wireAuto(inId,sugId){
   inp.addEventListener('blur',function(){setTimeout(function(){sug.style.display='none';},200);});
 }
 function recalc(){
-  lastPrice=null;el('fee').style.display='none';el('err').textContent='';
-  var w=parseFloat(el('weight').value);
+  lastPrice=null;isPark=false;el('fee').style.display='none';el('parkinfo').style.display='none';el('err').textContent='';
   if(!state){validate();return;}
+  var w=parseFloat(el('weight').value);
+  if(!FLAT[state]){ // any other state → via a partner park (no instant price)
+    isPark=true;el('parkinfo').style.display='block';el('parkinfo').innerHTML=parkHTML(nameOf(state),false);validate();return;
+  }
   if(isNaN(w)||w<=0){validate();return;}
-  if(w>5){el('err').textContent='Items over 5kg — our team will confirm a custom price. Reach us on WhatsApp.';validate();return;}
   el('fee').style.display='flex';el('fee').innerHTML='<div class="l">Calculating…</div>';
   fetch(API+'?action=price&session='+encodeURIComponent(SESSION)+'&mode=waybill&destination='+encodeURIComponent(state)+'&weight='+w).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.price){lastPrice=j.price;el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Waybill to '+nice(state)+'</div><div class="sub">up to 5kg • receiver collects at the park</div></div><div class="amt">₦'+Number(j.price).toLocaleString()+'</div>';}
-    else{el('fee').style.display='none';if(j&&j.error==='over_5kg')el('err').textContent='Items over 5kg — our team will confirm a custom price.';}
+    if(j&&j.price){lastPrice=j.price;el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Waybill to '+nameOf(state)+'</div><div class="sub">up to 5kg • receiver collects at the '+nameOf(state)+' park</div></div><div class="amt">₦'+Number(j.price).toLocaleString()+'</div>';}
+    else if(j&&j.park){isPark=true;el('fee').style.display='none';el('parkinfo').style.display='block';el('parkinfo').innerHTML=parkHTML(nameOf(state),!!j.over5);}
+    else{el('fee').style.display='none';}
     validate();
   }).catch(function(){el('fee').style.display='none';validate();});
 }
 function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
 function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',u);}
-function validate(){var ok=lastPrice&&val('paddr')&&val('rname')&&phoneOk(val('rphone'))&&(!val('sphone')||phoneOk(val('sphone')))&&val('item');el('go').disabled=!ok;}
+function validate(){var w=parseFloat(el('weight').value);var ok=state&&!isNaN(w)&&w>0&&(isPark||lastPrice)&&val('paddr')&&val('rname')&&phoneOk(val('rphone'))&&(!val('sphone')||phoneOk(val('sphone')))&&val('item');el('go').disabled=!ok;}
 function book(){
   var b=el('go');b.disabled=true;b.textContent='Booking…';
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     session:SESSION,mode:'waybill',destination:state,weight:parseFloat(el('weight').value)||1,
     sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:'',item:val('item'),delivery_instruction:val('dinstr')
   })}).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';}
+    if(j&&j.ok){el('app').innerHTML='<div class="body"><div class="done"><h2>✅ All set!</h2><p class="muted">'+(j.park?'Your waybill request is in — our team confirms the park &amp; exact price in your WhatsApp chat.':'Your order &amp; price are waiting in your WhatsApp chat.')+'</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div></div>';}
     else{b.disabled=false;b.textContent='Confirm & book';el('err').textContent=(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
   }).catch(function(){b.disabled=false;b.textContent='Confirm & book';alert('Network hiccup — try again.');});
 }
-if(VALID!=='1'){el('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for a quote again.</p></div>';}
+if(VALID!=='1'){el('app').innerHTML='<div class="body"><div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for a waybill again.</p></div></div>';}
 else{
-  Array.prototype.forEach.call(document.querySelectorAll('.st'),function(b){b.onclick=function(){state=b.getAttribute('data-s');Array.prototype.forEach.call(document.querySelectorAll('.st'),function(x){x.className='st';});b.className='st on';recalc();};});
+  Array.prototype.forEach.call(document.querySelectorAll('.st'),function(b){b.onclick=function(){selectState(b.getAttribute('data-s'),true);};});
+  el('otherstate').addEventListener('change',function(){if(this.value){selectState(this.value,false);}else{state='';recalc();}});
   el('weight').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,300);});
   ['sname','sphone','paddr','rname','rphone','item'].forEach(function(id){el(id).addEventListener('input',validate);});
   flagPhone('sphone');flagPhone('rphone');
