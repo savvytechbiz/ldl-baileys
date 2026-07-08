@@ -829,6 +829,90 @@ app.get('/v/:t', (req, res) => res.redirect(302, `/vendor?session=${encodeURICom
 // Pricing is recomputed server-side by the Supabase quotePicker function (intlPricing).
 // Shared premium styling for the no-map booking pages (international & waybill) — matches the
 // clean white + green look of the local map page.
+// ── Shared premium design system (the map page's tokens/components, for the no-map booking pages) ──
+const FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">`;
+const BASE_CSS = `:root{--plum:#4F074C;--plum-d:#3A0537;--pink:#E23A7C;--pink-soft:#FCEBF2;--lilac:#F6EFF5;--ink:#241a29;--ink-2:#6a626f;--ink-3:#a8a0ae;--line:#ece7ef;--line-2:#ded6e2;--surface:#fff;--bg:#f7f4f8;--amber:#b45309;--amber-line:#ffe0a6;--amber-bg:#fff8ec;--r:14px;--r-lg:18px;--r-xl:26px;--ease:cubic-bezier(.23,1,.32,1);--sh-1:0 1px 2px rgba(58,5,55,.05),0 3px 10px rgba(58,5,55,.05);--sh-pop:0 18px 44px rgba(58,5,55,.16)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+input,button,textarea,select{font-family:inherit}
+.wrap{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh;min-height:100dvh;position:relative}
+.hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#5b0a57,var(--plum-d));color:#fff;padding:26px 22px 44px}
+.hero::after{content:"";position:absolute;right:-60px;top:-70px;width:220px;height:220px;border-radius:50%;background:radial-gradient(closest-side,rgba(226,58,124,.55),transparent);pointer-events:none}
+.hero .glow{position:absolute;right:-18px;top:-14px;font-size:148px;opacity:.10;transform:rotate(-12deg);pointer-events:none;line-height:1}
+.hero h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em;position:relative}
+.hero p{margin:9px 0 0;font-size:13.5px;color:#ecd6e7;line-height:1.55;max-width:330px;position:relative}
+.chips{display:flex;gap:7px;margin-top:15px;flex-wrap:wrap;position:relative}
+.chip{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.17);color:#f4e6f0;font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:20px}
+.sheet,.body{position:relative;z-index:2;background:var(--surface);border-radius:var(--r-xl) var(--r-xl) 0 0;margin-top:-24px;padding:14px 18px 26px;box-shadow:0 -10px 30px rgba(58,5,55,.07);animation:rise .45s var(--ease)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.sec{font-size:11.5px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.07em;margin:22px 2px 10px}
+.sec:first-child{margin-top:6px}
+.lbl{font-size:12.5px;color:var(--ink-2);font-weight:600;margin:14px 2px 7px}
+.req{color:var(--pink);font-weight:700}
+input:not([type=radio]):not([type=checkbox]),select,textarea{width:100%;padding:14px 15px;border:1px solid var(--line);background:#fff;border-radius:var(--r);font-size:16px;color:var(--ink);outline:none;-webkit-appearance:none;appearance:none;transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
+input::placeholder,textarea::placeholder{color:var(--ink-3)}
+input:not([type=radio]):not([type=checkbox]):focus,select:focus,textarea:focus{border-color:var(--plum);box-shadow:0 0 0 3px rgba(79,7,76,.10)}
+select{padding-right:40px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%236a626f' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 15px center}
+textarea{min-height:66px;resize:none;line-height:1.45}
+.fld{position:relative;margin-bottom:11px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.mt{margin-top:9px}
+.sug,.sugbox{position:absolute;z-index:2000;left:0;right:0;top:100%;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);margin-top:5px;box-shadow:var(--sh-pop);overflow:hidden;max-height:232px;overflow-y:auto}
+.sug div,.sugbox div{padding:13px 15px;font-size:15px;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer}
+.sug div:last-child,.sugbox div:last-child{border-bottom:0}
+.sug div:active,.sugbox div:active{background:var(--lilac)}
+.gpsbtn,.locp{position:absolute;border:0;background:transparent;color:var(--plum);cursor:pointer;font-size:19px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:transform .12s var(--ease),background .15s var(--ease)}
+.gpsbtn{top:0;right:0;height:50px;width:46px}
+.locp{right:5px;top:8px;width:36px;height:36px;line-height:1}
+.gpsbtn:active,.locp:active{transform:scale(.9);background:rgba(79,7,76,.08)}
+.gpsbtn:disabled{opacity:.5}
+.locin{padding-right:44px}
+.pills{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pill{border:1.5px solid var(--line);border-radius:var(--r-lg);padding:13px 14px;cursor:pointer;background:#fff;transition:border-color .15s var(--ease),background .15s var(--ease),transform .12s var(--ease)}
+.pill:active{transform:scale(.98)}
+.pill.on{border-color:var(--pink);background:var(--pink-soft)}
+.pill .pt{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;color:var(--ink)}
+.pill .pd{font-size:11.5px;color:var(--ink-2);margin-top:4px;line-height:1.3}
+.pill.on .pt{color:#B02063}
+.states{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.st{padding:14px;border:1.5px solid var(--line);border-radius:var(--r-lg);text-align:center;cursor:pointer;background:#fff;transition:border-color .15s var(--ease),background .15s var(--ease),transform .12s var(--ease)}
+.st:active{transform:scale(.98)}
+.st b{display:block;font-size:15px;font-weight:700;color:var(--ink)}
+.st span{font-size:12.5px;color:var(--ink-2)}
+.st.on{border-color:var(--pink);background:var(--pink-soft)}.st.on b,.st.on span{color:#B02063}
+.feebig,.estcard{display:none;align-items:center;justify-content:space-between;gap:12px;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;margin:16px 0 2px}
+.feebig .l,.estcard .l,.feebig .lbl{font-size:13px;color:var(--ink-2);font-weight:600}
+.feebig .sub,.estcard .sub{font-size:12px;color:var(--ink-2);margin-top:3px;font-weight:500;line-height:1.3}
+.feebig .amt,.estcard .amt{font-size:23px;font-weight:800;color:var(--plum);letter-spacing:-.02em;white-space:nowrap}
+.ord{border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 13px;margin:12px 0;position:relative;background:#fcfafd}
+.ord .rm{position:absolute;top:8px;right:9px;color:#c0392b;background:none;border:0;font-size:22px;cursor:pointer;line-height:1}
+.ord .cap{font-size:11px;font-weight:800;color:var(--plum);letter-spacing:.09em;text-transform:uppercase;margin:0 0 9px}
+.same{background:none;border:0;color:var(--pink);font-size:12.5px;font-weight:700;cursor:pointer;padding:6px 2px 0}
+.add{width:100%;margin:8px 0 2px;padding:14px;border:1.5px dashed var(--line-2);background:#fff;color:var(--plum);border-radius:var(--r);font-size:14.5px;font-weight:700;cursor:pointer;transition:background .15s var(--ease)}
+.add:active{background:var(--lilac)}
+.payopt{display:flex;align-items:center;gap:11px;padding:14px;border:1px solid var(--line);border-radius:var(--r);margin-bottom:9px;font-size:14.5px;font-weight:500;color:var(--ink);cursor:pointer;transition:border-color .15s var(--ease),background .15s var(--ease)}
+.payopt input{width:19px;height:19px;accent-color:var(--plum);flex:none}
+.payopt:has(input:checked){border-color:var(--plum);background:var(--lilac)}
+.review{border:1px solid #f0d9e8;background:var(--pink-soft);border-radius:var(--r-lg);padding:15px;margin-top:14px}
+.review .rr{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;color:var(--plum-d)}
+.review .tot{display:flex;justify-content:space-between;font-size:17px;font-weight:800;color:var(--plum);border-top:1px solid #f0d9e8;margin-top:8px;padding-top:10px}
+#go,.go{width:100%;margin-top:14px;padding:16px;border:0;border-radius:var(--r-lg);background:var(--plum);color:#fff;font-size:16.5px;font-weight:700;letter-spacing:-.01em;-webkit-appearance:none;cursor:pointer;box-shadow:0 6px 18px rgba(79,7,76,.26);transition:transform .14s var(--ease),background .2s var(--ease)}
+#go:active:not(:disabled),.go:active:not(:disabled){transform:scale(.985)}
+#go:disabled,.go:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor:default}
+.bar{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;background:#fff;border-top:1px solid var(--line);padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:14px;box-shadow:0 -8px 26px rgba(58,5,55,.09);z-index:1500}
+.bar .bamt .s{font-size:10.5px;color:var(--ink-2);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.bar .bamt .v{font-size:18px;font-weight:800;letter-spacing:-.01em;color:var(--plum)}
+.bar #go{flex:1;margin-top:0;box-shadow:none;padding:15px}
+.err{color:#c0392b;font-size:13px;min-height:15px;margin-top:6px}
+.muted{color:var(--ink-2);font-size:12.5px;text-align:center;margin:20px 0 2px}
+.done{text-align:center;padding:56px 24px}.done h2{font-size:24px;color:var(--plum-d);font-weight:800}
+.wabtn{display:inline-block;margin-top:20px;padding:16px 30px;background:var(--plum);color:#fff;border-radius:var(--r-lg);text-decoration:none;font-weight:700;font-size:16.5px;box-shadow:0 6px 18px rgba(79,7,76,.26)}
+.reveal{animation:fade .35s var(--ease)}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}`;
 const QUOTE_CSS = `*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
 body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
 .wrap{max-width:480px;margin:0 auto;min-height:100vh}
@@ -866,51 +950,9 @@ button:disabled{background:#F0D9E8}
 const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Ship internationally — Lasalu Drop</title>
-<meta name="theme-color" content="#0e1726">
-<style>
-*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:#eef1f4;color:#0e1726;-webkit-font-smoothing:antialiased}
-.wrap{max-width:480px;margin:0 auto;min-height:100vh;background:#eef1f4;position:relative;padding-bottom:94px}
-.hero{background:#0e1726;color:#fff;padding:26px 22px 52px;position:relative;overflow:hidden}
-.hero .glow{position:absolute;right:-26px;top:-18px;font-size:150px;opacity:.06;transform:rotate(-12deg);pointer-events:none}
-.hero h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;position:relative}
-.hero p{margin:9px 0 0;font-size:13.5px;color:#aeb6c2;line-height:1.55;max-width:310px;position:relative}
-.chips{display:flex;gap:7px;margin-top:16px;flex-wrap:wrap;position:relative}
-.chip{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);color:#e3e8ee;font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:20px}
-.sheet{background:#fff;border-radius:22px 22px 0 0;margin-top:-30px;position:relative;padding:6px 18px 22px;box-shadow:0 -8px 24px rgba(14,23,38,.05)}
-.sec{font-size:11.5px;color:#9098a4;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin:22px 2px 11px}
-.sec:first-child{margin-top:16px}
-.pills{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.pill{border:1.5px solid #e6e9ed;border-radius:15px;padding:13px 14px;cursor:pointer;transition:border-color .15s,background .15s;background:#fff}
-.pill.on{border-color:#E23A7C;background:#FCEBF2}
-.pill .pt{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;color:#0e1726}
-.pill .pd{font-size:11.5px;color:#7b828d;margin-top:4px;line-height:1.3}
-.pill.on .pt{color:#B02063}
-.lbl{font-size:12.5px;color:#6b7280;font-weight:600;margin:14px 2px 6px}
-.fld{position:relative;margin-bottom:11px}
-.fld input,.fld select,.fld textarea{width:100%;padding:14px 15px;border:1px solid #e6e9ed;border-radius:13px;font-size:16px;outline:none;background:#fff;-webkit-appearance:none;appearance:none;font-family:inherit}
-.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:#4F074C;box-shadow:0 0 0 3px rgba(37,211,102,.12)}
-.fld select{padding-right:40px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 15px center}
-.fld textarea{min-height:64px;resize:none;line-height:1.4}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.req{color:#4F074C}
-.sugbox{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:13px;margin-top:4px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden}
-.sugbox div{padding:14px;font-size:15px;border-bottom:1px solid #f2f4f6;cursor:pointer}.sugbox div:active{background:#FBF3F9}
-.gpsbtn{position:absolute;top:0;right:0;height:50px;width:46px;border:0;background:transparent;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center}.gpsbtn:disabled{opacity:.5}
-.estcard{display:none;align-items:center;justify-content:space-between;gap:12px;background:#0e1726;color:#fff;border-radius:16px;padding:15px 18px;margin:18px 0 4px}
-.estcard .l{font-size:12.5px;color:#aab4c2;font-weight:600}
-.estcard .sub{font-size:11px;color:#7e8a9a;margin-top:3px;line-height:1.3}
-.estcard .amt{font-size:23px;font-weight:800;letter-spacing:-.01em;white-space:nowrap}
-.err{color:#c0392b;font-size:13px;min-height:15px;margin-top:6px}
-.muted{color:#aab0b8;font-size:12px;text-align:center;margin:20px 0 2px}
-.bar{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;background:#fff;border-top:1px solid #eef0f3;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:14px;box-shadow:0 -6px 22px rgba(14,23,38,.07)}
-.bar .bamt .s{font-size:10.5px;color:#9098a4;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
-.bar .bamt .v{font-size:18px;font-weight:800;letter-spacing:-.01em}
-.bar button{flex:1;padding:15px;border:0;border-radius:14px;background:#4F074C;color:#fff;font-size:16px;font-weight:800;-webkit-appearance:none}
-.bar button:disabled{background:#F0D9E8}
-.done{text-align:center;padding:60px 24px}.done h2{font-size:23px;color:#3A0537}
-.wabtn{display:inline-block;margin-top:18px;padding:16px 28px;background:#4F074C;color:#fff;border-radius:14px;text-decoration:none;font-weight:700;font-size:17px}
-</style></head><body><div class="wrap" id="app">
+<meta name="theme-color" content="#4F074C">
+${FONT_LINK}<style>${BASE_CSS}
+.wrap{padding-bottom:96px}</style></head><body><div class="wrap" id="app">
 <div class="hero"><div class="glow">✈️</div>
 <h1>Ship internationally 🌍</h1>
 <p>Door pickup in Port Harcourt, delivered worldwide. You only pay after our rider weighs it.</p></div>
@@ -1037,7 +1079,7 @@ const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Send a waybill — Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
-<style>${QUOTE_CSS}</style></head><body><div class="wrap" id="app">
+${FONT_LINK}<style>${BASE_CSS}</style></head><body><div class="wrap" id="app">
 <div class="hero"><h1>🚚 Send a waybill</h1><p>Flat price for items under 5kg. We pick up from your door 🛵 — your receiver collects at the destination park.</p></div>
 <div class="body">
 <div class="lbl">Where is it going?</div>
@@ -1132,30 +1174,7 @@ app.get('/waybill', (req, res) => { res.type('html').send(WAYBILL_PAGE); });
 const VENDOR_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Send orders — Lasalu Drop</title>
-<style>
-*{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
-body{margin:0;background:#f4f6f8;color:#0e1726}
-.wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;min-height:100dvh}
-.hero{background:#0e1726;color:#fff;padding:22px 20px 16px}
-.hero h1{margin:0;font-size:22px;font-weight:700}
-.hero p{margin:7px 0 0;font-size:13px;color:#aeb6c2;line-height:1.5}
-.body{padding:16px}
-.lbl{font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 6px}
-input{width:100%;padding:12px 13px;border:1px solid #e6e9ed;border-radius:11px;font-size:15px;outline:none}
-input:focus{border-color:#4F074C}
-.ord{border:1px solid #e6e9ed;border-radius:14px;padding:12px;margin:12px 0;position:relative;background:#fbfcfd}
-.ord .rm{position:absolute;top:6px;right:8px;color:#c0392b;background:none;border:0;font-size:20px;cursor:pointer;line-height:1}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.mt{margin-top:8px}
-.sug{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:12px;margin-top:2px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden;max-height:200px;overflow-y:auto}
-.sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f2f4f6;cursor:pointer}
-.add{width:100%;margin:6px 0 2px;padding:13px;border:1px dashed #c7ccd2;background:#fff;color:#0e1726;border-radius:12px;font-size:14.5px;font-weight:600;cursor:pointer}
-.go{width:100%;margin-top:14px;padding:15px;border:0;border-radius:13px;background:#4F074C;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
-.go:disabled{background:#F0D9E8}
-.done{text-align:center;padding:48px 22px}.done h2{font-size:22px;color:#3A0537;margin:0}
-.wabtn{display:inline-block;margin-top:18px;padding:15px 26px;background:#4F074C;color:#fff;border-radius:14px;text-decoration:none;font-weight:700}
-.muted{color:#9aa0a6;font-size:13px}
-</style></head><body>
+${FONT_LINK}<style>${BASE_CSS}</style></head><body>
 <div class="wrap" id="app">
   <div class="hero"><h1>Send your orders 🛵</h1><p>Add each customer's order — we pick up from your shop, deliver, and collect their payment. You get paid out daily.</p></div>
   <div class="body">
@@ -1217,40 +1236,7 @@ app.get('/vendor', (req, res) => { res.type('html').send(VENDOR_PAGE); });
 const BULK_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Multiple deliveries — Lasalu Drop</title>
-<style>
-*{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
-body{margin:0;background:#f4f6f8;color:#0e1726}
-.wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;min-height:100dvh}
-.hero{background:#4F074C;color:#fff;padding:22px 20px 16px}
-.hero h1{margin:0;font-size:22px;font-weight:700}
-.hero p{margin:7px 0 0;font-size:13px;color:#f3c9e7;line-height:1.5}
-.body{padding:16px}
-.lbl{font-size:12.5px;color:#6b7280;font-weight:700;margin:12px 2px 6px}
-input{width:100%;padding:12px 13px;border:1px solid #e6e9ed;border-radius:11px;font-size:15px;outline:none}
-input:focus{border-color:#4F074C}
-.ord{border:1px solid #e6e9ed;border-radius:14px;padding:12px;margin:12px 0;position:relative;background:#fbfcfd}
-.ord .rm{position:absolute;top:6px;right:8px;color:#c0392b;background:none;border:0;font-size:20px;cursor:pointer;line-height:1}
-.ord .cap{font-size:12px;font-weight:800;color:#4F074C;letter-spacing:.5px;margin:0 0 8px}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.mt{margin-top:8px}
-.same{background:none;border:0;color:#E23A7C;font-size:12.5px;font-weight:700;cursor:pointer;padding:5px 2px 0}
-.locin{padding-right:42px}
-.locp{position:absolute;right:5px;top:9px;width:34px;height:34px;border:0;background:transparent;font-size:19px;color:#4F074C;cursor:pointer;line-height:1}
-.sug{position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #edeff2;border-radius:12px;margin-top:2px;box-shadow:0 12px 30px rgba(14,23,38,.12);overflow:hidden;max-height:200px;overflow-y:auto}
-.sug div{padding:11px 12px;font-size:14px;border-bottom:1px solid #f2f4f6;cursor:pointer}
-.add{width:100%;margin:6px 0 2px;padding:13px;border:1px dashed #c7ccd2;background:#fff;color:#0e1726;border-radius:12px;font-size:14.5px;font-weight:600;cursor:pointer}
-.payopt{display:flex;align-items:center;gap:10px;border:1px solid #e6e9ed;border-radius:12px;padding:12px 13px;margin:8px 0;font-size:14.5px;cursor:pointer}
-.payopt input{width:18px;height:18px;accent-color:#4F074C}
-.go{width:100%;margin-top:14px;padding:15px;border:0;border-radius:13px;background:#4F074C;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
-.go:disabled{background:#F0D9E8}
-.review{border:1px solid #F0D9E8;background:#FBF3F9;border-radius:14px;padding:14px;margin-top:14px}
-.review .rr{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;color:#3A0537}
-.review .tot{display:flex;justify-content:space-between;font-size:17px;font-weight:800;color:#4F074C;border-top:1px solid #F0D9E8;margin-top:8px;padding-top:10px}
-.done{text-align:center;padding:48px 22px}.done h2{font-size:22px;color:#3A0537;margin:0}
-.wabtn{display:inline-block;margin-top:18px;padding:15px 26px;background:#4F074C;color:#fff;border-radius:14px;text-decoration:none;font-weight:700}
-.muted{color:#9aa0a6;font-size:13px}
-.err{color:#c0392b;font-size:13px;margin-top:8px}
-</style></head><body>
+${FONT_LINK}<style>${BASE_CSS}</style></head><body>
 <div class="wrap" id="app">
   <div class="hero"><h1>Multiple deliveries 🛵</h1><p>Add each delivery — pickup, drop-off, who's receiving and what you're sending. We price them all and send a rider to each.</p></div>
   <div class="body">
@@ -1449,7 +1435,7 @@ app.post('/typing', async (req, res) => {
     if (connectionStatus !== 'connected' || !sock) {
       return res.status(503).json({ error: 'WhatsApp not connected' });
     }
-    const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
+    const jid = toJid(phone);
     // WhatsApp only shows "typing…" if we subscribe to the contact's presence and
     // appear online first — otherwise the composing update is silently dropped.
     try { await sock.presenceSubscribe(jid); } catch {}
@@ -1470,6 +1456,19 @@ app.post('/typing', async (req, res) => {
 // A booking link gets a clean tappable PREVIEW CARD (title + description) above the message. The URL
 // STAYS in the text — WhatsApp only renders the card when the URL is present in the body (hiding it
 // makes the card vanish). So: card on top (nice), the link still there and tappable (safe).
+// Normalise any phone (typed local "0803…", "+234…", "234…", with spaces/dashes) into a WhatsApp JID.
+// WhatsApp needs the international number with NO leading 0 and NO "+". Already-formed JIDs (@lid /
+// @s.whatsapp.net) pass through untouched. Without this, sends to typed buyer/rider numbers silently fail.
+function toJid(phone) {
+  var p = String(phone == null ? '' : phone).trim();
+  if (!p) return '';
+  if (p.includes('@')) return p;
+  var d = p.replace(/\D/g, '');
+  if (d.length === 11 && d.charAt(0) === '0') d = '234' + d.slice(1);
+  else if (d.length === 10) d = '234' + d;
+  else if (d.length === 14 && d.slice(0, 4) === '2340') d = '234' + d.slice(4);
+  return d + '@s.whatsapp.net';
+}
 function bookingPreview(text) {
   // Matches both the long form (/map?session=…) and the short form (/m/…, /q/…, /w/…, /v/…, /b/…).
   const m = String(text || '').match(/https?:\/\/[^\s]+\/(map|waybill|quote|vendor|bulk|m|q|w|v|b)(?:\/|\?session=)[^\s]*/i);
@@ -1492,7 +1491,7 @@ app.post('/send', async (req, res) => {
     if (connectionStatus !== 'connected' || !sock) {
       return res.status(503).json({ error: 'WhatsApp not connected' });
     }
-    const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
+    const jid = toJid(phone);
     // Booking link → attach the branded preview card AND declutter the text: the card is the
     // call-to-action, so drop the redundant "👉 just tap here 👇" scaffolding + stray arrows — but
     // ALWAYS keep the URL (the card needs it and the link must stay tappable; safety fallback below).
@@ -1539,7 +1538,7 @@ app.post('/send-list', async (req, res) => {
     if (connectionStatus !== 'connected' || !sock) {
       return res.status(503).json({ error: 'WhatsApp not connected' });
     }
-    const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
+    const jid = toJid(phone);
     await sock.sendMessage(jid, {
       listMessage: {
         title: title || 'Select an option',
