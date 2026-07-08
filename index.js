@@ -395,6 +395,9 @@ body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
 .leaflet-container{z-index:1}
 .etabadge{position:absolute;top:14px;right:14px;z-index:1000;background:#fff;border-radius:14px;padding:9px 13px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:14px;font-weight:700;color:#0e1726;display:flex;align-items:center;gap:6px}
 .etabadge .d{color:#6b7280;font-weight:600;font-size:12.5px}
+.pricetop{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:1000;background:#4F074C;color:#fff;border-radius:16px;padding:8px 18px;box-shadow:0 4px 16px rgba(14,23,38,.28);white-space:nowrap;align-items:baseline;gap:7px}
+.pricetop .cap{font-size:11px;font-weight:600;color:#e8c7e4;text-transform:uppercase;letter-spacing:.05em}
+.pricetop .amt{font-size:20px;font-weight:800;letter-spacing:-.01em}
 .riderchip{position:absolute;top:14px;left:14px;z-index:1000;background:#fff;border-radius:14px;padding:8px 12px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:13px;font-weight:700;color:#3A0537;display:none;align-items:center;gap:6px}
 .sheet{position:relative;z-index:2;flex:0 0 auto;margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -10px 30px rgba(14,23,38,.07);padding:16px 16px 18px}
 h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
@@ -444,7 +447,7 @@ button:disabled{background:#F0D9E8}
 .reveal{animation:fade .35s ease}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 </style></head><body><div class="wrap" id="app">
-<div class="maphero"><div id="map"></div><div id="riderchip" class="riderchip"></div><div id="eta" class="etabadge" style="display:none"></div></div>
+<div class="maphero"><div id="map"></div><div id="riderchip" class="riderchip"></div><div id="pricetop" class="pricetop" style="display:none"></div><div id="eta" class="etabadge" style="display:none"></div></div>
 <div class="sheet">
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
@@ -460,7 +463,6 @@ button:disabled{background:#F0D9E8}
 <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
 <div class="lbl2">Receiver <span class="hint">— who we deliver to</span></div>
 <div class="row2"><input id="rname" placeholder="Name (optional)"><input id="rphone" type="tel" inputmode="tel" placeholder="Phone"></div>
-<div class="hint" style="margin:7px 2px 0">💡 We already have your number — leave your own side blank and just add the other person's phone.</div>
 <div id="codrphint" class="hint" style="display:none;color:#b45309;margin:5px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
 <div class="reuse" id="rrecv"></div>
 <input id="item" class="f1" placeholder="What are you sending? (e.g. food, documents)">
@@ -660,7 +662,9 @@ function resolveAcct(){
 }
 function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#E23A7C',weight:5,opacity:.85,lineJoin:'round'}).addTo(map); map.fitBounds(routeLine.getBounds(),{padding:[50,50],maxZoom:15}); }catch(e){} }
 function quote(){
-  var f=document.getElementById('fee'); f.style.display='flex'; f.innerHTML='<div class="lbl">Calculating fee…</div>';
+  var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
+  f.style.display='flex'; f.innerHTML='<div class="lbl">Calculating fee…</div>';
+  if(pt){ pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">…</span>'; }
   fetch(api('action=price&plat='+picked.pickup.lat+'&plng='+picked.pickup.lng+'&dlat='+picked.dropoff.lat+'&dlng='+picked.dropoff.lng))
    .then(r=>r.json()).then(j=>{
      var e=document.getElementById('eta');
@@ -668,11 +672,13 @@ function quote(){
        mapFee=j.price;
        var sub=[]; if(j.min)sub.push('~'+j.min+' min trip'); if(j.km)sub.push('~'+j.km+' km');
        f.style.display='flex'; f.innerHTML='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+j.price.toLocaleString()+'</div>';
+       // Prominent price badge pinned to the top of the map so the fee is visible at a glance.
+       if(pt){ pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+j.price.toLocaleString()+'</span>'; }
        if(j.min){ e.style.display='flex'; e.innerHTML='🛵 '+j.min+' min <span class="d">trip</span>'; } else { e.style.display='none'; }
-     } else { mapFee=null; f.style.display='none'; if(e)e.style.display='none'; }
+     } else { mapFee=null; f.style.display='none'; if(e)e.style.display='none'; if(pt)pt.style.display='none'; }
      if(typeof codBreak==='function') codBreak();
      if(j.polyline) drawRoute(j.polyline);
-   }).catch(function(){ f.style.display='none'; });
+   }).catch(function(){ f.style.display='none'; if(pt)pt.style.display='none'; });
 }
 function wire(inId,sugId,which){
   var inp=document.getElementById(inId), sug=document.getElementById(sugId), t;
