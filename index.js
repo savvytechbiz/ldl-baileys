@@ -456,10 +456,12 @@ button:disabled{background:#F0D9E8}
 </div>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
-<div class="lbl2">Sender <span class="hint">— defaults to you, edit if it's someone else</span></div>
-<div class="row2"><input id="sname" placeholder="Sender's name"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div>
-<div class="lbl2">Receiver</div>
-<div class="row2"><input id="rname" placeholder="Receiver's name"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone"></div>
+<div class="lbl2">Pickup <span class="hint">— who we collect from</span></div>
+<div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
+<div class="lbl2">Receiver <span class="hint">— who we deliver to</span></div>
+<div class="row2"><input id="rname" placeholder="Name (optional)"><input id="rphone" type="tel" inputmode="tel" placeholder="Phone"></div>
+<div class="hint" style="margin:7px 2px 0">💡 We already have your number — leave your own side blank and just add the other person's phone.</div>
+<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:5px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
 <div class="reuse" id="rrecv"></div>
 <input id="item" class="f1" placeholder="What are you sending? (e.g. food, documents)">
 <input id="dinstr" class="f1" placeholder="Delivery instructions — optional (e.g. call on arrival, gate code)" maxlength="200" style="margin-top:10px">
@@ -589,17 +591,8 @@ function useLoc(which){
     document.getElementById(which==='pickup'?'pin':'din').value='Pinpointing…';
     setPin(which,{address:'My current location',lat:lat,lng:lng});
     reverseSet(which,lat,lng);
-    // Put the chatting customer's details on the side they just located.
-    if(which==='dropoff'){
-      if(YOU_NAME && !val('rname')) document.getElementById('rname').value=YOU_NAME;
-      if(YOU_PHONE && !val('rphone')) document.getElementById('rphone').value=YOU_PHONE;
-      // They're the RECEIVER, so the auto-filled "you" Sender details no longer apply — clear them.
-      if(val('sname')===YOU_NAME) document.getElementById('sname').value='';
-      if(YOU_PHONE && val('sphone')===YOU_PHONE) document.getElementById('sphone').value='';
-    } else {
-      if(YOU_NAME && !val('sname')) document.getElementById('sname').value=YOU_NAME;
-      if(YOU_PHONE && !val('sphone')) document.getElementById('sphone').value=YOU_PHONE;
-    }
+    // Just set the pin — we no longer auto-fill names/phones by side (the booker's own end is filled
+    // server-side from their WhatsApp number, so tapping a pin never mis-assigns who's the sender/receiver).
     validate();
     liveSide=which; lockOtherLoc();   // your live location is one spot — lock the other end's 📍
   }, function(){
@@ -612,9 +605,16 @@ function val(id){return (document.getElementById(id).value||'').trim();}
 function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);return d.length===11&&d.charAt(0)==='0';}
 function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',u);}
 function validate(){
-  var ok = picked.pickup&&picked.dropoff&&val('rname')&&phoneOk(val('rphone'))&&(!val('sphone')||phoneOk(val('sphone')))&&val('item');
-  // COD without a saved account needs a verified payout account before we can settle the seller.
+  // Names are optional. Each phone must be valid or blank, and at least one must be filled (the other
+  // person's) — we fill the blank side with the booker's own WhatsApp number server-side.
+  var sp=val('sphone'), rp=val('rphone');
+  var phonesOk=(!sp||phoneOk(sp))&&(!rp||phoneOk(rp))&&(phoneOk(sp)||phoneOk(rp));
   var cb=document.getElementById('codbox');
+  // COD: the receiver IS the buyer, so their phone is required (they get the payment request).
+  if(cb&&cb.checked) phonesOk=phonesOk&&phoneOk(rp);
+  // Keep the COD "receiver phone needed" note in sync so the button is never silently dead.
+  var crh=document.getElementById('codrphint'); if(crh) crh.style.display=(cb&&cb.checked&&!phoneOk(rp))?'block':'none';
+  var ok = picked.pickup&&picked.dropoff&&val('item')&&phonesOk;
   if(ok&&cb&&cb.checked&&!BANK_SAVED) ok=ACCT_OK;
   document.getElementById('go').disabled=!ok;
 }
@@ -701,8 +701,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   fetch(api('action=prefill')).then(function(r){return r.json();}).then(function(p){
     if(!p) return;
     YOU_NAME=p.name||''; YOU_PHONE=p.phone||'';
-    if(p.name) document.getElementById('sname').value=p.name;
-    if(p.phone) document.getElementById('sphone').value=p.phone;
+    // Do NOT pre-type the booker into Pickup — the whole point is "leave your own side blank, we use your
+    // WhatsApp number." Prefilling here re-declared them as the sender and contradicted the hint.
     if(p.item) document.getElementById('item').value=p.item;
     // Pickup: the chat already quoted this route, so open the map ON it (pin + price), and the customer
     // can drag the pin to fine-tune. Else offer their last pickup as a chip.
@@ -741,6 +741,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var on=this.checked;
     document.getElementById('codamt').style.display=on?'block':'none';
     document.getElementById('payradios').style.display=on?'none':'block';
+    // COD needs the receiver (buyer) phone — say so, so a blank field never leaves the button silently dead.
+    var crh=document.getElementById('codrphint'); if(crh) crh.style.display=(on&&!phoneOk(val('rphone')))?'block':'none';
     // Ask for a payout account only if we don't already have one saved for this vendor.
     document.getElementById('banksaved').style.display=(on&&BANK_SAVED)?'block':'none';
     document.getElementById('bankbox').style.display=(on&&!BANK_SAVED)?'block':'none';
