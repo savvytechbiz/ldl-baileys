@@ -385,70 +385,93 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#4F074C">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,sans-serif}
+:root{
+  --plum:#4F074C;--plum-d:#3A0537;--pink:#E23A7C;--pink-soft:#FCEBF2;--lilac:#F6EFF5;
+  --ink:#241a29;--ink-2:#6a626f;--ink-3:#a8a0ae;
+  --line:#ece7ef;--line-2:#ded6e2;--surface:#fff;--bg:#f7f4f8;
+  --amber:#b45309;--amber-line:#ffe0a6;--amber-bg:#fff8ec;
+  --r:14px;--r-lg:18px;--r-xl:26px;
+  --ease:cubic-bezier(.23,1,.32,1);
+  --sh-1:0 1px 2px rgba(58,5,55,.05),0 3px 10px rgba(58,5,55,.05);
+  --sh-pop:0 18px 44px rgba(58,5,55,.16);
+}
+*{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:#fff;color:#0e1726;-webkit-font-smoothing:antialiased}
-.wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
-.maphero{position:relative;flex:1 1 auto;min-height:230px}
-#map{position:absolute;top:0;left:0;right:0;bottom:0}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+input,button,textarea,select{font-family:inherit}
+.wrap{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+.maphero{position:relative;flex:1 1 auto;min-height:240px}
+#map{position:absolute;inset:0}
 .leaflet-container{z-index:1}
-.etabadge{position:absolute;top:14px;right:14px;z-index:1000;background:#fff;border-radius:14px;padding:9px 13px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:14px;font-weight:700;color:#0e1726;display:flex;align-items:center;gap:6px}
-.etabadge .d{color:#6b7280;font-weight:600;font-size:12.5px}
-.pricetop{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:1000;background:#4F074C;color:#fff;border-radius:16px;padding:8px 18px;box-shadow:0 4px 16px rgba(14,23,38,.28);white-space:nowrap;align-items:baseline;gap:7px}
-.pricetop .cap{font-size:11px;font-weight:600;color:#e8c7e4;text-transform:uppercase;letter-spacing:.05em}
-.pricetop .amt{font-size:20px;font-weight:800;letter-spacing:-.01em}
-.riderchip{position:absolute;top:14px;left:14px;z-index:1000;background:#fff;border-radius:14px;padding:8px 12px;box-shadow:0 4px 16px rgba(14,23,38,.18);font-size:13px;font-weight:700;color:#3A0537;display:none;align-items:center;gap:6px}
-.sheet{position:relative;z-index:2;flex:0 0 auto;margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -10px 30px rgba(14,23,38,.07);padding:16px 16px 18px}
-h2{margin:2px 2px 18px;font-size:23px;font-weight:700;letter-spacing:-.02em}
-.route{display:flex;gap:11px;align-items:center;background:#f5f6f8;border-radius:16px;padding:0 12px 0 15px}
-.rail{display:flex;flex-direction:column;align-items:center;padding:17px 0}
-.locp{width:38px;min-width:38px;height:38px;padding:0;border:0;background:transparent;font-size:18px;color:#4F074C;cursor:pointer}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.lbl2{font-size:12.5px;color:#6b7280;font-weight:700;margin:13px 2px 6px}
-.lbl2 .hint{font-weight:500;color:#9aa0a6}
-.row2 input,.f1{width:100%;padding:13px 15px;border:1px solid #e6e9ed;background:#fff;border-radius:13px;font-size:15.5px;outline:none}
-.f1{margin-top:11px}
-.row2 input:focus,.f1:focus{border-color:#4F074C}
-.rail .dot{width:11px;height:11px;border-radius:50%;background:#4F074C;box-shadow:0 0 0 4px rgba(37,211,102,.16)}
-.rail .line{flex:1;width:2px;background:#d7dbe0;margin:5px 0;min-height:20px}
-.rail .sq{width:11px;height:11px;border-radius:3px;background:#0e1726}
+.scrim{position:absolute;left:0;right:0;bottom:0;height:78px;background:linear-gradient(to bottom,rgba(247,244,248,0),var(--bg));z-index:2;pointer-events:none}
+.etabadge{position:absolute;top:16px;right:14px;z-index:1000;background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:13px;padding:9px 13px;box-shadow:var(--sh-1);font-size:13.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:6px}
+.etabadge .d{color:var(--ink-2);font-weight:500;font-size:12px}
+.pricetop{position:absolute;bottom:22px;right:14px;z-index:1000;background:var(--plum);color:#fff;border-radius:15px;padding:9px 16px;box-shadow:0 8px 22px rgba(79,7,76,.34);white-space:nowrap;align-items:baseline;gap:8px}
+.pricetop .cap{font-size:10.5px;font-weight:600;color:#e7b9df;text-transform:uppercase;letter-spacing:.09em}
+.pricetop .amt{font-size:19px;font-weight:800;letter-spacing:-.02em}
+@keyframes pop{from{opacity:0;transform:translateY(7px) scale(.95)}to{opacity:1;transform:none}}
+.riderchip{position:absolute;top:16px;left:14px;z-index:1000;background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:13px;padding:8px 12px;box-shadow:var(--sh-1);font-size:12.5px;font-weight:600;color:var(--plum-d);display:none;align-items:center;gap:6px}
+.sheet{position:relative;z-index:3;flex:0 0 auto;margin-top:-26px;background:var(--surface);border-radius:var(--r-xl) var(--r-xl) 0 0;box-shadow:0 -1px 0 var(--line),0 -14px 34px rgba(58,5,55,.08);padding:9px 17px 24px;animation:rise .45s var(--ease)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.grab{width:38px;height:4px;border-radius:99px;background:var(--line-2);margin:0 auto 14px}
+.sec{font-size:11.5px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.07em;margin:22px 2px 10px}
+.sec.first{margin-top:2px}
+h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.route{display:flex;gap:11px;align-items:stretch;background:var(--lilac);border-radius:var(--r-lg);padding:2px 10px 2px 15px;border:1px solid var(--line)}
+.rail{display:flex;flex-direction:column;align-items:center;padding:20px 0}
+.rail .dot{width:11px;height:11px;border-radius:50%;background:var(--plum);box-shadow:0 0 0 4px rgba(226,58,124,.16)}
+.rail .line{flex:1;width:2px;background:var(--line-2);margin:6px 0;min-height:20px;border-radius:2px}
+.rail .sq{width:11px;height:11px;border-radius:3px;background:var(--pink)}
 .ins{flex:1;min-width:0}
 .ri{position:relative;display:flex;align-items:center}
-.ri input{flex:1;min-width:0;border:0;background:transparent;padding:14px 0;font-size:16px;outline:none;color:#0e1726;font-weight:500}
-.ri input::placeholder{color:#9aa0a6;font-weight:400}
-.divln{height:1px;background:#e6e9ed}
-.sug{position:absolute;z-index:2000;top:100%;left:-16px;right:-16px;background:#fff;border:1px solid #edeff2;border-radius:16px;margin-top:4px;box-shadow:0 16px 40px rgba(14,23,38,.12);overflow:hidden;max-height:220px;overflow-y:auto}
-.clr{width:30px;min-width:30px;height:30px;padding:0;border:0;background:transparent;color:#aeb4bb;font-size:15px;cursor:pointer;display:none}
-.payopt{display:flex;align-items:center;gap:10px;padding:12px 13px;border:1px solid #e6e9ed;border-radius:12px;margin-bottom:8px;font-size:14.5px;font-weight:500;color:#0e1726;cursor:pointer}
-.payopt:has(input:checked){border-color:#4F074C;background:#FBF3F9}
-.payopt#opt-cod:has(input:checked){border-color:#f59e0b;background:#fff8ec}
-.sug div{padding:15px 16px;font-size:15px;border-bottom:1px solid #f2f4f6}
-.sug div:active{background:#f5f7f9}
-.ghost{width:100%;margin:14px 0 2px;padding:15px;border:1px solid #e6e9ed;background:#fff;color:#0e1726;border-radius:14px;font-size:15px;font-weight:600}
-.reuse a{display:inline-block;background:#FBF3F9;color:#0e6b39;border:1px solid #d6e7dd;border-radius:20px;padding:9px 15px;font-size:13.5px;font-weight:600;cursor:pointer;margin-top:9px;margin-right:6px}
-.reuse a.on{background:#4F074C;color:#fff;border-color:#4F074C}
-.feebig{display:none;align-items:center;justify-content:space-between;border:1px solid #e6e9ed;border-radius:14px;padding:13px 16px;margin:12px 0 0}
-.feebig .lbl{font-size:13.5px;color:#6b7280;font-weight:600}
-.feebig .sub{font-size:12.5px;color:#9aa0a6;margin-top:2px}
-.feebig .amt{font-size:22px;font-weight:800;color:#0e1726;letter-spacing:-.01em}
-.sec{font-size:14px;font-weight:700;color:#0e1726;margin:24px 0 12px;letter-spacing:-.01em}
-.fld{margin-bottom:12px}
-.fld label{font-size:12.5px;color:#6b7280;display:block;margin-bottom:6px;font-weight:600}
-.fld input{width:100%;padding:15px 16px;border:1px solid #e6e9ed;background:#fff;border-radius:14px;font-size:16px;outline:none}
-.fld input:focus,.ri input:focus{border-color:#4F074C}
-.fld input:focus{box-shadow:0 0 0 3px rgba(37,211,102,.12)}
-button{width:100%;padding:17px;border:0;border-radius:16px;background:#4F074C;color:#fff;font-size:17px;font-weight:800;-webkit-appearance:none}
-button:disabled{background:#F0D9E8}
-#go{margin-top:10px}
-.done{text-align:center;padding:46px 22px}.done h2{font-size:22px;color:#3A0537}
-.muted{color:#9aa0a6;font-size:12.5px;text-align:center;margin-top:22px}
-.wabtn{display:inline-block;margin-top:18px;padding:16px 28px;background:#4F074C;color:#fff;border-radius:16px;text-decoration:none;font-weight:700;font-size:17px}
-.reveal{animation:fade .35s ease}
+.ri input{flex:1;min-width:0;border:0;background:transparent;padding:15px 0;font-size:16px;outline:none;color:var(--ink);font-weight:500}
+.ri input::placeholder{color:var(--ink-3);font-weight:400}
+.divln{height:1px;background:var(--line-2)}
+.locp{width:38px;min-width:38px;height:38px;padding:0;border:0;background:transparent;font-size:17px;color:var(--plum);cursor:pointer;border-radius:10px;transition:background .15s var(--ease),transform .12s var(--ease)}
+.locp:active{background:rgba(79,7,76,.09);transform:scale(.92)}
+.clr{width:28px;min-width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--ink-3);font-size:14px;cursor:pointer;display:none}
+.sug{position:absolute;z-index:2000;top:100%;left:-15px;right:-15px;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);margin-top:6px;box-shadow:var(--sh-pop);overflow:hidden;max-height:240px;overflow-y:auto}
+.sug div{padding:14px 16px;font-size:15px;border-bottom:1px solid var(--line);color:var(--ink)}
+.sug div:last-child{border-bottom:0}
+.sug div:active{background:var(--lilac)}
+.lbl2{font-size:12.5px;color:var(--ink-2);font-weight:600;margin:14px 2px 7px}
+.lbl2 .hint{font-weight:400;color:var(--ink-2)}
+.hint{font-size:12px;color:var(--ink-2);font-weight:400}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.row2 input,.f1{width:100%;padding:14px 15px;border:1px solid var(--line);background:#fff;border-radius:var(--r);font-size:16px;color:var(--ink);outline:none;transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
+.f1{margin-top:11px}
+.row2 input::placeholder,.f1::placeholder{color:var(--ink-3)}
+.row2 input:focus,.f1:focus{border-color:var(--plum);box-shadow:0 0 0 3px rgba(79,7,76,.10)}
+.reuse a{display:inline-flex;align-items:center;background:var(--pink-soft);color:var(--plum);border:1px solid #f3d3e3;border-radius:99px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;margin-right:7px;transition:transform .12s var(--ease)}
+.reuse a:active{transform:scale(.96)}
+.reuse a.on{background:var(--plum);color:#fff;border-color:var(--plum)}
+.payopt{display:flex;align-items:center;gap:11px;padding:14px;border:1px solid var(--line);border-radius:var(--r);margin-bottom:9px;font-size:14.5px;font-weight:500;color:var(--ink);cursor:pointer;transition:border-color .15s var(--ease),background .15s var(--ease)}
+.payopt input{width:19px;height:19px;accent-color:var(--plum);flex:none}
+.payopt:has(input:checked){border-color:var(--plum);background:var(--lilac)}
+.payopt#opt-cod input{accent-color:var(--amber)}
+.payopt#opt-cod:has(input:checked){border-color:var(--amber);background:var(--amber-bg)}
+.feebig{display:none;align-items:center;justify-content:space-between;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 18px;margin:16px 0 0}
+.feebig .lbl{font-size:13px;color:var(--ink-2);font-weight:600}
+.feebig .sub{font-size:12px;color:var(--ink-2);margin-top:2px;font-weight:500}
+.feebig .amt{font-size:23px;font-weight:800;color:var(--plum);letter-spacing:-.02em}
+button{width:100%;padding:17px;border:0;border-radius:var(--r-lg);background:var(--plum);color:#fff;font-size:16.5px;font-weight:700;letter-spacing:-.01em;-webkit-appearance:none;cursor:pointer;box-shadow:0 6px 18px rgba(79,7,76,.26);transition:transform .14s var(--ease),background .2s var(--ease),box-shadow .2s var(--ease)}
+button:active:not(:disabled){transform:scale(.985)}
+button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor:default}
+#go{margin-top:12px}
+.done{text-align:center;padding:52px 22px}.done h2{font-size:24px;color:var(--plum-d);font-weight:800}
+.muted{color:var(--ink-2);font-size:12.5px;text-align:center;margin-top:22px}
+.wabtn{display:inline-block;margin-top:20px;padding:16px 30px;background:var(--plum);color:#fff;border-radius:var(--r-lg);text-decoration:none;font-weight:700;font-size:16.5px;box-shadow:0 6px 18px rgba(79,7,76,.26)}
+.reveal{animation:fade .35s var(--ease)}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body><div class="wrap" id="app">
-<div class="maphero"><div id="map"></div><div id="riderchip" class="riderchip"></div><div id="pricetop" class="pricetop" style="display:none"></div><div id="eta" class="etabadge" style="display:none"></div></div>
+<div class="maphero"><div id="map"></div><div id="riderchip" class="riderchip"></div><div id="pricetop" class="pricetop" style="display:none"></div><div id="eta" class="etabadge" style="display:none"></div><div class="scrim"></div></div>
 <div class="sheet">
+<div class="grab"></div>
+<div class="sec first">Route</div>
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
   <div class="ins">
@@ -459,32 +482,34 @@ button:disabled{background:#F0D9E8}
 </div>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
+<div class="sec">Contacts</div>
 <div class="lbl2">Pickup <span class="hint">— who we collect from</span></div>
 <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
 <div class="lbl2">Receiver <span class="hint">— who we deliver to</span></div>
 <div class="row2"><input id="rname" placeholder="Name (optional)"><input id="rphone" type="tel" inputmode="tel" placeholder="Phone"></div>
 <div id="codrphint" class="hint" style="display:none;color:#b45309;margin:5px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
 <div class="reuse" id="rrecv"></div>
+<div class="sec">Package</div>
 <input id="item" class="f1" placeholder="What are you sending? (e.g. food, documents)">
 <input id="dinstr" class="f1" placeholder="Delivery instructions — optional (e.g. call on arrival, gate code)" maxlength="200" style="margin-top:10px">
-<div id="paysel" style="margin-top:13px">
-  <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 8px">Payment</div>
+<div id="paysel" style="margin-top:2px">
+  <div class="sec">Payment</div>
   <div id="payradios">
     <label class="payopt"><input type="radio" name="pay" value="now" checked style="width:18px;height:18px;accent-color:#4F074C"> 💳 Pay now (card or transfer)</label>
     <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod" style="width:18px;height:18px;accent-color:#4F074C"> 🛵 Pay on delivery — cash to the rider</label>
   </div>
-  <label class="payopt" id="opt-cod" style="display:none"><input type="checkbox" id="codbox" style="width:18px;height:18px;accent-color:#f59e0b"> 📦 The buyer hasn't paid for the item yet — we collect it for you</label>
+  <label class="payopt" id="opt-cod" style="display:none"><input type="checkbox" id="codbox" style="width:18px;height:18px;accent-color:#b45309"> 📦 The buyer hasn't paid for the item yet — we collect it for you</label>
   <div id="codamt" style="display:none;margin-top:4px">
-    <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:8px 2px 6px">How much should we collect from the buyer? (₦)</div>
+    <div style="font-size:12.5px;color:#6a626f;font-weight:700;margin:8px 2px 6px">How much should we collect from the buyer? (₦)</div>
     <input id="goods" type="number" inputmode="numeric" min="1" placeholder="e.g. 100000" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
     <div id="codbreak" style="display:none;margin-top:8px;background:#fff8ec;border:1px solid #ffe0a6;border-radius:12px;padding:12px 14px"></div>
     <div style="font-size:11.5px;color:#9a7b3a;margin-top:7px">The buyer pays this on delivery, <b>Lasalu collects it</b> (comes to us — <b>not your account</b>), and the rider hands over the item only once it's paid.</div>
     <div id="bankbox" style="display:none;margin-top:14px;border-top:1px dashed #ffe0a6;padding-top:12px">
-      <div style="font-size:12.5px;color:#6b7280;font-weight:700;margin:0 2px 6px">💳 Where should we pay you? <span style="font-weight:500;color:#9a7b3a">(so we can settle you same-day)</span></div>
+      <div style="font-size:12.5px;color:#6a626f;font-weight:700;margin:0 2px 6px">💳 Where should we pay you? <span style="font-weight:500;color:#9a7b3a">(so we can settle you same-day)</span></div>
       <input id="acctno" type="text" inputmode="numeric" maxlength="10" placeholder="Account number (10 digits)" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
       <div style="position:relative;margin-top:8px">
         <input id="bankcode" type="text" autocomplete="off" placeholder="Type your bank name…" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
-        <div id="banksug" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:20;margin-top:4px;max-height:220px;overflow-y:auto;background:#fff;border:1px solid #ffe0a6;border-radius:11px;box-shadow:0 8px 24px rgba(14,23,38,.14)"></div>
+        <div id="banksug" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:20;margin-top:4px;max-height:220px;overflow-y:auto;background:#fff;border:1px solid #ffe0a6;border-radius:11px;box-shadow:0 12px 32px rgba(58,5,55,.16)"></div>
       </div>
       <div id="acctname" style="display:none;margin-top:8px;font-size:13px;font-weight:700"></div>
     </div>
@@ -515,14 +540,14 @@ function initMap(){
 // Clean ride-app markers: a green dot for pickup, a dark rounded square for drop-off.
 function pinIcon(which){
   var c = which==='pickup'
-    ? '<div style="width:18px;height:18px;border-radius:50%;background:#4F074C;border:3px solid #fff;box-shadow:0 2px 6px rgba(14,23,38,.4)"></div>'
-    : '<div style="width:18px;height:18px;border-radius:5px;background:#0e1726;border:3px solid #fff;box-shadow:0 2px 6px rgba(14,23,38,.4)"></div>';
+    ? '<div style="width:18px;height:18px;border-radius:50%;background:#4F074C;border:3px solid #fff;box-shadow:0 3px 8px rgba(79,7,76,.45)"></div>'
+    : '<div style="width:18px;height:18px;border-radius:5px;background:#E23A7C;border:3px solid #fff;box-shadow:0 3px 8px rgba(226,58,124,.45)"></div>';
   return L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],html:c});
 }
 // Real on-shift rider dots (anonymous + privacy-fuzzed by the server). Refreshes every ~25s so the
 // dots drift roughly with the riders — like Bolt/inDrive, but honest (no fake bikes, no ETA promises).
 var riderDots=[];
-function bikeIcon(){return L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],html:'<div style="width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 3px 11px rgba(14,23,38,.3);border:1px solid rgba(14,23,38,.06);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="#0e1726" aria-hidden="true"><path d="M19.44 9.03L15.41 5H11v2h3.59l2 2H5c-2.8 0-5 2.2-5 5s2.2 5 5 5c2.46 0 4.45-1.69 4.9-4h1.65l2.77-2.77c-.21.54-.32 1.14-.32 1.77 0 2.8 2.2 5 5 5s5-2.2 5-5c0-2.79-2.21-5-4.56-4.97zM7.82 15C7.4 16.15 6.28 17 5 17c-1.63 0-3-1.37-3-3s1.37-3 3-3c1.28 0 2.4.85 2.82 2H5v2h2.82zM19 17c-1.63 0-3-1.37-3-3s1.37-3 3-3 3 1.37 3 3-1.37 3-3 3z"/></svg></div>'});}
+function bikeIcon(){return L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],html:'<div style="width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 3px 11px rgba(58,5,55,.3);border:1px solid rgba(58,5,55,.08);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="#4F074C" aria-hidden="true"><path d="M19.44 9.03L15.41 5H11v2h3.59l2 2H5c-2.8 0-5 2.2-5 5s2.2 5 5 5c2.46 0 4.45-1.69 4.9-4h1.65l2.77-2.77c-.21.54-.32 1.14-.32 1.77 0 2.8 2.2 5 5 5s5-2.2 5-5c0-2.79-2.21-5-4.56-4.97zM7.82 15C7.4 16.15 6.28 17 5 17c-1.63 0-3-1.37-3-3s1.37-3 3-3c1.28 0 2.4.85 2.82 2H5v2h2.82zM19 17c-1.63 0-3-1.37-3-3s1.37-3 3-3 3 1.37 3 3-1.37 3-3 3z"/></svg></div>'});}
 function loadRiders(){
   fetch(api('action=riders')).then(function(r){return r.json();}).then(function(j){
     var rs=(j&&j.riders)||[];
@@ -569,8 +594,10 @@ function clearLoc(which){
   picked[which]=null;
   var sug=document.getElementById(which==='pickup'?'psug':'dsug'); if(sug)sug.style.display='none';
   if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  mapFee=null;
   var fe=document.getElementById('fee'); if(fe)fe.style.display='none';
   var et=document.getElementById('eta'); if(et)et.style.display='none';
+  var pt=document.getElementById('pricetop'); if(pt)pt.style.display='none';
   if(liveSide===which){ liveSide=null; lockOtherLoc(); }   // release the one-spot live-location lock
   showClr(which,false); validate(); inp.focus();
 }
