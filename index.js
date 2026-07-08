@@ -432,7 +432,8 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .divln{height:1px;background:var(--line-2)}
 .locp{width:38px;min-width:38px;height:38px;padding:0;border:0;background:transparent;font-size:17px;color:var(--plum);cursor:pointer;border-radius:10px;transition:background .15s var(--ease),transform .12s var(--ease)}
 .locp:active{background:rgba(79,7,76,.09);transform:scale(.92)}
-.clr{width:28px;min-width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--ink-3);font-size:14px;cursor:pointer;display:none}
+.clr{width:30px;min-width:30px;height:30px;margin-right:5px;padding:0;border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer;display:none;border-radius:50%;transition:background .15s var(--ease)}
+.clr:active{background:rgba(79,7,76,.08)}
 .sug{position:absolute;z-index:2000;top:100%;left:-15px;right:-15px;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);margin-top:6px;box-shadow:var(--sh-pop);overflow:hidden;max-height:240px;overflow-y:auto}
 .sug div{padding:14px 16px;font-size:15px;border-bottom:1px solid var(--line);color:var(--ink)}
 .sug div:last-child{border-bottom:0}
@@ -602,7 +603,7 @@ function clearLoc(which){
   showClr(which,false); validate(); inp.focus();
 }
 // The chatting customer's own name/number (from prefill) — placed on whichever side they locate.
-var YOU_NAME='', YOU_PHONE='';
+var YOU_NAME='', YOU_PHONE='', COD_PCT=1.75;
 // Live location is ONE physical spot — only one end (pickup OR drop-off) can use it.
 var liveSide=null;
 function lockOtherLoc(){ Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ var f=b.getAttribute('data-for'); if(liveSide && f!==liveSide){ b.disabled=true; b.style.opacity='0.3'; b.title='Your live location is one spot — type the other end'; } else { b.disabled=false; b.style.opacity=''; b.title=''; } }); }
@@ -751,23 +752,29 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
     if(p.pod_allowed){ document.getElementById('opt-pod').style.display='flex'; }
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
+    if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
     validate(); step();
   }).catch(function(){});
-  // COD: live "you'll be credited" = amount − our 2% (max ₦3,000) − the delivery fee.
+  // COD: live "you'll be credited" = amount − our fee (COD_PCT%, CBN & bank charges; max ₦3,000) − delivery.
   function codBreak(){
     var A=Number((document.getElementById('goods').value||'').replace(/[^0-9.]/g,''))||0;
     var box=document.getElementById('codbreak');
     if(!document.getElementById('codbox').checked||!(A>0)){ box.style.display='none'; return; }
-    var fee=Math.min(3000,Math.round(A*0.02));
+    var fee=Math.min(3000,Math.round(A*COD_PCT/100));
     var F=Number(mapFee)||0;
     var credit=A-fee-F;
-    var fLine=F>0?('₦'+F.toLocaleString()+' delivery'):'delivery fee (set pickup &amp; drop-off to see it)';
     box.style.display='block';
+    function row(l,v){ return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:12.5px;color:#7a5b1a;margin-top:6px"><span>'+l+'</span><span style="font-weight:600;white-space:nowrap">'+v+'</span></div>'; }
     if(credit>0){
-      box.innerHTML='<div style="font-size:12px;color:#7a5b1a">You\\'ll be credited</div><div style="font-size:23px;font-weight:800;color:#4F074C;margin:2px 0 6px">₦'+credit.toLocaleString()+'</div><div style="font-size:12px;color:#7a5b1a">₦'+A.toLocaleString()+' − ₦'+fee.toLocaleString()+' (our 2%) − '+fLine+'</div>';
+      box.innerHTML=
+        '<div style="font-size:11px;color:#8a6d2e;font-weight:700;text-transform:uppercase;letter-spacing:.05em">You\\'ll be credited</div>'+
+        '<div style="font-size:26px;font-weight:800;color:#4F074C;margin:2px 0 4px;letter-spacing:-.02em">₦'+credit.toLocaleString()+'</div>'+
+        row('Buyer pays','₦'+A.toLocaleString())+
+        row('Our fee ('+COD_PCT+'% · CBN &amp; bank charges)','− ₦'+fee.toLocaleString())+
+        row('Delivery', F>0?('− ₦'+F.toLocaleString()):'set your route');
     } else {
-      box.innerHTML='<div style="font-size:13px;color:#c0392b;font-weight:700">Too low — the amount must cover our 2% fee (₦'+fee.toLocaleString()+')'+(F>0?(' + the ₦'+F.toLocaleString()+' delivery'):'')+'. Enter a higher amount.</div>';
+      box.innerHTML='<div style="font-size:13px;color:#c0392b;font-weight:700">Too low — the amount must cover our fee (₦'+fee.toLocaleString()+', '+COD_PCT+'% for CBN &amp; bank charges)'+(F>0?(' + the ₦'+F.toLocaleString()+' delivery'):'')+'. Enter a higher amount.</div>';
     }
   }
   document.getElementById('codbox').addEventListener('change',function(){
@@ -796,7 +803,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var payVal=codOn?'cod':(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })();
     var goodsVal=codOn?Number((document.getElementById('goods').value||'').replace(/[^0-9.]/g,'')):0;
     if(codOn&&!(goodsVal>0)){ alert('Please enter how much we should collect from the buyer.'); return; }
-    if(codOn&&mapFee&&(goodsVal-Math.min(3000,Math.round(goodsVal*0.02))-Number(mapFee))<=0){ alert('That amount is too low to cover our fee and the delivery — please enter a higher amount.'); return; }
+    if(codOn&&mapFee&&(goodsVal-Math.min(3000,Math.round(goodsVal*COD_PCT/100))-Number(mapFee))<=0){ alert('That amount is too low to cover our fee and the delivery — please enter a higher amount.'); return; }
     var acctNo='',bankCode='',bankName='';
     if(codOn&&!BANK_SAVED){ acctNo=(document.getElementById('acctno').value||'').replace(/\\D/g,''); bankCode=SEL_BANK_CODE; bankName=SEL_BANK_NAME; }
     var b=document.getElementById('go'); b.disabled=true; b.textContent='Booking…';
