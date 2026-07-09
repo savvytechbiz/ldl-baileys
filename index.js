@@ -750,7 +750,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
     showClr('dropoff',(document.getElementById('din').value||'').length>0);
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
-    if(p.pod_allowed){ document.getElementById('opt-pod').style.display='flex'; }
+    if(p.pod_allowed){ var po=document.getElementById('opt-pod'); po.style.display='flex'; if(p.pod_surcharge>0){ var ps=document.createElement('span'); ps.style.cssText='color:#6a626f;font-weight:600;margin-left:auto'; ps.textContent='+₦'+Number(p.pod_surcharge).toLocaleString(); po.appendChild(ps); } }
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
     if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
@@ -1240,7 +1240,7 @@ else{
   addOrder();
   el('go').onclick=function(){
     var b=el('go');b.disabled=true;b.textContent='Booking…';
-    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:SESSION,shop_address:el('shop').value.trim(),orders:collect()})})
+    fetch(API+'?session='+encodeURIComponent(SESSION),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:SESSION,shop_address:el('shop').value.trim(),orders:collect()})})
      .then(function(r){return r.json()}).then(function(j){
        if(j.error){b.disabled=false;b.textContent='Book all orders';el('out').innerHTML='<p style="color:#c0392b">'+j.error+'</p>';return;}
        var lines=(j.results||[]).map(function(r){return r.ok?('✅ '+r.buyer+' — booked, buyer pays ₦'+r.total.toLocaleString()):('⚠️ '+(r.buyer||'an order')+' — '+r.error);}).join('<br>');
@@ -1314,7 +1314,8 @@ function doBook(){
    .then(function(r){return r.json()}).then(function(j){
      if(j.error){b.disabled=false;b.textContent='Confirm';el('out').innerHTML='<div class="err">Couldn\\'t book: '+j.error+'</div>';return;}
      if(j.mode==='now'&&j.payment_url){el('app').innerHTML='<div class="done"><h2>Redirecting to payment… 💳</h2><p class="muted">Total ₦'+Number(j.total).toLocaleString()+' for '+j.count+' deliveries.</p></div>';location.href=j.payment_url;return;}
-     el('app').innerHTML='<div class="done"><h2>All set! 🙌</h2><p class="muted">'+j.booked+' deliveries created — a rider is being assigned to each. Each rider collects the fee (total ₦'+Number(j.total).toLocaleString()+') in cash on delivery.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
+     var skipped=(j.errors&&j.errors.length)?' <b>'+j.errors.length+' address(es) couldn\\'t be booked</b> — our team will follow up on those.':'';
+     el('app').innerHTML='<div class="done"><h2>All set! 🙌</h2><p class="muted">'+j.booked+' deliveries created — a rider is being assigned to each. The receiver pays their delivery fee in cash when the rider arrives (total ₦'+Number(j.total).toLocaleString()+').'+skipped+'</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
    }).catch(function(){b.disabled=false;b.textContent='Confirm';alert('Network hiccup — try again.');});
 }
 function doReview(){
