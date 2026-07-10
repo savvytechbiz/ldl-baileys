@@ -38,6 +38,9 @@ let currentQR = null;
 let connectionStatus = 'disconnected';
 let connectedPhone = null;
 let isConnecting = false;
+// Bug 8: ids already handed to the webhook. WhatsApp re-delivers the same id on reconnect/'append',
+// so we process each id at most once. Bounded (drops oldest) so it can't grow without limit.
+const _seenMsgIds = new Set();
 
 let settings = {
   ai_enabled: true,
@@ -267,6 +270,8 @@ async function connectWhatsApp() {
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
+      // Only live pushes. (Reconnect back-fill 'append' recovery is DEFERRED — it needs receiveMessage
+      // id-level dedup first, or a restart-within-window redelivery could double-reply / corrupt state.)
       if (type !== 'notify') return;
 
       for (const msg of messages) {
@@ -275,6 +280,13 @@ async function connectWhatsApp() {
         // reply to them (was answering people's Status uploads on status@broadcast).
         const _bcast = msg.key.remoteJid || '';
         if (_bcast === 'status@broadcast' || _bcast.endsWith('@broadcast') || _bcast.endsWith('@newsletter')) continue;
+
+        // Bug 15: one malformed message must never abandon the rest of the batch — wrap the whole body.
+        try {
+          // Bug 8: skip ids we've already handled (WhatsApp can re-deliver the same id). We record the id
+          // only AFTER a successful webhook (below), so a failed/aborted send stays retry-able on redelivery.
+          const _mid = msg.key.id;
+          if (_mid && _seenMsgIds.has(_mid)) continue;
 
         // Blue ticks: mark the customer's message READ so they see the two blue ticks. FIRE-AND-FORGET
         // (do NOT await) — the read receipt is a round-trip to WhatsApp and must NEVER sit in the
@@ -293,7 +305,12 @@ async function connectWhatsApp() {
           try {
             let cand = msg.key.senderPn || msg.key.participantPn || msg.key.remoteJidAlt || null;
             if (!cand && sock?.signalRepository?.lidMapping?.getPNForLID) {
-              cand = await sock.signalRepository.lidMapping.getPNForLID(_rjid);
+              // Cap this @lid→phone lookup — it runs on EVERY message now (everyone arrives as @lid) and
+              // from_phone is only best-effort, so it must never block intake. 1.5s then give up (null).
+              cand = await Promise.race([
+                sock.signalRepository.lidMapping.getPNForLID(_rjid),
+                new Promise((r) => setTimeout(() => r(null), 1500))
+              ]);
             }
             if (cand) fromPhone = String(cand).replace(/@.*/, '').replace(/[^0-9]/g, '') || null;
           } catch { /* best-effort only */ }
@@ -439,16 +456,29 @@ async function connectWhatsApp() {
               'Content-Type': 'application/json',
               'x-webhook-secret': WEBHOOK_SECRET
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            // Bound the wait so ONE slow message can't stall every later message in the batch (an intake
+            // pile-up cause). 18s sits ABOVE receiveMessage's worst-case synchronous path (a ~15s awaited
+            // takeover relay) so we don't abort a genuinely-succeeding request, but still cap a hung/cold one.
+            signal: AbortSignal.timeout(18000)
           });
           
           const result = await response.json();
           console.log('Message webhook response:', result);
           if (!response.ok) {
             console.error('Webhook failed with status:', response.status, 'Body:', result);
+          } else if (_mid) {
+            // Bug 8: only NOW mark the id handled (webhook succeeded) so a failed send stays retry-able.
+            _seenMsgIds.add(_mid);
+            if (_seenMsgIds.size > 1000) { const _it = _seenMsgIds.values(); for (let _i = 0; _i < 400; _i++) _seenMsgIds.delete(_it.next().value); }
           }
         } catch (error) {
           console.error('Failed to send message webhook:', error.message);
+        }
+        } catch (_perMsgErr) {
+          // Bug 15: swallow a per-message failure (odd shape, media helper, etc.) and keep the batch going.
+          console.error('per-message handler error (skipping this message):', _perMsgErr?.message);
+          continue;
         }
       }
     });
