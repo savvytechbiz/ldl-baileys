@@ -161,6 +161,42 @@ async function transcribeVoice(msg, sock) {
   }
 }
 
+// ─── Inbound message extraction helpers ──────────────────────────────────────
+// WhatsApp buries the real content inside a growing set of envelope wrappers (disappearing,
+// view-once, edited, bot) and delivers Facebook "Click to WhatsApp" ad leads + button/list taps
+// in shapes that yield EMPTY plain text — which the old handler silently dropped (`if(!text) continue`).
+// That lost EVERY paid ad lead. unwrapMessage peels the wrappers to the innermost real content node.
+function unwrapMessage(m) {
+  let cur = m;
+  for (let i = 0; cur && i < 8; i++) {
+    // An EDIT arrives as protocolMessage.editedMessage — and THAT inner node IS the content Message
+    // itself: read it directly, do NOT step into a `.message`. (Distinct from the OUTER editedMessage
+    // WRAPPER below, whose payload sits under `.message`. Same key name, opposite shape — the trap.)
+    if (cur.protocolMessage && cur.protocolMessage.editedMessage) { cur = cur.protocolMessage.editedMessage; continue; }
+    const inner = cur.ephemeralMessage?.message
+      || cur.viewOnceMessage?.message
+      || cur.viewOnceMessageV2?.message
+      || cur.viewOnceMessageV2Extension?.message
+      || cur.documentWithCaptionMessage?.message
+      || cur.editedMessage?.message
+      || cur.botInvokeMessage?.message;
+    if (!inner) break;
+    cur = inner;
+  }
+  return cur || {};
+}
+
+// True when the (already-unwrapped) content is NOT a real user message we should reply to — a
+// reaction, a delete/other protocol event, a poll update, a key handshake, or empty. Lets the
+// never-drop fallback greet genuine leads while staying silent on system/reaction traffic.
+function isSkippableContent(c) {
+  if (!c || typeof c !== 'object') return true;
+  const keys = Object.keys(c).filter((k) => c[k] != null && k !== 'messageContextInfo');
+  if (keys.length === 0) return true;
+  const skipOnly = ['reactionMessage', 'protocolMessage', 'pollUpdateMessage', 'pollCreationMessage', 'pollCreationMessageV2', 'pollCreationMessageV3', 'senderKeyDistributionMessage', 'stickerSyncRmrMessage'];
+  return keys.every((k) => skipOnly.includes(k));
+}
+
 async function connectWhatsApp() {
   if (isConnecting) {
     console.log('Already connecting...');
@@ -240,6 +276,11 @@ async function connectWhatsApp() {
         const _bcast = msg.key.remoteJid || '';
         if (_bcast === 'status@broadcast' || _bcast.endsWith('@broadcast') || _bcast.endsWith('@newsletter')) continue;
 
+        // Blue ticks: the moment ADANOVA picks up the customer's message, mark it READ so they see
+        // the two blue ticks (reassurance we've seen it). Best-effort; only shows if the customer has
+        // read receipts enabled on their side.
+        if (!msg.key.fromMe) { try { await sock.readMessages([msg.key]); } catch (e) { /* best effort */ } }
+
         const phoneNumber = msg.key.remoteJid?.replace('@s.whatsapp.net', '') || msg.key.remoteJid;
 
         // WhatsApp increasingly hides the real number behind an @lid. Best-effort resolve it to
@@ -258,53 +299,102 @@ async function connectWhatsApp() {
           } catch { /* best-effort only */ }
         }
 
-        // Detect interactive list response (user selected from a list message)
-        const listResponse = msg.message?.listResponseMessage;
-        const interactiveSelection = listResponse
-          ? {
-              type: 'list_response',
-              selected_id: listResponse.singleSelectReply?.selectedRowId || '',
-              selected_title: listResponse.title || '',
-              body: listResponse.description || ''
-            }
-          : null;
+        // Peel WhatsApp's envelope wrappers (disappearing / view-once / edited / bot) so we read the
+        // REAL content — ads, list/button taps, media, text — no matter how deeply it's nested.
+        const content = unwrapMessage(msg.message) || {};
 
-        // Detect media messages (an image is usually the ITEM the customer wants to ship)
-        const hasMedia = !!(msg.message?.imageMessage || msg.message?.documentMessage || msg.message?.videoMessage);
-        const mediaCaption = msg.message?.imageMessage?.caption || msg.message?.videoMessage?.caption || '';
+        // Facebook / Instagram "Click to WhatsApp" ad context hangs off a node's contextInfo. Capture
+        // it so we can attribute the lead AND still reply even when there's no typed message.
+        const _ctx = content.extendedTextMessage?.contextInfo
+          || content.imageMessage?.contextInfo
+          || content.videoMessage?.contextInfo
+          || content.contextInfo;
+        const _ad = _ctx?.externalAdReply;
+        let adContext = null;
+        if (_ad || _ctx?.entryPointConversionSource) {
+          adContext = {
+            is_ad: true,
+            ad_title: _ad?.title || '',
+            ad_body: _ad?.body || '',
+            ad_source_url: _ad?.sourceUrl || '',
+            ctwa_clid: _ad?.ctwaClid || '',
+            entry_point: _ctx?.entryPointConversionSource || 'ctwa_ad'
+          };
+        }
+
+        // Interactive replies (list pick / button tap / template / native-flow). A LIST pick keeps its
+        // row id (the geopick flow matches a bare number); other taps forward the human label.
+        const listResponse = content.listResponseMessage;
+        const btnResponse = content.buttonsResponseMessage;
+        const tplResponse = content.templateButtonReplyMessage;
+        const flowResponse = content.interactiveResponseMessage;
+        let interactiveSelection = null;
+        if (listResponse) {
+          interactiveSelection = { type: 'list_response', selected_id: listResponse.singleSelectReply?.selectedRowId || '', selected_title: listResponse.title || '', body: listResponse.description || '' };
+        } else if (btnResponse) {
+          interactiveSelection = { type: 'button_response', selected_id: btnResponse.selectedButtonId || '', selected_title: btnResponse.selectedDisplayText || '', body: '' };
+        } else if (tplResponse) {
+          interactiveSelection = { type: 'template_reply', selected_id: tplResponse.selectedId || '', selected_title: tplResponse.selectedDisplayText || '', body: '' };
+        } else if (flowResponse?.nativeFlowResponseMessage) {
+          const nf = flowResponse.nativeFlowResponseMessage;
+          interactiveSelection = { type: 'native_flow_response', selected_id: nf.name || '', selected_title: flowResponse.body?.text || nf.name || '', body: nf.paramsJson || '' };
+        }
+
+        // Media (an image is usually the ITEM the customer wants to ship).
+        const hasMedia = !!(content.imageMessage || content.documentMessage || content.videoMessage);
+        const mediaCaption = content.imageMessage?.caption || content.videoMessage?.caption || content.documentMessage?.caption || '';
 
         let text = interactiveSelection
-          ? interactiveSelection.selected_id  // treat selected ID as the message text
-          : (msg.message?.conversation || msg.message?.extendedTextMessage?.text || mediaCaption || (hasMedia ? '[image]' : ''));
+          ? (interactiveSelection.type === 'list_response'
+              ? (interactiveSelection.selected_id || interactiveSelection.selected_title || '[selection]')  // row id → geopick
+              : (interactiveSelection.selected_title || interactiveSelection.selected_id || '[selection]'))
+          : (content.conversation || content.extendedTextMessage?.text || mediaCaption || (hasMedia ? '[image]' : ''));
 
         // Voice note (or PTT) with no caption → transcribe it so ADANOVA can reply.
         let wasVoice = false;
-        if (!text && (msg.message?.audioMessage)) {
+        if (!text && content.audioMessage) {
           wasVoice = true;
           text = await transcribeVoice(msg, sock);
         }
 
         // Shared location pin → forward exact coordinates so ADANOVA can use them.
-        const locMsg = msg.message?.locationMessage || msg.message?.liveLocationMessage;
+        const locMsg = content.locationMessage || content.liveLocationMessage;
         let location = null;
         if (locMsg && locMsg.degreesLatitude != null && locMsg.degreesLongitude != null) {
           location = { lat: locMsg.degreesLatitude, lng: locMsg.degreesLongitude, name: locMsg.name || locMsg.address || '' };
           if (!text) text = '📍 Shared location';
         }
 
+        // A Facebook ad lead who just TAPPED the ad (no typed text) → synthesize an opener that reads
+        // as "saw your ad" so ADANOVA's ad-lead handler greets & pitches them, instead of the lead
+        // vanishing. (This is the bug: every paid ad lead was silently dropped here.)
+        if (!text && adContext && !msg.key.fromMe) {
+          text = adContext.ad_title ? `Hi, I saw your ad: ${adContext.ad_title}` : 'Hi, I saw your ad — is anyone available to chat?';
+        }
+
         if (!text) {
           // A voice note we couldn't transcribe → ask them to type, never silently ignore them.
           if (wasVoice && !msg.key.fromMe) {
             try { await sock.sendMessage(msg.key.remoteJid, { text: "I couldn't quite catch that voice note 🙏 could you type it out for me? I'll sort it right away 🙌" }); } catch (e) { /* best effort */ }
+            continue;
           }
-          continue;
+          // A GENUINE inbound message we simply couldn't parse must NOT be dropped (that was the ad-lead
+          // bug). Greet them so a human/ADANOVA engages, and log the shape so we can teach the extractor.
+          if (!msg.key.fromMe && !isSkippableContent(content)) {
+            console.log('UNPARSED inbound kept — content keys:', Object.keys(content), '| ad:', !!adContext);
+            text = 'Hi 👋';
+          } else {
+            continue;   // reaction / delete / protocol / receipt — nothing to reply to
+          }
         }
+
+        if (adContext) console.log('AD LEAD:', adContext.ad_title || '(no title)', '|', adContext.ad_source_url || '', '| text:', String(text).slice(0, 50));
 
         // Download an image so ADANOVA can actually SEE it (usually the item being shipped, sometimes an
         // address). Images only, size-capped so the webhook payload stays small; best-effort (a failure
         // just means no picture is sent, and she'll ask what it shows).
         let mediaBase64 = null, mediaMime = null;
-        if (msg.message?.imageMessage && !msg.key.fromMe) {
+        if (content.imageMessage && !msg.key.fromMe) {
           try {
             const imgBuf = await downloadMediaMessage(
               msg, 'buffer', {},
@@ -312,7 +402,7 @@ async function connectWhatsApp() {
             );
             if (imgBuf && imgBuf.length <= 1500000) {          // ~1.5 MB cap
               mediaBase64 = imgBuf.toString('base64');
-              mediaMime = msg.message.imageMessage.mimetype || 'image/jpeg';
+              mediaMime = content.imageMessage.mimetype || 'image/jpeg';
             }
           } catch (e) { console.log('image download failed:', e.message); }
         }
@@ -335,7 +425,8 @@ async function connectWhatsApp() {
             media_url: null,
             media_base64: mediaBase64,   // image bytes so ADANOVA can SEE the item (null if none / too big)
             media_mime: mediaMime,
-            location: location
+            location: location,
+            ad_context: adContext   // Facebook Click-to-WhatsApp attribution (null if not an ad lead)
           };
           const webhookUrl = `${SUPABASE_FUNCTIONS_URL}/receiveMessage`;
           console.log('Sending webhook to:', webhookUrl);
@@ -1448,26 +1539,43 @@ app.post('/session/clear', async (req, res) => {
   }
 });
 
-// Typing indicator — sends "composing" presence then clears it after duration
+// ─── "Typing…" that stays lit until the reply actually lands ───
+// WhatsApp auto-clears the "composing" presence after ~10s, so a single composing update dies
+// mid-thought — the customer sees "typing…" flicker off, then a gap, then the message. Instead we
+// REFRESH composing on an interval and stop it exactly when /send fires, so "typing…" shows right up
+// until the message appears. A safety cap ends it if /send never arrives (e.g. an error upstream).
+const typingState = new Map(); // jid -> { interval, maxTimer }
+
+function stopTyping(jid, sendPaused = true) {
+  const st = typingState.get(jid);
+  if (st) { clearInterval(st.interval); clearTimeout(st.maxTimer); typingState.delete(jid); }
+  if (sendPaused && sock) { try { sock.sendPresenceUpdate('paused', jid); } catch (e) { /* noop */ } }
+}
+
+async function startTyping(jid) {
+  if (!sock) return;
+  stopTyping(jid, false);                                    // reset any prior loop for this chat
+  // WhatsApp only shows "typing…" if we subscribe to the contact's presence and appear online first.
+  try { await sock.presenceSubscribe(jid); } catch (e) { /* noop */ }
+  try { await sock.sendPresenceUpdate('available'); } catch (e) { /* noop */ }
+  await new Promise(r => setTimeout(r, 250));
+  try { await sock.sendPresenceUpdate('composing', jid); } catch (e) { /* noop */ }
+  // Refresh every 6s (before WhatsApp's ~10s auto-clear) so the indicator never lapses mid-thought.
+  const interval = setInterval(() => { try { if (sock) sock.sendPresenceUpdate('composing', jid); } catch (e) { /* noop */ } }, 6000);
+  const maxTimer = setTimeout(() => stopTyping(jid, true), 45000);   // never "type" forever
+  typingState.set(jid, { interval, maxTimer });
+}
+
+// Typing indicator — starts a self-refreshing "composing" that lives until /send stops it.
 app.post('/typing', async (req, res) => {
   try {
-    const { phone, duration = 3 } = req.body;
+    const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'phone required' });
     if (connectionStatus !== 'connected' || !sock) {
       return res.status(503).json({ error: 'WhatsApp not connected' });
     }
-    const jid = toJid(phone);
-    // WhatsApp only shows "typing…" if we subscribe to the contact's presence and
-    // appear online first — otherwise the composing update is silently dropped.
-    try { await sock.presenceSubscribe(jid); } catch {}
-    try { await sock.sendPresenceUpdate('available'); } catch {}
-    await new Promise(r => setTimeout(r, 300));
-    await sock.sendPresenceUpdate('composing', jid);
-    // Clear after the specified duration
-    setTimeout(async () => {
-      try { await sock.sendPresenceUpdate('paused', jid); } catch {}
-    }, duration * 1000);
-    res.json({ status: 'typing_started', duration });
+    await startTyping(toJid(phone));
+    res.json({ status: 'typing_started' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1513,6 +1621,11 @@ app.post('/send', async (req, res) => {
       return res.status(503).json({ error: 'WhatsApp not connected' });
     }
     const jid = toJid(phone);
+    // "typing…" was kept alive while ADANOVA thought; stop the refresh loop (don't send 'paused' —
+    // the outgoing message clears the indicator itself) and give ONE fresh composing tick so it stays
+    // lit right up until this message lands, with no dead gap.
+    stopTyping(jid, false);
+    try { await sock.sendPresenceUpdate('composing', jid); } catch (e) { /* noop */ }
     // Booking link → attach the branded preview card AND declutter the text: the card is the
     // call-to-action, so drop the redundant "👉 just tap here 👇" scaffolding + stray arrows — but
     // ALWAYS keep the URL (the card needs it and the link must stay tappable; safety fallback below).
@@ -1560,6 +1673,8 @@ app.post('/send-list', async (req, res) => {
       return res.status(503).json({ error: 'WhatsApp not connected' });
     }
     const jid = toJid(phone);
+    stopTyping(jid, false);
+    try { await sock.sendPresenceUpdate('composing', jid); } catch (e) { /* noop */ }
     await sock.sendMessage(jid, {
       listMessage: {
         title: title || 'Select an option',
