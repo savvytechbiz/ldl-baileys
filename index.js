@@ -276,10 +276,10 @@ async function connectWhatsApp() {
         const _bcast = msg.key.remoteJid || '';
         if (_bcast === 'status@broadcast' || _bcast.endsWith('@broadcast') || _bcast.endsWith('@newsletter')) continue;
 
-        // Blue ticks: the moment ADANOVA picks up the customer's message, mark it READ so they see
-        // the two blue ticks (reassurance we've seen it). Best-effort; only shows if the customer has
-        // read receipts enabled on their side.
-        if (!msg.key.fromMe) { try { await sock.readMessages([msg.key]); } catch (e) { /* best effort */ } }
+        // Blue ticks: mark the customer's message READ so they see the two blue ticks. FIRE-AND-FORGET
+        // (do NOT await) — the read receipt is a round-trip to WhatsApp and must NEVER sit in the
+        // critical path, or a slow/busy socket would delay Adanova seeing & answering every message.
+        if (!msg.key.fromMe) { Promise.resolve().then(() => sock.readMessages([msg.key])).catch(() => {}); }
 
         const phoneNumber = msg.key.remoteJid?.replace('@s.whatsapp.net', '') || msg.key.remoteJid;
 
