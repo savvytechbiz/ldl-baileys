@@ -270,9 +270,10 @@ async function connectWhatsApp() {
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      // Only live pushes. (Reconnect back-fill 'append' recovery is DEFERRED — it needs receiveMessage
-      // id-level dedup first, or a restart-within-window redelivery could double-reply / corrupt state.)
-      if (type !== 'notify') return;
+      // Live pushes AND reconnect back-fill ('append') recovery. Safe now: receiveMessage dedups on
+      // wa_msg_id (a restart-within-window redelivery can't double-reply) and the ~900s / 15-min recency
+      // gate below drops stale history replay so we never answer old messages after a reconnect.
+      if (type !== 'notify' && type !== 'append') return;
 
       for (const msg of messages) {
         // Skip WhatsApp Status posts, broadcast lists and channel/newsletter updates.
@@ -287,6 +288,17 @@ async function connectWhatsApp() {
           // only AFTER a successful webhook (below), so a failed/aborted send stays retry-able on redelivery.
           const _mid = msg.key.id;
           if (_mid && _seenMsgIds.has(_mid)) continue;
+
+          // Bug 7: append recovery — drop STALE replay, but keep the window WIDE enough to recover a real
+          // outage. Reconnect base delay alone is 15-25s and a free-tier cold start adds more, so 120s was
+          // far too short — it silently dropped genuine never-answered messages buffered during a 2-5 min
+          // socket drop (exactly what append recovery exists to save). 15 min covers realistic reconnect/
+          // spin-down gaps. Safe to widen: receiveMessage's DB-backed wa_msg_id dedup is the real
+          // double-reply guard (survives restarts), so a longer window can't re-answer anything handled;
+          // the bound just keeps a fresh history-sync from replying to a huge backlog at once (ban-safety).
+          // Fresh live 'notify' msgs are seconds old so this never touches them.
+          const _ts = Number(msg.messageTimestamp) || 0;
+          if (_ts && (Date.now() / 1000 - _ts) > 900) continue;
 
         // Blue ticks: mark the customer's message READ so they see the two blue ticks. FIRE-AND-FORGET
         // (do NOT await) — the read receipt is a round-trip to WhatsApp and must NEVER sit in the
@@ -435,6 +447,7 @@ async function connectWhatsApp() {
             contact_name: msg.pushName || phoneNumber,
             message: text,
             timestamp: msg.messageTimestamp,
+            wa_msg_id: msg.key.id,   // Bug 7: server-side dedup key for reconnect redelivery
             is_group: msg.key.remoteJid?.endsWith('@g.us') || false,
             direction,
             interactive_selection: interactiveSelection,
