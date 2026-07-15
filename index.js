@@ -952,7 +952,11 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   };
 }
 </script></body></html>`;
-app.get('/map', (req, res) => { res.type('html').send(MAP_PAGE); });
+// The "Back to WhatsApp" buttons must return the customer to the number Adanova is ACTUALLY logged in
+// on — not a hardcoded one. connectedPhone is the live session number; swap it into each page at serve
+// time so the button always opens the right chat (and auto-follows any future number change).
+const withWa = (html) => html.split('2349110218825').join(connectedPhone || '2347071180251');
+app.get('/map', (req, res) => { res.type('html').send(withWa(MAP_PAGE)); });
 // Short-link redirects so booking links are tidy in chat: /m/:t → /map?session=:t (etc.)
 app.get('/m/:t', (req, res) => res.redirect(302, `/map?session=${encodeURIComponent(req.params.t)}`));
 app.get('/q/:t', (req, res) => res.redirect(302, `/quote?session=${encodeURIComponent(req.params.t)}`));
@@ -1206,7 +1210,7 @@ else{
   el('go').onclick=book;
 }
 </script></body></html>`;
-app.get('/quote', (req, res) => { res.type('html').send(QUOTE_PAGE); });
+app.get('/quote', (req, res) => { res.type('html').send(withWa(QUOTE_PAGE)); });
 
 // ── WAYBILL page (interstate, flat under 5kg) — its own simple premium page ──
 const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
@@ -1322,7 +1326,7 @@ else{
   el('go').onclick=book;
 }
 </script></body></html>`;
-app.get('/waybill', (req, res) => { res.type('html').send(WAYBILL_PAGE); });
+app.get('/waybill', (req, res) => { res.type('html').send(withWa(WAYBILL_PAGE)); });
 
 // ── Vendor bulk order form (trusted vendors) — add several buyer orders, we book + collect COD ──
 const VENDOR_PAGE = `<!doctype html><html><head><meta charset="utf-8">
@@ -1383,7 +1387,7 @@ else{
   };
 }
 </script></body></html>`;
-app.get('/vendor', (req, res) => { res.type('html').send(VENDOR_PAGE); });
+app.get('/vendor', (req, res) => { res.type('html').send(withWa(VENDOR_PAGE)); });
 
 // ── Bulk deliveries page: a client with SEVERAL deliveries adds them all (each its own pickup →
 // drop-off), reviews the total, then pays once (or pay-on-delivery). Talks to the bulkOrders fn. ──
@@ -1480,7 +1484,7 @@ else{
   addDelivery();
 }
 </script></body></html>`;
-app.get('/bulk', (req, res) => { res.type('html').send(BULK_PAGE); });
+app.get('/bulk', (req, res) => { res.type('html').send(withWa(BULK_PAGE)); });
 app.get('/b/:t', (req, res) => res.redirect(302, `/bulk?session=${encodeURIComponent(req.params.t)}`));
 
 // Status
