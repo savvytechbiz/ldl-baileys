@@ -766,8 +766,8 @@ function useLoc(which){
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:0});
 }
 function val(id){return (document.getElementById(id).value||'').trim();}
-function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;u();});}
+function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
+function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
 function validate(){
   // Names are optional. Each phone must be valid or blank, and at least one must be filled (the other
   // person's) — we fill the blank side with the booker's own WhatsApp number server-side.
@@ -784,7 +784,20 @@ function validate(){
 }
 // Decode a Google-encoded polyline into [lat,lng] points (so we can draw the route, Bolt-style).
 function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,sh=0,res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lat+=((res&1)?~(res>>1):(res>>1)); sh=0;res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lng+=((res&1)?~(res>>1):(res>>1)); c.push([lat/1e5,lng/1e5]); } return c; }
-var routeLine=null, mapFee=null;
+var routeLine=null, mapFee=null, mapMin=null, mapKm=null, POD_SURCHARGE=0;
+// Render the fee box (and top badge). Pay-on-delivery adds the surcharge, so the number shown here matches
+// what the rider actually collects (base + POD surcharge) — not the base-only price. COD (buyer-hasn't-paid)
+// is a separate model whose delivery fee is netted from the goods, so it stays on the base price.
+function podPicked(){ var cb=document.getElementById('codbox'); if(cb&&cb.checked) return false; var r=document.querySelector('input[name=pay]:checked'); return !!(r&&r.value==='pod'); }
+function renderFee(){
+  var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
+  if(mapFee==null){ if(f)f.style.display='none'; if(pt)pt.style.display='none'; return; }
+  var sc=podPicked()?(Number(POD_SURCHARGE)||0):0, tot=Number(mapFee)+sc;
+  var sub=[]; if(mapMin)sub.push('~'+mapMin+' min trip'); if(mapKm)sub.push('~'+mapKm+' km');
+  if(sc>0)sub.push('incl. ₦'+sc.toLocaleString()+' pay-on-delivery');
+  if(f){ f.style.display='flex'; f.innerHTML='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+tot.toLocaleString()+'</div>'; }
+  if(pt){ pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+tot.toLocaleString()+'</span>'; }
+}
 // COD payout bank: BANK_SAVED means we already have this vendor's account on file (no re-entry).
 var BANK_SAVED=false, BANKS_LOADED=false, ACCT_OK=false;
 // Searchable bank picker: keep the full list in memory and filter as they type (no endless scrolling).
@@ -831,13 +844,10 @@ function quote(){
    .then(r=>r.json()).then(j=>{
      var e=document.getElementById('eta');
      if(j.price){
-       mapFee=j.price;
-       var sub=[]; if(j.min)sub.push('~'+j.min+' min trip'); if(j.km)sub.push('~'+j.km+' km');
-       f.style.display='flex'; f.innerHTML='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+j.price.toLocaleString()+'</div>';
-       // Prominent price badge pinned to the top of the map so the fee is visible at a glance.
-       if(pt){ pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+j.price.toLocaleString()+'</span>'; }
+       mapFee=j.price; mapMin=j.min||null; mapKm=j.km||null;
+       renderFee();   // fee box + top badge (adds the POD surcharge when pay-on-delivery is selected)
        if(j.min){ e.style.display='flex'; e.innerHTML='🛵 '+j.min+' min <span class="d">trip</span>'; } else { e.style.display='none'; }
-     } else { mapFee=null; f.style.display='none'; if(e)e.style.display='none'; if(pt)pt.style.display='none'; }
+     } else { mapFee=null; renderFee(); if(e)e.style.display='none'; }
      if(typeof codBreak==='function') codBreak();
      if(j.polyline) drawRoute(j.polyline);
    }).catch(function(){ f.style.display='none'; if(pt)pt.style.display='none'; });
@@ -884,7 +894,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
     showClr('dropoff',(document.getElementById('din').value||'').length>0);
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
-    if(p.pod_allowed){ var po=document.getElementById('opt-pod'); po.style.display='flex'; if(p.pod_surcharge>0){ var ps=document.createElement('span'); ps.style.cssText='color:#6a626f;font-weight:600;margin-left:auto'; ps.textContent='+₦'+Number(p.pod_surcharge).toLocaleString(); po.appendChild(ps); } }
+    if(p.pod_allowed){ var po=document.getElementById('opt-pod'); po.style.display='flex'; POD_SURCHARGE=Math.max(0,Number(p.pod_surcharge)||0); if(POD_SURCHARGE>0){ var ps=document.createElement('span'); ps.style.cssText='color:#6a626f;font-weight:600;margin-left:auto'; ps.textContent='+₦'+POD_SURCHARGE.toLocaleString(); po.appendChild(ps); } renderFee(); }
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
     if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
@@ -921,9 +931,11 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     document.getElementById('banksaved').style.display=(on&&BANK_SAVED)?'block':'none';
     document.getElementById('bankbox').style.display=(on&&!BANK_SAVED)?'block':'none';
     if(on&&!BANK_SAVED) loadBanks();
-    codBreak(); validate();
+    codBreak(); renderFee(); validate();
   });
   document.getElementById('goods').addEventListener('input',codBreak);
+  // Selecting "Pay on delivery" must update the visible Delivery fee to base + surcharge (matches the rider's cash).
+  Array.prototype.forEach.call(document.querySelectorAll('input[name=pay]'),function(r){ r.addEventListener('change',renderFee); });
   document.getElementById('acctno').addEventListener('input',function(){ resolveAcct(); validate(); });
   // Searchable bank field: typing filters the list; a fresh edit clears any previous selection.
   var bankInp=document.getElementById('bankcode');
@@ -1181,8 +1193,8 @@ function recalc(){
     validate();
   }).catch(function(){el('fee').style.display='none';el('baramt').textContent='—';validate();});
 }
-function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;u();});}
+function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
+function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
 function validate(){
   var ok=lastPrice&&val('sname')&&phoneOk(val('sphone'))&&val('paddr')&&val('rname')&&phoneOk(val('rphone'))&&val('daddr')&&val('item');
   el('go').disabled=!ok;
@@ -1302,8 +1314,8 @@ function recalc(){
     validate();
   }).catch(function(){el('fee').style.display='none';validate();});
 }
-function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;u();});}
+function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
+function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
 function validate(){var w=parseFloat(el('weight').value);var ok=state&&!isNaN(w)&&w>0&&(isPark||lastPrice)&&val('paddr')&&val('rname')&&phoneOk(val('rphone'))&&(!val('sphone')||phoneOk(val('sphone')))&&val('item');el('go').disabled=!ok;}
 function book(){
   var b=el('go');b.disabled=true;b.textContent='Booking…';
@@ -1353,8 +1365,8 @@ var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/vendorOrders";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 function el(id){return document.getElementById(id)}
 var n=0;
-function phoneOk(v){var d=(v||'').replace(/\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhoneEl(bp){if(!bp)return;function u(){var v=(bp.value||'').trim();var bad=v&&!phoneOk(v);bp.style.borderColor=bad?'#dc2626':'';var box=bp.closest('.row2')||bp.parentNode;var w=box.parentNode.querySelector('.bpe-'+(box.dataset.pe||''));if(bad){if(!w){var tag=String(n);box.dataset.pe=tag;w=document.createElement('div');w.className='bpe-'+tag;w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}bp.addEventListener('input',u);bp.addEventListener('blur',function(){var s=(bp.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)bp.value='0'+d;u();});}
+function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
+function flagPhoneEl(bp){if(!bp)return;function u(){var v=(bp.value||'').trim();var bad=v&&!phoneOk(v);bp.style.borderColor=bad?'#dc2626':'';var box=bp.closest('.row2')||bp.parentNode;var w=box.parentNode.querySelector('.bpe-'+(box.dataset.pe||''));if(bad){if(!w){var tag=String(n);box.dataset.pe=tag;w=document.createElement('div');w.className='bpe-'+tag;w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}bp.addEventListener('input',u);bp.addEventListener('blur',function(){var s=(bp.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)bp.value='0'+d;bp.dispatchEvent(new Event('input'));});}
 function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim().replace(/^📍\\s*/,'');});var pk=d.querySelector('input[data-f=pickup_address]'),dr=d.querySelector('input[data-f=delivery_address]');if(pk&&pk.dataset.coords)o.pickup_coords=pk.dataset.coords;if(dr&&dr.dataset.coords)o.delivery_coords=dr.dataset.coords;out.push(o);});return out;}
 function validate(){var os=collect();var ok=el('shop').value.trim()&&os.length>0&&os.every(function(o){return o.buyer_name&&phoneOk(o.buyer_phone)&&o.address&&o.item&&Number((o.goods_value||'').replace(/[^0-9.]/g,''))>0;});el('go').disabled=!ok;}
 function addOrder(){
@@ -1415,9 +1427,9 @@ var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/bulkOrders";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 function el(id){return document.getElementById(id)}
 (function(){if(!SESSION)return;setTimeout(function(){fetch(api("action=check")).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}}).catch(function(){});},0);})();
-var n=0, PODOK=false, quoted=null;
+var n=0, PODOK=false, quoted=null, POD_SUR=0;
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhone(inp){if(!inp)return;function u(){var v=(inp.value||'').trim();var bad=v&&!phoneOk(v);inp.style.borderColor=bad?'#dc2626':'';}inp.addEventListener('input',u);inp.addEventListener('blur',function(){var s=(inp.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)inp.value='0'+d;u();});}
+function flagPhone(inp){if(!inp)return;function u(){var v=(inp.value||'').trim();var bad=v&&!phoneOk(v);inp.style.borderColor=bad?'#dc2626':'';}inp.addEventListener('input',u);inp.addEventListener('blur',function(){var s=(inp.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)inp.value='0'+d;inp.dispatchEvent(new Event('input'));});}
 function wireAuto(inp,sug){var t;inp.addEventListener('input',function(){inp.dataset.coords='';clearTimeout(t);var q=inp.value.trim();quoted=null;syncGo();if(q.length<2){sug.style.display='none';return;}t=setTimeout(function(){fetch(api('action=autocomplete&q='+encodeURIComponent(q))).then(function(r){return r.json()}).then(function(j){sug.innerHTML='';(j.predictions||[]).forEach(function(p){var x=document.createElement('div');x.textContent=p.label;x.onclick=function(){inp.value=p.label;inp.dataset.coords='';sug.style.display='none';syncGo();};sug.appendChild(x);});sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';});},300);});}
 function useLoc(inp){if(!inp)return;if(!navigator.geolocation){alert('Location not available on this device — please type the address.');return;}var old=inp.value;inp.value='📍 Locating…';navigator.geolocation.getCurrentPosition(function(pos){var la=pos.coords.latitude,ln=pos.coords.longitude;inp.dataset.coords=la+','+ln;inp.value='📍 My current location';fetch(api('action=reverse&lat='+la+'&lng='+ln)).then(function(r){return r.json()}).then(function(j){if(j&&j.label)inp.value='📍 '+j.label;syncGo();}).catch(function(){syncGo();});},function(){inp.value=old;alert('Couldn\\'t get your location — please allow location access, or type the address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});}
 function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim().replace(/^📍\\s*/,'');});var pk=d.querySelector('input[data-f=pickup_address]'),dr=d.querySelector('input[data-f=delivery_address]');if(pk&&pk.dataset.coords)o.pickup_coords=pk.dataset.coords;if(dr&&dr.dataset.coords)o.delivery_coords=dr.dataset.coords;out.push(o);});return out;}
@@ -1456,31 +1468,39 @@ function doBook(){
      el('app').innerHTML='<div class="done"><h2>All set! 🙌</h2><p class="muted">'+j.booked+' deliveries created — a rider is being assigned to each. The receiver pays their delivery fee in cash when the rider arrives (total ₦'+Number(j.total).toLocaleString()+').'+skipped+'</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
    }).catch(function(){b.disabled=false;b.textContent='Confirm';alert('Network hiccup — try again.');});
 }
+// Render the priced review from the quoted data + the selected pay method. Pay-on-delivery adds the surcharge
+// to EACH drop (the rider collects it per drop), so the per-row fees, the total and the button all match what
+// the riders actually collect — the same base+surcharge the server books and confirms by WhatsApp.
+function renderReview(){
+  if(!quoted) return;
+  var pm=payMethod(), sur=(pm==='pod')?(Number(POD_SUR)||0):0, count=quoted.count||0;
+  var rows=(quoted.priced||[]).map(function(r){ var fee=Number(r.delivery_fee)+sur; return '<div class="rr"><span>'+r.receiver_name+' — '+String(r.delivery_address).split(',')[0]+'</span><b>₦'+fee.toLocaleString()+'</b></div>'; }).join('');
+  var total=Number(quoted.total)+sur*count;
+  var warn=(quoted.errors&&quoted.errors.length)?'<div class="err">'+quoted.errors.length+' row(s) couldn\\'t be priced and were skipped — fix the address & try again.</div>':'';
+  var note=(sur>0)?'<div style="font-size:12px;color:#6a626f;margin-top:6px">Includes ₦'+sur.toLocaleString()+' pay-on-delivery per drop — each rider collects the amount shown.</div>':'';
+  var oldr=el('review');if(oldr)oldr.remove();
+  var div=document.createElement('div');div.className='review';div.id='review';
+  div.innerHTML=rows+'<div class="tot"><span>Total ('+count+')</span><span>₦'+total.toLocaleString()+'</span></div>'+note+warn;
+  el('out').appendChild(div);
+  el('go').textContent=pm==='pod'?('Confirm '+count+' deliveries — pay ₦'+total.toLocaleString()+' on delivery'):('Confirm \\u0026 pay ₦'+total.toLocaleString());
+}
 function doReview(){
   var b=el('go');b.disabled=true;b.textContent='Pricing…';
   fetch(api('action=quote'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deliveries:collect()})})
    .then(function(r){return r.json()}).then(function(j){
      b.disabled=false;
      if(!j.ok||!j.count){b.textContent='Review \\u0026 book';el('out').innerHTML='<div class="err">Couldn\\'t price these — check the addresses (pick a suggestion from the list).</div>';return;}
-     quoted=j;
-     var rows=(j.priced||[]).map(function(r){return '<div class="rr"><span>'+r.receiver_name+' — '+String(r.delivery_address).split(',')[0]+'</span><b>₦'+Number(r.delivery_fee).toLocaleString()+'</b></div>';}).join('');
-     var warn=(j.errors&&j.errors.length)?'<div class="err">'+j.errors.length+' row(s) couldn\\'t be priced and were skipped — fix the address & try again.</div>':'';
-     var pm=payMethod();
-     var oldr=el('review');if(oldr)oldr.remove();
-     var div=document.createElement('div');div.className='review';div.id='review';
-     div.innerHTML=rows+'<div class="tot"><span>Total ('+j.count+')</span><span>₦'+Number(j.total).toLocaleString()+'</span></div>'+warn;
-     el('out').appendChild(div);
-     el('go').textContent=pm==='pod'?('Confirm '+j.count+' deliveries — pay on delivery'):('Confirm \\u0026 pay ₦'+Number(j.total).toLocaleString());
+     quoted=j; renderReview();
    }).catch(function(){b.disabled=false;b.textContent='Review \\u0026 book';alert('Network hiccup — try again.');});
 }
 el('add').onclick=addDelivery;
 ['sname','sphone'].forEach(function(id){el(id).addEventListener('input',syncGo);});
 flagPhone(el('sphone'));
-document.querySelectorAll('input[name=pay]').forEach(function(r){r.addEventListener('change',function(){if(quoted){el('go').textContent=payMethod()==='pod'?('Confirm '+quoted.count+' deliveries — pay on delivery'):('Confirm \\u0026 pay ₦'+Number(quoted.total).toLocaleString());}});});
+document.querySelectorAll('input[name=pay]').forEach(function(r){r.addEventListener('change',renderReview);});
 el('go').onclick=function(){if(quoted)doBook();else doReview();};
 if(VALID!=='1'){el('app').innerHTML='<div class="hero"><h1>Link expired</h1><p>Head back to your chat and ask for a new bulk-delivery link.</p></div>';}
 else{
-  fetch(api('action=prefill')).then(function(r){return r.json()}).then(function(p){if(!p)return;if(p.name)el('sname').value=p.name;if(p.phone)el('sphone').value=p.phone;if(p.pod_allowed){PODOK=true;el('opt-pod').style.display='flex';}syncGo();});
+  fetch(api('action=prefill')).then(function(r){return r.json()}).then(function(p){if(!p)return;if(p.name)el('sname').value=p.name;if(p.phone)el('sphone').value=p.phone;if(p.pod_allowed){PODOK=true;POD_SUR=Math.max(0,Number(p.pod_surcharge)||0);el('opt-pod').style.display='flex';if(POD_SUR>0){var ps=document.createElement('span');ps.style.cssText='color:#6a626f;font-size:12px;margin-left:6px';ps.textContent='(+₦'+POD_SUR.toLocaleString()+' each)';el('opt-pod').appendChild(ps);}}syncGo();});
   addDelivery();
 }
 </script></body></html>`;
