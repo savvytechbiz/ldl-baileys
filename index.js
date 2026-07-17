@@ -580,9 +580,18 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .f1{margin-top:11px}
 .row2 input::placeholder,.f1::placeholder{color:var(--ink-3)}
 .row2 input:focus,.f1:focus{border-color:var(--plum);box-shadow:0 0 0 3px rgba(79,7,76,.10)}
-.reuse a{display:inline-flex;align-items:center;background:var(--pink-soft);color:var(--plum);border:1px solid #f3d3e3;border-radius:99px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;margin-right:7px;transition:transform .12s var(--ease)}
-.reuse a:active{transform:scale(.96)}
-.reuse a.on{background:var(--plum);color:#fff;border-color:var(--plum)}
+.reuse{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.reuse:empty{display:none}
+.reuse a{display:inline-flex;align-items:center;gap:9px;max-width:100%;background:#fff;border:1px solid var(--line);border-radius:13px;padding:8px 14px 8px 9px;cursor:pointer;box-shadow:0 1px 2px rgba(16,12,20,.05);transition:border-color .15s var(--ease),background .15s var(--ease),transform .12s var(--ease)}
+.reuse a .ric{flex:none;width:24px;height:24px;border-radius:50%;background:var(--lilac);color:var(--plum);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.reuse a .rl{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.reuse a .rt{font-size:10.5px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em}
+.reuse a .rv{font-size:13.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+.reuse a:active{transform:scale(.97)}
+.reuse a.on{background:var(--plum);border-color:var(--plum);box-shadow:0 4px 12px rgba(79,7,76,.22)}
+.reuse a.on .rt{color:rgba(255,255,255,.72)}
+.reuse a.on .rv{color:#fff}
+.reuse a.on .ric{background:rgba(255,255,255,.22);color:#fff}
 .payopt{display:flex;align-items:center;gap:11px;padding:14px;border:1px solid var(--line);border-radius:var(--r);margin-bottom:9px;font-size:14.5px;font-weight:500;color:var(--ink);cursor:pointer;transition:border-color .15s var(--ease),background .15s var(--ease)}
 .payopt input{width:19px;height:19px;accent-color:var(--plum);flex:none}
 .payopt:has(input:checked){border-color:var(--plum);background:var(--lilac)}
@@ -875,7 +884,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
   flagPhone('sphone');flagPhone('rphone');
   // One-tap reuse for returning customers ("same as last time").
-  function reuse(id,label,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.textContent=label; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
+  function reuse(id,title,value,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.innerHTML='<span class="ric">↩</span><span class="rl"><span class="rt"></span><span class="rv"></span></span>'; a.querySelector('.rt').textContent=title; a.querySelector('.rv').textContent=value; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
   fetch(api('action=prefill')).then(function(r){return r.json();}).then(function(p){
     if(!p) return;
     YOU_NAME=p.name||''; YOU_PHONE=p.phone||'';
@@ -885,12 +894,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Pickup: the chat already quoted this route, so open the map ON it (pin + price), and the customer
     // can drag the pin to fine-tune. Else offer their last pickup as a chip.
     if(p.pickup){ if(p.pickup.from_chat){ document.getElementById('pin').value=p.pickup.address; if(p.pickup.lat) setPin('pickup',p.pickup); }
-      else if(p.pickup.lat){ reuse('rpickup','↩ Same pickup — '+p.pickup.address,function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); } }
+      else if(p.pickup.lat){ reuse('rpickup','Same pickup',p.pickup.address,function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); } }
     // Drop-off: same — open on the quoted spot, draggable to fine-tune.
     if(p.dropoff){ if(p.dropoff.from_chat){ document.getElementById('din').value=p.dropoff.address; if(p.dropoff.lat) setPin('dropoff',p.dropoff); }
-      else if(p.dropoff.lat){ reuse('rdrop','↩ Same drop-off — '+p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); } }
+      else if(p.dropoff.lat){ reuse('rdrop','Same drop-off',p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); } }
     if(p.receiver&&p.receiver.name){ if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }
-      else { reuse('rrecv','↩ Same receiver — '+p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
+      else { reuse('rrecv','Same receiver',p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
     showClr('dropoff',(document.getElementById('din').value||'').length>0);
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
