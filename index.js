@@ -541,14 +541,14 @@ input,button,textarea,select{font-family:inherit}
 /* ── premium motion (Bolt-style choreography) ── */
 @keyframes stepInR{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
 @keyframes stepInL{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:none}}
-.stepInR{animation:stepInR .46s cubic-bezier(.22,1,.36,1)}
-.stepInL{animation:stepInL .46s cubic-bezier(.22,1,.36,1)}
+.stepInR{animation:stepInR .24s cubic-bezier(.23,1,.32,1)}
+.stepInL{animation:stepInL .24s cubic-bezier(.23,1,.32,1)}
 @keyframes pindrop{0%{transform:translateY(-24px) scale(.4);opacity:0}55%{transform:translateY(3px) scale(1.08);opacity:1}100%{transform:none;opacity:1}}
-.pindrop{animation:pindrop .52s cubic-bezier(.34,1.56,.64,1)}
+.pindrop{animation:pindrop .34s cubic-bezier(.34,1.4,.64,1)}
 @keyframes popin{from{opacity:0;transform:translateY(10px) scale(.88)}to{opacity:1;transform:none}}
-.popin{animation:popin .42s cubic-bezier(.34,1.56,.64,1)}
+.popin{animation:popin .22s cubic-bezier(.23,1,.32,1)}
 @keyframes risein{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-.risein{animation:risein .44s cubic-bezier(.22,1,.36,1)}
+.risein{animation:risein .24s cubic-bezier(.23,1,.32,1)}
 @keyframes sugin{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:none}}
 .sug div{animation:sugin .28s var(--ease) both}
 .sug div:nth-child(2){animation-delay:.05s}.sug div:nth-child(3){animation-delay:.1s}.sug div:nth-child(4){animation-delay:.15s}.sug div:nth-child(5){animation-delay:.2s}.sug div:nth-child(6){animation-delay:.25s}
@@ -570,7 +570,7 @@ input,button,textarea,select{font-family:inherit}
 .wrap{height:100dvh;overflow:hidden}
 .maphero{min-height:60px}
 .sheet{overflow-y:auto;overscroll-behavior:contain;padding-top:0}
-.sheet.snapping{transition:height .34s cubic-bezier(.22,1,.36,1)}
+.sheet.snapping{transition:height .28s cubic-bezier(.32,.72,0,1)}
 .grab{position:sticky;top:0;z-index:6;width:100%;height:auto;background:var(--surface);margin:0 0 8px;padding:11px 0 12px;border-radius:var(--r-xl) var(--r-xl) 0 0;cursor:grab;touch-action:none;display:flex;justify-content:center}
 .grab::after{content:"";width:42px;height:5px;border-radius:99px;background:var(--line-2)}
 .grab:active{cursor:grabbing}
@@ -581,6 +581,22 @@ input,button,textarea,select{font-family:inherit}
 .ichip.on{background:var(--plum);border-color:var(--plum);color:#fff}
 .morebtn{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--plum);font-weight:700;font-size:14px;padding:13px 2px;cursor:pointer;width:auto;text-align:left}
 .morebtn:active{opacity:.6}
+.dotlive{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block;margin-right:7px;box-shadow:0 0 0 3px rgba(22,163,74,.18)}
+#continue{display:flex;align-items:center;justify-content:center;gap:9px}
+.etabadge .i,.riderchip .i{opacity:.9}
+/* ── Icon system — one stroke weight, optical sizing, inherits colour ── */
+.i{width:19px;height:19px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.ichip .i{width:18px;height:18px;opacity:.75}
+.ichip.on .i{opacity:1}
+.morebtn .i{width:16px;height:16px}
+.recentlist .rc .i{width:18px;height:18px;color:var(--ink-2)}
+.payopt .i{width:20px;height:20px;color:var(--ink-3)}
+.payopt:has(input:checked) .i{color:var(--plum)}
+.locp .i,.mic .i,.clr .i{width:19px;height:19px}
+.clr .i{width:16px;height:16px}
+/* Press feedback — every pressable surface answers the finger */
+button,.reuse a,.recentlist .rr{transition:transform .16s cubic-bezier(.23,1,.32,1),background .16s cubic-bezier(.23,1,.32,1)}
+button:active:not(:disabled),.recentlist .rr:active{transform:scale(.97)}
 #map{position:absolute;inset:0}
 .leaflet-container{z-index:1}
 .scrim{position:absolute;left:0;right:0;bottom:0;height:78px;background:linear-gradient(to bottom,rgba(247,244,248,0),var(--bg));z-index:2;pointer-events:none}
@@ -666,15 +682,15 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
   <div class="ins">
-    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><button type="button" class="clr" data-clr="pickup" aria-label="Clear pickup">✕</button><button type="button" class="mic" data-for="pickup" aria-label="Speak pickup">🎤</button><button type="button" class="locp" data-for="pickup" aria-label="Use my location for pickup">📍</button><div class="sug" id="psug" style="display:none"></div></div>
+    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><button type="button" class="clr" data-clr="pickup" aria-label="Clear pickup"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><button type="button" class="mic" data-for="pickup" aria-label="Speak pickup"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/></svg></button><button type="button" class="locp" data-for="pickup" aria-label="Use my location for pickup"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12h2.5M20 12h2.5"/></svg></button><div class="sug" id="psug" style="display:none"></div></div>
     <div class="divln"></div>
-    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="clr" data-clr="dropoff" aria-label="Clear drop-off">✕</button><button type="button" class="mic" data-for="dropoff" aria-label="Speak drop-off">🎤</button><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off">📍</button><div class="sug" id="dsug" style="display:none"></div></div>
+    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="clr" data-clr="dropoff" aria-label="Clear drop-off"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><button type="button" class="mic" data-for="dropoff" aria-label="Speak drop-off"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/></svg></button><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12h2.5M20 12h2.5"/></svg></button><div class="sug" id="dsug" style="display:none"></div></div>
   </div>
 </div>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
 <div class="recentlist" id="recentlist"></div>
-<button id="continue" style="display:none;margin-top:16px" onclick="showStep(2)">Continue &rarr;</button>
+<button id="continue" style="display:none;margin-top:16px" onclick="showStep(2)">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
 </div>
 <div id="step-details" style="display:none">
 <a id="backstep" onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:700;font-size:14px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to route</a>
@@ -682,34 +698,34 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="reuse" id="rrecv"></div>
 <input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone" class="f1" style="margin-top:0">
 <div id="codrphint" class="hint" style="display:none;color:#b45309;margin:5px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
-<button type="button" class="morebtn" id="addrname">➕ Add receiver's name</button>
+<button type="button" class="morebtn" id="addrname"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add receiver's name</button>
 <input id="rname" class="f1" placeholder="Receiver's name (optional)" style="display:none;margin-top:8px">
-<button type="button" class="morebtn" id="addpickup">🧍 Someone else is sending? Add their number</button>
+<button type="button" class="morebtn" id="addpickup"><svg class="i" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Someone else is sending? Add their number</button>
 <div id="pickupbox" style="display:none;margin-top:2px">
   <div class="lbl2">Pickup contact <span class="hint">— who we collect from</span></div>
   <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
 </div>
 <div class="sec">What are you sending?</div>
 <div class="chipwrap" id="itemchips">
-  <button type="button" class="ichip" data-i="Documents">📄 Documents</button>
-  <button type="button" class="ichip" data-i="Food">🍲 Food</button>
-  <button type="button" class="ichip" data-i="Clothes">👕 Clothes</button>
-  <button type="button" class="ichip" data-i="Parcel">📦 Parcel</button>
-  <button type="button" class="ichip" data-i="Gadget">📱 Gadget</button>
-  <button type="button" class="ichip" data-i="Medicine">💊 Meds</button>
-  <button type="button" class="ichip" data-i="Gift">🎁 Gift</button>
-  <button type="button" class="ichip" data-i="__other">✏️ Other</button>
+  <button type="button" class="ichip" data-i="Documents"><svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 13h7M8.5 17h5"/></svg>Documents</button>
+  <button type="button" class="ichip" data-i="Food"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 11h17a8.5 8.5 0 0 1-17 0z"/><path d="M12 4v3.5"/><path d="M2.5 20h19"/></svg>Food</button>
+  <button type="button" class="ichip" data-i="Clothes"><svg class="i" viewBox="0 0 24 24"><path d="M15 3a3 3 0 0 1-6 0L4.5 5.2 6 9.5l2-.8V21h8V8.7l2 .8 1.5-4.3z"/></svg>Clothes</button>
+  <button type="button" class="ichip" data-i="Parcel"><svg class="i" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Parcel</button>
+  <button type="button" class="ichip" data-i="Gadget"><svg class="i" viewBox="0 0 24 24"><rect x="6.5" y="2" width="11" height="20" rx="2.5"/><path d="M11.5 18.5h1"/></svg>Gadget</button>
+  <button type="button" class="ichip" data-i="Medicine"><svg class="i" viewBox="0 0 24 24"><path d="m10.5 20.5 10-10a5 5 0 0 0-7-7l-10 10a5 5 0 0 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>Meds</button>
+  <button type="button" class="ichip" data-i="Gift"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 5.5 12 8c0-2.5 2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>Gift</button>
+  <button type="button" class="ichip" data-i="__other"><svg class="i" viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>Other</button>
 </div>
 <input id="item" class="f1" placeholder="Type what you're sending" style="display:none;margin-top:2px">
-<button type="button" class="morebtn" id="addnote">➕ Add a note for the rider</button>
+<button type="button" class="morebtn" id="addnote"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a note for the rider</button>
 <input id="dinstr" class="f1" placeholder="Note for the rider — e.g. call on arrival, gate code" maxlength="200" style="display:none;margin-top:8px">
 <div id="paysel" style="margin-top:2px">
   <div class="sec">Payment</div>
   <div id="payradios">
-    <label class="payopt"><input type="radio" name="pay" value="now" checked style="width:18px;height:18px;accent-color:#4F074C"> 💳 Pay now (card or transfer)</label>
-    <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod" style="width:18px;height:18px;accent-color:#4F074C"> 🛵 Pay on delivery — cash to the rider</label>
+    <label class="payopt"><input type="radio" name="pay" value="now" checked style="width:18px;height:18px;accent-color:#4F074C"><svg class="i" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></svg>Pay now (card or transfer)</label>
+    <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod" style="width:18px;height:18px;accent-color:#4F074C"><svg class="i" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>Pay on delivery — cash to the rider</label>
   </div>
-  <label class="payopt" id="opt-cod" style="display:none"><input type="checkbox" id="codbox" style="width:18px;height:18px;accent-color:#b45309"> 📦 The buyer hasn't paid for the item yet — we collect it for you</label>
+  <label class="payopt" id="opt-cod" style="display:none"><input type="checkbox" id="codbox" style="width:18px;height:18px;accent-color:#b45309"><svg class="i" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>The buyer hasn't paid for the item yet — we collect it for you</label>
   <div id="codamt" style="display:none;margin-top:4px">
     <div style="font-size:12.5px;color:#6a626f;font-weight:700;margin:8px 2px 6px">How much should we collect from the buyer? (₦)</div>
     <input id="goods" type="number" inputmode="numeric" min="1" placeholder="e.g. 100000" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
@@ -766,7 +782,7 @@ function loadRiders(){
     riderDots.forEach(function(m){map.removeLayer(m);});riderDots=[];
     rs.forEach(function(p){riderDots.push(L.marker([p.lat,p.lng],{icon:bikeIcon(),interactive:false,zIndexOffset:-200,opacity:.9}).addTo(map));});
     var chip=document.getElementById('riderchip');
-    if(chip){if(rs.length){chip.style.display='flex';chip.textContent='🟢 '+rs.length+' rider'+(rs.length>1?'s':'')+' nearby';}else{chip.style.display='none';}}
+    if(chip){if(rs.length){chip.style.display='flex';chip.innerHTML='<span class="dotlive"></span>'+rs.length+' rider'+(rs.length>1?'s':'')+' nearby';}else{chip.style.display='none';}}
   }).catch(function(){});
 }
 // Reveal the next step only when the previous one is done — one simple thing at a time.
@@ -934,7 +950,7 @@ function quote(){
      if(j.price){
        mapFee=j.price; mapMin=j.min||null; mapKm=j.km||null;
        renderFee();   // fee box + top badge (adds the POD surcharge when pay-on-delivery is selected)
-       if(j.min){ var ew=(e.style.display==='none'||!e.style.display); e.style.display='flex'; e.innerHTML='🛵 '+j.min+' min <span class="d">trip</span>'; if(ew){e.classList.remove('popin');void e.offsetWidth;e.classList.add('popin');} } else { e.style.display='none'; }
+       if(j.min){ var ew=(e.style.display==='none'||!e.style.display); e.style.display='flex'; e.innerHTML='<svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="6" cy="17" r="2.6"/><circle cx="18.5" cy="17" r="2.6"/><path d="M8.6 17h7.3l1.9-7h2.7M6 17l2.8-8.4h4.4"/></svg>'+j.min+' min <span class="d">trip</span>'; if(ew){e.classList.remove('popin');void e.offsetWidth;e.classList.add('popin');} } else { e.style.display='none'; }
      } else { mapFee=null; renderFee(); if(e)e.style.display='none'; }
      if(typeof codBreak==='function') codBreak();
      if(j.polyline) drawRoute(j.polyline);
@@ -1000,7 +1016,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,title,value,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.innerHTML='<span class="ric">↩</span><span class="rl"><span class="rt"></span><span class="rv"></span></span>'; a.querySelector('.rt').textContent=title; a.querySelector('.rv').textContent=value; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
   // Bolt-style recent/saved place row (shown as a tappable list on the search step).
-  function recentRow(icon,label,sub,fn){ var d=document.getElementById('recentlist'); if(!d)return; var r=document.createElement('div'); r.className='rr'; r.innerHTML='<span class="rc"></span><span class="rm"><span class="rn"></span><span class="rs"></span></span>'; r.querySelector('.rc').textContent=icon; r.querySelector('.rn').textContent=label; r.querySelector('.rs').textContent=sub||''; r.onclick=fn; d.appendChild(r); }
+  function recentRow(icon,label,sub,fn){ var d=document.getElementById('recentlist'); if(!d)return; var r=document.createElement('div'); r.className='rr'; r.innerHTML='<span class="rc"></span><span class="rm"><span class="rn"></span><span class="rs"></span></span>'; r.querySelector('.rc').innerHTML=icon; r.querySelector('.rn').textContent=label; r.querySelector('.rs').textContent=sub||''; r.onclick=fn; d.appendChild(r); }
   fetch(api('action=prefill')).then(function(r){return r.json();}).then(function(p){
     if(!p) return;
     YOU_NAME=p.name||''; YOU_PHONE=p.phone||'';
@@ -1015,8 +1031,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(p.dropoff){ if(p.dropoff.from_chat){ document.getElementById('din').value=p.dropoff.address; if(p.dropoff.lat) setPin('dropoff',p.dropoff); }
       else if(p.dropoff.lat){ reuse('rdrop','Same drop-off',p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); } }
     // Bolt-style recent/saved places, shown as a tappable list on the search step.
-    if(p.dropoff&&p.dropoff.lat&&!p.dropoff.from_chat){ recentRow('🕘',p.dropoff.address,'Recent drop-off',function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); }
-    if(p.pickup&&p.pickup.lat&&!p.pickup.from_chat){ recentRow('🏠',p.pickup.address,'Saved pickup',function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); }
+    if(p.dropoff&&p.dropoff.lat&&!p.dropoff.from_chat){ recentRow('<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.4 2"/></svg>',p.dropoff.address,'Recent drop-off',function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); }
+    if(p.pickup&&p.pickup.lat&&!p.pickup.from_chat){ recentRow('<svg class="i" viewBox="0 0 24 24"><path d="m3 9.6 9-6.8 9 6.8V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9.5 22v-7.5h5V22"/></svg>',p.pickup.address,'Saved pickup',function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); }
     if(p.receiver&&p.receiver.name){ if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }
       else { reuse('rrecv','Same receiver',p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
