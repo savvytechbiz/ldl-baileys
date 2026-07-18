@@ -1021,6 +1021,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       pay_method:payVal,cod:codOn,goods_value:goodsVal,account_number:acctNo,bank_code:bankCode,bank_name:bankName
     })})
      .then(r=>r.json()).then(j=>{
+       // App (in-app payment): the server returns a payment link — go straight to secure checkout, no WhatsApp.
+       if(j&&j.pay_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment 🔒</p></div>'; window.location.href=j.pay_url; return; }
+       // Chat sessions: the order + price are waiting in WhatsApp (reply YES to pay).
        document.getElementById('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
      }).catch(function(){ b.disabled=false; b.textContent='Confirm & book'; alert('Network hiccup — try again.'); });
   };
