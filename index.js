@@ -618,7 +618,8 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="maphero"><div id="map"></div><div id="riderchip" class="riderchip"></div><div id="pricetop" class="pricetop" style="display:none"></div><div id="eta" class="etabadge" style="display:none"></div><div class="scrim"></div></div>
 <div class="sheet">
 <div class="grab"></div>
-<div class="sec first">Route</div>
+<div id="step-route">
+<div class="sec first">Where to?</div>
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
   <div class="ins">
@@ -629,7 +630,10 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 </div>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
+<button id="continue" style="display:none;margin-top:16px" onclick="showStep(2)">Continue &rarr;</button>
+</div>
 <div id="step-details" style="display:none">
+<a id="backstep" onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:700;font-size:14px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to route</a>
 <div class="sec">Contacts</div>
 <div class="lbl2">Pickup <span class="hint">— who we collect from</span></div>
 <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
@@ -708,7 +712,10 @@ function loadRiders(){
 }
 // Reveal the next step only when the previous one is done — one simple thing at a time.
 function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='none'){e.style.display='';e.className=(e.className?e.className+' ':'')+'reveal';}}
-function step(){if(picked.pickup&&picked.dropoff)reveal('step-details');}
+// Two-step flow: Step 1 = set the route (map + price), Step 2 = details + confirm. One focus per screen.
+function showStep(n){var r=document.getElementById('step-route'),d=document.getElementById('step-details');if(!r||!d)return;if(n===2){if(!(picked.pickup&&picked.dropoff))return;r.style.display='none';d.style.display='';d.className='reveal';try{window.scrollTo(0,0);}catch(e){}}else{r.style.display='';d.style.display='none';}}
+// Reveal the "Continue" button only once both ends are set (and the map is pricing the trip).
+function step(){var c=document.getElementById('continue');if(c)c.style.display=(picked.pickup&&picked.dropoff)?'block':'none';}
 function setPin(which,d){
   var ll=[d.lat,d.lng];
   var old=which==='pickup'?mP:mD; if(old)map.removeLayer(old);
@@ -928,6 +935,10 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
     if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
+    // Account-aware pickup DEFAULT (Bolt-style): if there's no saved pickup to suggest and the user has
+    // ALREADY granted location, drop their current-location pin on pickup automatically. A saved/usual
+    // pickup always wins (we skip when p.pickup exists), and they can still change it.
+    if(!p.pickup && !picked.pickup){ try{ if(navigator.permissions&&navigator.permissions.query){ navigator.permissions.query({name:'geolocation'}).then(function(st){ if(st.state==='granted'&&!picked.pickup) useLoc('pickup'); }).catch(function(){}); } }catch(e){} }
     validate(); step();
   }).catch(function(){});
   // COD: live "you'll be credited" = amount − our fee (COD_PCT%, CBN & bank charges; max ₦3,000) − delivery.
