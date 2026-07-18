@@ -584,6 +584,8 @@ input,button,textarea,select{font-family:inherit}
 .morebtn:active{opacity:.55;transform:none}
 .dotlive{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block;margin-right:7px;box-shadow:0 0 0 3px rgba(22,163,74,.18)}
 #continue,#tonext{display:flex;align-items:center;justify-content:center;gap:9px}
+/* Past the route step the fee lives in the sheet, so the map badge would only be clipped — hide it. */
+#app.instep .pricetop{display:none !important}
 .etabadge .i,.riderchip .i{opacity:.9}
 /* ── Icon system — one stroke weight, optical sizing, inherits colour ── */
 .i{width:19px;height:19px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
@@ -798,13 +800,28 @@ function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='n
 // Two-step flow: Step 1 = set the route (map + price), Step 2 = details + confirm. One focus per screen.
 function anim(el,cls){if(!el)return;el.classList.remove('stepInL','stepInR','risein');void el.offsetWidth;el.classList.add(cls);}
 // Resize the draggable sheet to a fraction of the screen (with a smooth snap + map re-measure).
-function sheetH(frac){var sh=document.querySelector('.sheet');if(!sh)return;sh.classList.add('snapping');sh.style.height=Math.round((window.innerHeight||700)*frac)+'px';setTimeout(function(){try{map.invalidateSize();}catch(e){}},350);}
+// Size the sheet to the CONTENT it actually holds (capped at maxFrac of the screen), so a short
+// step never leaves dead white space below the button. Still fully draggable afterwards.
+function sheetH(maxFrac){
+  var sh=document.querySelector('.sheet'); if(!sh)return;
+  var vh=window.innerHeight||700;
+  var cur=sh.getBoundingClientRect().height;
+  sh.classList.remove('snapping');
+  sh.style.height='auto';
+  var natural=sh.scrollHeight;              // natural height of the visible step
+  sh.style.height=cur+'px';                 // restore so the transition has a start value
+  void sh.offsetHeight;                     // force reflow
+  sh.classList.add('snapping');
+  sh.style.height=Math.max(Math.round(vh*0.26),Math.min(Math.round(vh*maxFrac),natural))+'px';
+  setTimeout(function(){try{map.invalidateSize();}catch(e){}},350);
+}
 function showStep(n){
   var r=document.getElementById('step-route'),d=document.getElementById('step-details'),p=document.getElementById('step-pay'),sh=document.querySelector('.sheet');
   if(!r||!d||!p)return;
-  if(n===2){ if(!(picked.pickup&&picked.dropoff))return; r.style.display='none'; p.style.display='none'; d.style.display=''; anim(d,'stepInR'); if(sh)sh.scrollTop=0; sheetH(0.92); }
-  else if(n===3){ r.style.display='none'; d.style.display='none'; p.style.display=''; anim(p,'stepInR'); if(sh)sh.scrollTop=0; sheetH(0.92); }
-  else { d.style.display='none'; p.style.display='none'; r.style.display=''; anim(r,'stepInL'); sheetH(0.58); }
+  var app=document.getElementById('app');
+  if(n===2){ if(!(picked.pickup&&picked.dropoff))return; r.style.display='none'; p.style.display='none'; d.style.display=''; anim(d,'stepInR'); if(sh)sh.scrollTop=0; if(app)app.classList.add('instep'); sheetH(0.9); }
+  else if(n===3){ r.style.display='none'; d.style.display='none'; p.style.display=''; anim(p,'stepInR'); if(sh)sh.scrollTop=0; if(app)app.classList.add('instep'); sheetH(0.9); }
+  else { d.style.display='none'; p.style.display='none'; r.style.display=''; anim(r,'stepInL'); if(app)app.classList.remove('instep'); sheetH(0.6); }
 }
 // Reveal the "Continue" button only once both ends are set (and the map is pricing the trip).
 function step(){var c=document.getElementById('continue');if(!c)return;var show=!!(picked.pickup&&picked.dropoff);if(show){if(c.style.display==='none'||!c.style.display){c.style.display='block';anim(c,'risein');}}else c.style.display='none';}
@@ -1024,11 +1041,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   })();
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
   // Item = TAP not type. Each chip fills the (hidden) #item field; "Other" reveals a text box.
-  Array.prototype.forEach.call(document.querySelectorAll('#itemchips .ichip'),function(c){ c.onclick=function(){ Array.prototype.forEach.call(document.querySelectorAll('#itemchips .ichip'),function(x){x.classList.remove('on');}); c.classList.add('on'); var v=c.getAttribute('data-i'); var it=document.getElementById('item'); if(v==='__other'){ it.style.display='block'; it.value=''; it.focus(); } else { it.style.display='none'; it.value=v; } validate(); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('#itemchips .ichip'),function(c){ c.onclick=function(){ Array.prototype.forEach.call(document.querySelectorAll('#itemchips .ichip'),function(x){x.classList.remove('on');}); c.classList.add('on'); var v=c.getAttribute('data-i'); var it=document.getElementById('item'); if(v==='__other'){ it.style.display='block'; it.value=''; sheetH(0.9); it.focus(); } else { it.style.display='none'; it.value=v; sheetH(0.9); } validate(); }; });
   // Optional fields stay hidden until tapped — keeps the screen from feeling like a form.
-  var _an=document.getElementById('addnote'); if(_an)_an.onclick=function(){ var n=document.getElementById('dinstr'); n.style.display='block'; n.focus(); this.style.display='none'; };
-  var _arn=document.getElementById('addrname'); if(_arn)_arn.onclick=function(){ var n=document.getElementById('rname'); n.style.display='block'; n.focus(); this.style.display='none'; };
-  var _apu=document.getElementById('addpickup'); if(_apu)_apu.onclick=function(){ document.getElementById('pickupbox').style.display='block'; this.style.display='none'; };
+  // Revealing an optional field grows the content — re-fit the sheet so it never scrolls unnecessarily.
+  var _an=document.getElementById('addnote'); if(_an)_an.onclick=function(){ var n=document.getElementById('dinstr'); n.style.display='block'; this.style.display='none'; sheetH(0.9); n.focus(); };
+  var _arn=document.getElementById('addrname'); if(_arn)_arn.onclick=function(){ var n=document.getElementById('rname'); n.style.display='block'; this.style.display='none'; sheetH(0.9); n.focus(); };
+  var _apu=document.getElementById('addpickup'); if(_apu)_apu.onclick=function(){ document.getElementById('pickupbox').style.display='block'; this.style.display='none'; sheetH(0.9); };
   flagPhone('sphone');flagPhone('rphone');
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,title,value,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.innerHTML='<span class="ric">↩</span><span class="rl"><span class="rt"></span><span class="rv"></span></span>'; a.querySelector('.rt').textContent=title; a.querySelector('.rv').textContent=value; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
