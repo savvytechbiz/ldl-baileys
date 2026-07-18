@@ -1065,9 +1065,18 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Drop-off: same — open on the quoted spot, draggable to fine-tune.
     if(p.dropoff){ if(p.dropoff.from_chat){ document.getElementById('din').value=p.dropoff.address; if(p.dropoff.lat) setPin('dropoff',p.dropoff); }
       else if(p.dropoff.lat){ reuse('rdrop','Same drop-off',p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); } }
-    // Bolt-style recent/saved places, shown as a tappable list on the search step.
-    if(p.dropoff&&p.dropoff.lat&&!p.dropoff.from_chat){ recentRow('<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.4 2"/></svg>',p.dropoff.address,'Recent drop-off',function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); }
-    if(p.pickup&&p.pickup.lat&&!p.pickup.from_chat){ recentRow('<svg class="i" viewBox="0 0 24 24"><path d="m3 9.6 9-6.8 9 6.8V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9.5 22v-7.5h5V22"/></svg>',p.pickup.address,'Saved pickup',function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); }
+    // Recent places list — the customer's last few destinations, one tap each.
+    var _clock='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.4 2"/></svg>';
+    var _home='<svg class="i" viewBox="0 0 24 24"><path d="m3 9.6 9-6.8 9 6.8V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9.5 22v-7.5h5V22"/></svg>';
+    var _seen={};
+    (p.recent||[]).slice(0,4).forEach(function(r){
+      if(!r||!r.address||!r.lat||_seen[r.address])return; _seen[r.address]=1;
+      recentRow(_clock,r.address,'Recent drop-off',function(){ document.getElementById('din').value=r.address; setPin('dropoff',r); });
+    });
+    if(p.dropoff&&p.dropoff.lat&&!p.dropoff.from_chat&&!_seen[p.dropoff.address]){ _seen[p.dropoff.address]=1; recentRow(_clock,p.dropoff.address,'Recent drop-off',function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); }
+    if(p.pickup&&p.pickup.lat&&!p.pickup.from_chat){ recentRow(_home,p.pickup.address,'Saved pickup',function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); }
+    // The list arrives AFTER the sheet was first sized — re-fit so the places are never clipped.
+    if(document.querySelectorAll('#recentlist .rr').length) sheetH(0.74);
     if(p.receiver&&p.receiver.name){ if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }
       else { reuse('rrecv','Same receiver',p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
