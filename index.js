@@ -538,6 +538,24 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',-apple-s
 input,button,textarea,select{font-family:inherit}
 .wrap{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
 .maphero{position:relative;flex:1 1 auto;min-height:240px}
+/* ── premium motion (Bolt-style choreography) ── */
+@keyframes stepInR{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+@keyframes stepInL{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:none}}
+.stepInR{animation:stepInR .46s cubic-bezier(.22,1,.36,1)}
+.stepInL{animation:stepInL .46s cubic-bezier(.22,1,.36,1)}
+@keyframes pindrop{0%{transform:translateY(-24px) scale(.4);opacity:0}55%{transform:translateY(3px) scale(1.08);opacity:1}100%{transform:none;opacity:1}}
+.pindrop{animation:pindrop .52s cubic-bezier(.34,1.56,.64,1)}
+@keyframes popin{from{opacity:0;transform:translateY(10px) scale(.88)}to{opacity:1;transform:none}}
+.popin{animation:popin .42s cubic-bezier(.34,1.56,.64,1)}
+@keyframes risein{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.risein{animation:risein .44s cubic-bezier(.22,1,.36,1)}
+@keyframes sugin{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:none}}
+.sug div{animation:sugin .28s var(--ease) both}
+.sug div:nth-child(2){animation-delay:.05s}.sug div:nth-child(3){animation-delay:.1s}.sug div:nth-child(4){animation-delay:.15s}.sug div:nth-child(5){animation-delay:.2s}.sug div:nth-child(6){animation-delay:.25s}
+.leaflet-overlay-pane path.routeanim{stroke-dasharray:3000;stroke-dashoffset:3000;animation:draw 1.1s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.reuse a,.locp,.mic{transition:transform .14s var(--ease),background .18s var(--ease),opacity .2s}
+.reuse a:active{transform:scale(.96)}
 #map{position:absolute;inset:0}
 .leaflet-container{z-index:1}
 .scrim{position:absolute;left:0;right:0;bottom:0;height:78px;background:linear-gradient(to bottom,rgba(247,244,248,0),var(--bg));z-index:2;pointer-events:none}
@@ -693,8 +711,8 @@ function initMap(){
 // Clean ride-app markers: a green dot for pickup, a dark rounded square for drop-off.
 function pinIcon(which){
   var c = which==='pickup'
-    ? '<div style="width:18px;height:18px;border-radius:50%;background:#4F074C;border:3px solid #fff;box-shadow:0 3px 8px rgba(79,7,76,.45)"></div>'
-    : '<div style="width:18px;height:18px;border-radius:5px;background:#E23A7C;border:3px solid #fff;box-shadow:0 3px 8px rgba(226,58,124,.45)"></div>';
+    ? '<div class="pindrop" style="width:18px;height:18px;border-radius:50%;background:#4F074C;border:3px solid #fff;box-shadow:0 3px 8px rgba(79,7,76,.45)"></div>'
+    : '<div class="pindrop" style="width:18px;height:18px;border-radius:5px;background:#E23A7C;border:3px solid #fff;box-shadow:0 3px 8px rgba(226,58,124,.45)"></div>';
   return L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],html:c});
 }
 // Real on-shift rider dots (anonymous + privacy-fuzzed by the server). Refreshes every ~25s so the
@@ -713,9 +731,10 @@ function loadRiders(){
 // Reveal the next step only when the previous one is done — one simple thing at a time.
 function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='none'){e.style.display='';e.className=(e.className?e.className+' ':'')+'reveal';}}
 // Two-step flow: Step 1 = set the route (map + price), Step 2 = details + confirm. One focus per screen.
-function showStep(n){var r=document.getElementById('step-route'),d=document.getElementById('step-details');if(!r||!d)return;if(n===2){if(!(picked.pickup&&picked.dropoff))return;r.style.display='none';d.style.display='';d.className='reveal';try{window.scrollTo(0,0);}catch(e){}}else{r.style.display='';d.style.display='none';}}
+function anim(el,cls){if(!el)return;el.classList.remove('stepInL','stepInR','risein');void el.offsetWidth;el.classList.add(cls);}
+function showStep(n){var r=document.getElementById('step-route'),d=document.getElementById('step-details');if(!r||!d)return;if(n===2){if(!(picked.pickup&&picked.dropoff))return;r.style.display='none';d.style.display='';anim(d,'stepInR');try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){try{window.scrollTo(0,0);}catch(e2){}}}else{d.style.display='none';r.style.display='';anim(r,'stepInL');}}
 // Reveal the "Continue" button only once both ends are set (and the map is pricing the trip).
-function step(){var c=document.getElementById('continue');if(c)c.style.display=(picked.pickup&&picked.dropoff)?'block':'none';}
+function step(){var c=document.getElementById('continue');if(!c)return;var show=!!(picked.pickup&&picked.dropoff);if(show){if(c.style.display==='none'||!c.style.display){c.style.display='block';anim(c,'risein');}}else c.style.display='none';}
 function setPin(which,d){
   var ll=[d.lat,d.lng];
   var old=which==='pickup'?mP:mD; if(old)map.removeLayer(old);
@@ -726,7 +745,9 @@ function setPin(which,d){
   showClr(which,true);
   step();
   var pts=[]; if(picked.pickup)pts.push([picked.pickup.lat,picked.pickup.lng]); if(picked.dropoff)pts.push([picked.dropoff.lat,picked.dropoff.lng]);
-  if(pts.length)map.fitBounds(pts,{padding:[40,40],maxZoom:15});
+  // Bolt-style: the camera glides to frame the trip instead of snapping.
+  if(pts.length>1){ try{ map.flyToBounds(pts,{padding:[45,45],maxZoom:15,duration:.9}); }catch(e){ map.fitBounds(pts,{padding:[45,45],maxZoom:15}); } }
+  else if(pts.length===1){ try{ map.flyTo(pts[0],15,{duration:.8}); }catch(e){ map.setView(pts[0],15); } }
   validate();
   if(picked.pickup&&picked.dropoff)quote();
 }
@@ -772,7 +793,7 @@ function useLoc(which){
   navigator.geolocation.getCurrentPosition(function(pos){
     btns.forEach(function(b){b.textContent='📍';b.disabled=false;});
     var lat=pos.coords.latitude, lng=pos.coords.longitude;
-    map.setView([lat,lng],16);
+    try{ map.flyTo([lat,lng],16,{duration:.8}); }catch(e){ map.setView([lat,lng],16); }
     document.getElementById(which==='pickup'?'pin':'din').value='Pinpointing…';
     setPin(which,{address:'My current location',lat:lat,lng:lng});
     reverseSet(which,lat,lng);
@@ -817,7 +838,7 @@ function renderFee(){
   var sub=[]; if(mapMin)sub.push('~'+mapMin+' min trip'); if(mapKm)sub.push('~'+mapKm+' km');
   if(sc>0)sub.push('incl. ₦'+sc.toLocaleString()+' pay-on-delivery');
   if(f){ f.style.display='flex'; f.innerHTML='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+tot.toLocaleString()+'</div>'; }
-  if(pt){ pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+tot.toLocaleString()+'</span>'; }
+  if(pt){ var pw=(pt.style.display==='none'||!pt.style.display); pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+tot.toLocaleString()+'</span>'; if(pw){pt.classList.remove('popin');void pt.offsetWidth;pt.classList.add('popin');} }
 }
 // COD payout bank: BANK_SAVED means we already have this vendor's account on file (no re-entry).
 var BANK_SAVED=false, BANKS_LOADED=false, ACCT_OK=false;
@@ -856,7 +877,7 @@ function resolveAcct(){
      else { ACCT_OK=false; nm.style.color='#c0392b'; nm.textContent='Couldn\\'t verify that account — check the number and bank.'; }
    }).catch(function(){ nm.style.display='none'; });
 }
-function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#E23A7C',weight:5,opacity:.85,lineJoin:'round'}).addTo(map); map.fitBounds(routeLine.getBounds(),{padding:[50,50],maxZoom:15}); }catch(e){} }
+function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#E23A7C',weight:5,opacity:.9,lineJoin:'round',className:'routeanim'}).addTo(map); try{ map.flyToBounds(routeLine.getBounds(),{padding:[50,50],maxZoom:15,duration:.9}); }catch(e){ map.fitBounds(routeLine.getBounds(),{padding:[50,50],maxZoom:15}); } }catch(e){} }
 function quote(){
   var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
   f.style.display='flex'; f.innerHTML='<div class="lbl">Calculating fee…</div>';
@@ -867,7 +888,7 @@ function quote(){
      if(j.price){
        mapFee=j.price; mapMin=j.min||null; mapKm=j.km||null;
        renderFee();   // fee box + top badge (adds the POD surcharge when pay-on-delivery is selected)
-       if(j.min){ e.style.display='flex'; e.innerHTML='🛵 '+j.min+' min <span class="d">trip</span>'; } else { e.style.display='none'; }
+       if(j.min){ var ew=(e.style.display==='none'||!e.style.display); e.style.display='flex'; e.innerHTML='🛵 '+j.min+' min <span class="d">trip</span>'; if(ew){e.classList.remove('popin');void e.offsetWidth;e.classList.add('popin');} } else { e.style.display='none'; }
      } else { mapFee=null; renderFee(); if(e)e.style.display='none'; }
      if(typeof codBreak==='function') codBreak();
      if(j.polyline) drawRoute(j.polyline);
