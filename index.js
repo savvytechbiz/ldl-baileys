@@ -574,6 +574,13 @@ input,button,textarea,select{font-family:inherit}
 .grab{position:sticky;top:0;z-index:6;width:100%;height:auto;background:var(--surface);margin:0 0 8px;padding:11px 0 12px;border-radius:var(--r-xl) var(--r-xl) 0 0;cursor:grab;touch-action:none;display:flex;justify-content:center}
 .grab::after{content:"";width:42px;height:5px;border-radius:99px;background:var(--line-2)}
 .grab:active{cursor:grabbing}
+/* ── Tap-driven details (less typing) ── */
+.chipwrap{display:flex;flex-wrap:wrap;gap:9px;margin:2px 0 2px}
+.ichip{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1.5px solid var(--line-2);border-radius:13px;padding:11px 15px;font-size:15px;font-weight:600;color:var(--ink);cursor:pointer;transition:transform .13s var(--ease),background .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease)}
+.ichip:active{transform:scale(.95)}
+.ichip.on{background:var(--plum);border-color:var(--plum);color:#fff}
+.morebtn{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--plum);font-weight:700;font-size:14px;padding:13px 2px;cursor:pointer;width:auto;text-align:left}
+.morebtn:active{opacity:.6}
 #map{position:absolute;inset:0}
 .leaflet-container{z-index:1}
 .scrim{position:absolute;left:0;right:0;bottom:0;height:78px;background:linear-gradient(to bottom,rgba(247,244,248,0),var(--bg));z-index:2;pointer-events:none}
@@ -671,16 +678,31 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 </div>
 <div id="step-details" style="display:none">
 <a id="backstep" onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:700;font-size:14px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to route</a>
-<div class="sec">Contacts</div>
-<div class="lbl2">Pickup <span class="hint">— who we collect from</span></div>
-<div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
-<div class="lbl2">Receiver <span class="hint">— who we deliver to</span></div>
-<div class="row2"><input id="rname" placeholder="Name (optional)"><input id="rphone" type="tel" inputmode="tel" placeholder="Phone"></div>
-<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:5px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
+<div class="sec">Who's receiving it?</div>
 <div class="reuse" id="rrecv"></div>
-<div class="sec">Package</div>
-<input id="item" class="f1" placeholder="What are you sending? (e.g. food, documents)">
-<input id="dinstr" class="f1" placeholder="Delivery instructions — optional (e.g. call on arrival, gate code)" maxlength="200" style="margin-top:10px">
+<input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone" class="f1" style="margin-top:0">
+<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:5px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
+<button type="button" class="morebtn" id="addrname">➕ Add receiver's name</button>
+<input id="rname" class="f1" placeholder="Receiver's name (optional)" style="display:none;margin-top:8px">
+<button type="button" class="morebtn" id="addpickup">🧍 Someone else is sending? Add their number</button>
+<div id="pickupbox" style="display:none;margin-top:2px">
+  <div class="lbl2">Pickup contact <span class="hint">— who we collect from</span></div>
+  <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
+</div>
+<div class="sec">What are you sending?</div>
+<div class="chipwrap" id="itemchips">
+  <button type="button" class="ichip" data-i="Documents">📄 Documents</button>
+  <button type="button" class="ichip" data-i="Food">🍲 Food</button>
+  <button type="button" class="ichip" data-i="Clothes">👕 Clothes</button>
+  <button type="button" class="ichip" data-i="Parcel">📦 Parcel</button>
+  <button type="button" class="ichip" data-i="Gadget">📱 Gadget</button>
+  <button type="button" class="ichip" data-i="Medicine">💊 Meds</button>
+  <button type="button" class="ichip" data-i="Gift">🎁 Gift</button>
+  <button type="button" class="ichip" data-i="__other">✏️ Other</button>
+</div>
+<input id="item" class="f1" placeholder="Type what you're sending" style="display:none;margin-top:2px">
+<button type="button" class="morebtn" id="addnote">➕ Add a note for the rider</button>
+<input id="dinstr" class="f1" placeholder="Note for the rider — e.g. call on arrival, gate code" maxlength="200" style="display:none;margin-top:8px">
 <div id="paysel" style="margin-top:2px">
   <div class="sec">Payment</div>
   <div id="payradios">
@@ -968,6 +990,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     sheetH(0.58);   // open at a comfortable middle height
   })();
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
+  // Item = TAP not type. Each chip fills the (hidden) #item field; "Other" reveals a text box.
+  Array.prototype.forEach.call(document.querySelectorAll('#itemchips .ichip'),function(c){ c.onclick=function(){ Array.prototype.forEach.call(document.querySelectorAll('#itemchips .ichip'),function(x){x.classList.remove('on');}); c.classList.add('on'); var v=c.getAttribute('data-i'); var it=document.getElementById('item'); if(v==='__other'){ it.style.display='block'; it.value=''; it.focus(); } else { it.style.display='none'; it.value=v; } validate(); }; });
+  // Optional fields stay hidden until tapped — keeps the screen from feeling like a form.
+  var _an=document.getElementById('addnote'); if(_an)_an.onclick=function(){ var n=document.getElementById('dinstr'); n.style.display='block'; n.focus(); this.style.display='none'; };
+  var _arn=document.getElementById('addrname'); if(_arn)_arn.onclick=function(){ var n=document.getElementById('rname'); n.style.display='block'; n.focus(); this.style.display='none'; };
+  var _apu=document.getElementById('addpickup'); if(_apu)_apu.onclick=function(){ document.getElementById('pickupbox').style.display='block'; this.style.display='none'; };
   flagPhone('sphone');flagPhone('rphone');
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,title,value,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.innerHTML='<span class="ric">↩</span><span class="rl"><span class="rt"></span><span class="rv"></span></span>'; a.querySelector('.rt').textContent=title; a.querySelector('.rv').textContent=value; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
