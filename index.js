@@ -556,19 +556,24 @@ input,button,textarea,select{font-family:inherit}
 @keyframes draw{to{stroke-dashoffset:0}}
 .reuse a,.locp,.mic{transition:transform .14s var(--ease),background .18s var(--ease),opacity .2s}
 .reuse a:active{transform:scale(.96)}
-/* ── Bolt-style search-first Step 1 (map hidden until a destination is picked) ── */
-#app.searching .maphero{display:none}
-#app.searching .sheet{margin-top:0;border-radius:0;box-shadow:none;min-height:100dvh;animation:none;padding-top:18px}
-#app.searching .sec.first{font-size:23px;font-weight:800;text-transform:none;letter-spacing:-.02em;color:var(--ink);margin:2px 2px 18px}
-#app.searching #rpickup,#app.searching #rdrop{display:none}
-#app:not(.searching) .recentlist{display:none}
-.recentlist{margin-top:2px}
+/* ── Bolt-style recent/saved places list (map stays visible above, list hides once a route is set) ── */
+#rpickup,#rdrop{display:none}
+#app.routed .recentlist{display:none}
+.recentlist{margin-top:6px}
 .recentlist .rr{display:flex;align-items:center;gap:14px;padding:15px 4px;border-bottom:1px solid var(--line);cursor:pointer}
 .recentlist .rr:active{background:var(--lilac)}
 .recentlist .rc{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
 .recentlist .rm{flex:1;min-width:0}
 .recentlist .rn{font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .recentlist .rs{font-size:12.5px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ── Draggable bottom sheet (Bolt-style) — pull the handle up to fill the screen, down to see more map ── */
+.wrap{height:100dvh;overflow:hidden}
+.maphero{min-height:60px}
+.sheet{overflow-y:auto;overscroll-behavior:contain;padding-top:0}
+.sheet.snapping{transition:height .34s cubic-bezier(.22,1,.36,1)}
+.grab{position:sticky;top:0;z-index:6;width:100%;height:auto;background:var(--surface);margin:0 0 8px;padding:11px 0 12px;border-radius:var(--r-xl) var(--r-xl) 0 0;cursor:grab;touch-action:none;display:flex;justify-content:center}
+.grab::after{content:"";width:42px;height:5px;border-radius:99px;background:var(--line-2)}
+.grab:active{cursor:grabbing}
 #map{position:absolute;inset:0}
 .leaflet-container{z-index:1}
 .scrim{position:absolute;left:0;right:0;bottom:0;height:78px;background:linear-gradient(to bottom,rgba(247,244,248,0),var(--bg));z-index:2;pointer-events:none}
@@ -645,7 +650,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 .reveal{animation:fade .35s var(--ease)}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-</style></head><body><div class="wrap searching" id="app">
+</style></head><body><div class="wrap" id="app">
 <div class="maphero"><div id="map"></div><div id="riderchip" class="riderchip"></div><div id="pricetop" class="pricetop" style="display:none"></div><div id="eta" class="etabadge" style="display:none"></div><div class="scrim"></div></div>
 <div class="sheet">
 <div class="grab"></div>
@@ -746,7 +751,9 @@ function loadRiders(){
 function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='none'){e.style.display='';e.className=(e.className?e.className+' ':'')+'reveal';}}
 // Two-step flow: Step 1 = set the route (map + price), Step 2 = details + confirm. One focus per screen.
 function anim(el,cls){if(!el)return;el.classList.remove('stepInL','stepInR','risein');void el.offsetWidth;el.classList.add(cls);}
-function showStep(n){var r=document.getElementById('step-route'),d=document.getElementById('step-details');if(!r||!d)return;if(n===2){if(!(picked.pickup&&picked.dropoff))return;r.style.display='none';d.style.display='';anim(d,'stepInR');try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){try{window.scrollTo(0,0);}catch(e2){}}}else{d.style.display='none';r.style.display='';anim(r,'stepInL');}}
+// Resize the draggable sheet to a fraction of the screen (with a smooth snap + map re-measure).
+function sheetH(frac){var sh=document.querySelector('.sheet');if(!sh)return;sh.classList.add('snapping');sh.style.height=Math.round((window.innerHeight||700)*frac)+'px';setTimeout(function(){try{map.invalidateSize();}catch(e){}},350);}
+function showStep(n){var r=document.getElementById('step-route'),d=document.getElementById('step-details'),sh=document.querySelector('.sheet');if(!r||!d)return;if(n===2){if(!(picked.pickup&&picked.dropoff))return;r.style.display='none';d.style.display='';anim(d,'stepInR');if(sh)sh.scrollTop=0;sheetH(0.92);}else{d.style.display='none';r.style.display='';anim(r,'stepInL');sheetH(0.58);}}
 // Reveal the "Continue" button only once both ends are set (and the map is pricing the trip).
 function step(){var c=document.getElementById('continue');if(!c)return;var show=!!(picked.pickup&&picked.dropoff);if(show){if(c.style.display==='none'||!c.style.display){c.style.display='block';anim(c,'risein');}}else c.style.display='none';}
 function setPin(which,d){
@@ -764,8 +771,8 @@ function setPin(which,d){
   else if(pts.length===1){ try{ map.flyTo(pts[0],15,{duration:.8}); }catch(e){ map.setView(pts[0],15); } }
   validate();
   if(picked.pickup&&picked.dropoff)quote();
-  // Bolt-style: once we have both ends, leave the search screen and reveal the map with the route.
-  if(picked.pickup&&picked.dropoff){ var ap=document.getElementById('app'); if(ap&&ap.classList.contains('searching')){ ap.classList.remove('searching'); setTimeout(function(){ try{map.invalidateSize();}catch(e){} var pp=[[picked.pickup.lat,picked.pickup.lng],[picked.dropoff.lat,picked.dropoff.lng]]; try{map.flyToBounds(pp,{padding:[45,45],maxZoom:15,duration:.7});}catch(e){try{map.fitBounds(pp,{padding:[45,45],maxZoom:15});}catch(e2){}} },90); } }
+  // Once both ends are set a route exists — hide the recent list (Continue takes over). Map stays visible.
+  if(picked.pickup&&picked.dropoff){ document.getElementById('app').classList.add('routed'); }
 }
 // Reverse-geocode a moved/located pin and update the field.
 function reverseSet(which,lat,lng){
@@ -787,6 +794,7 @@ function clearLoc(which){
   picked[which]=null;
   var sug=document.getElementById(which==='pickup'?'psug':'dsug'); if(sug)sug.style.display='none';
   if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  document.getElementById('app').classList.remove('routed');
   mapFee=null;
   var fe=document.getElementById('fee'); if(fe)fe.style.display='none';
   var et=document.getElementById('eta'); if(et)et.style.display='none';
@@ -946,6 +954,19 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       }catch(e){ b.className='mic'; }
     };
   }); }
+  // ── Draggable bottom sheet (Bolt-style): drag the handle to fill the screen or shrink to see the map ──
+  (function(){
+    var sheet=document.querySelector('.sheet'), grab=document.querySelector('.grab'); if(!sheet||!grab) return;
+    function vh(){ return window.innerHeight||document.documentElement.clientHeight||700; }
+    function snaps(){ return [Math.round(vh()*0.33), Math.round(vh()*0.58), Math.round(vh()*0.92)]; }
+    function setH(h){ sheet.style.height=Math.max(150,Math.min(Math.round(vh()*0.94),h))+'px'; }
+    function nearest(h){ var s=snaps(), b=s[0], d=1e9; s.forEach(function(v){ var dd=Math.abs(v-h); if(dd<d){d=dd;b=v;} }); return b; }
+    var dragging=false, sy=0, sh=0;
+    grab.addEventListener('pointerdown',function(e){ dragging=true; sheet.classList.remove('snapping'); sy=e.clientY; sh=sheet.getBoundingClientRect().height; try{grab.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); });
+    window.addEventListener('pointermove',function(e){ if(!dragging)return; setH(sh+(sy-e.clientY)); });
+    window.addEventListener('pointerup',function(){ if(!dragging)return; dragging=false; sheet.classList.add('snapping'); setH(nearest(sheet.getBoundingClientRect().height)); setTimeout(function(){ try{map.invalidateSize();}catch(_){}} ,360); });
+    sheetH(0.58);   // open at a comfortable middle height
+  })();
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
   flagPhone('sphone');flagPhone('rphone');
   // One-tap reuse for returning customers ("same as last time").
