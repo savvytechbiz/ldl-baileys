@@ -566,6 +566,9 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .divln{height:1px;background:var(--line-2)}
 .locp{width:38px;min-width:38px;height:38px;padding:0;border:0;background:transparent;font-size:17px;color:var(--plum);cursor:pointer;border-radius:10px;transition:background .15s var(--ease),transform .12s var(--ease)}
 .locp:active{background:rgba(79,7,76,.09);transform:scale(.92)}
+.mic{width:38px;min-width:38px;height:38px;padding:0;border:0;background:transparent;font-size:16px;cursor:pointer;border-radius:10px;transition:background .15s var(--ease),transform .12s var(--ease)}
+.mic:active{background:rgba(79,7,76,.09);transform:scale(.92)}
+.mic.rec{background:rgba(226,58,124,.14)}
 .clr{width:30px;min-width:30px;height:30px;margin-right:5px;padding:0;border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer;display:none;border-radius:50%;transition:background .15s var(--ease)}
 .clr:active{background:rgba(79,7,76,.08)}
 .sug{position:absolute;z-index:2000;top:100%;left:-15px;right:-15px;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);margin-top:6px;box-shadow:var(--sh-pop);overflow:hidden;max-height:240px;overflow-y:auto}
@@ -619,13 +622,14 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
   <div class="ins">
-    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><button type="button" class="clr" data-clr="pickup" aria-label="Clear pickup">✕</button><button type="button" class="locp" data-for="pickup" aria-label="Use my location for pickup">📍</button><div class="sug" id="psug" style="display:none"></div></div>
+    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><button type="button" class="clr" data-clr="pickup" aria-label="Clear pickup">✕</button><button type="button" class="mic" data-for="pickup" aria-label="Speak pickup">🎤</button><button type="button" class="locp" data-for="pickup" aria-label="Use my location for pickup">📍</button><div class="sug" id="psug" style="display:none"></div></div>
     <div class="divln"></div>
-    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="clr" data-clr="dropoff" aria-label="Clear drop-off">✕</button><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off">📍</button><div class="sug" id="dsug" style="display:none"></div></div>
+    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="clr" data-clr="dropoff" aria-label="Clear drop-off">✕</button><button type="button" class="mic" data-for="dropoff" aria-label="Speak drop-off">🎤</button><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off">📍</button><div class="sug" id="dsug" style="display:none"></div></div>
   </div>
 </div>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
+<div id="step-details" style="display:none">
 <div class="sec">Contacts</div>
 <div class="lbl2">Pickup <span class="hint">— who we collect from</span></div>
 <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
@@ -662,6 +666,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 </div>
 <div class="feebig" id="fee"></div>
 <button id="go" disabled>Confirm &amp; book</button>
+</div>
 </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -881,6 +886,22 @@ if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2
 else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
   Array.prototype.forEach.call(document.querySelectorAll('.clr'),function(b){ b.onclick=function(){ clearLoc(b.getAttribute('data-clr')); }; });
+  // 🎤 Voice address entry — speak instead of type. Uses the phone's built-in speech-to-text; where that
+  // isn't available (some in-app webviews) the mic simply hides, so nothing ever looks broken.
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ Array.prototype.forEach.call(document.querySelectorAll('.mic'),function(b){ b.style.display='none'; }); }
+  else { Array.prototype.forEach.call(document.querySelectorAll('.mic'),function(b){
+    b.onclick=function(){
+      var which=b.getAttribute('data-for'); var inp=document.getElementById(which==='pickup'?'pin':'din');
+      try{ var rec=new SR(); rec.lang='en-NG'; rec.interimResults=false; rec.maxAlternatives=1;
+        b.className='mic rec';
+        rec.onresult=function(ev){ var txt=(ev.results[0][0].transcript||'').trim(); if(txt){ inp.value=txt; inp.focus(); inp.dispatchEvent(new Event('input',{bubbles:true})); } };
+        rec.onerror=function(){ b.className='mic'; };
+        rec.onend=function(){ b.className='mic'; };
+        rec.start();
+      }catch(e){ b.className='mic'; }
+    };
+  }); }
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
   flagPhone('sphone');flagPhone('rphone');
   // One-tap reuse for returning customers ("same as last time").
