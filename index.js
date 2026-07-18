@@ -556,6 +556,19 @@ input,button,textarea,select{font-family:inherit}
 @keyframes draw{to{stroke-dashoffset:0}}
 .reuse a,.locp,.mic{transition:transform .14s var(--ease),background .18s var(--ease),opacity .2s}
 .reuse a:active{transform:scale(.96)}
+/* ── Bolt-style search-first Step 1 (map hidden until a destination is picked) ── */
+#app.searching .maphero{display:none}
+#app.searching .sheet{margin-top:0;border-radius:0;box-shadow:none;min-height:100dvh;animation:none;padding-top:18px}
+#app.searching .sec.first{font-size:23px;font-weight:800;text-transform:none;letter-spacing:-.02em;color:var(--ink);margin:2px 2px 18px}
+#app.searching #rpickup,#app.searching #rdrop{display:none}
+#app:not(.searching) .recentlist{display:none}
+.recentlist{margin-top:2px}
+.recentlist .rr{display:flex;align-items:center;gap:14px;padding:15px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.recentlist .rr:active{background:var(--lilac)}
+.recentlist .rc{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.recentlist .rm{flex:1;min-width:0}
+.recentlist .rn{font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recentlist .rs{font-size:12.5px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #map{position:absolute;inset:0}
 .leaflet-container{z-index:1}
 .scrim{position:absolute;left:0;right:0;bottom:0;height:78px;background:linear-gradient(to bottom,rgba(247,244,248,0),var(--bg));z-index:2;pointer-events:none}
@@ -632,7 +645,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 .reveal{animation:fade .35s var(--ease)}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-</style></head><body><div class="wrap" id="app">
+</style></head><body><div class="wrap searching" id="app">
 <div class="maphero"><div id="map"></div><div id="riderchip" class="riderchip"></div><div id="pricetop" class="pricetop" style="display:none"></div><div id="eta" class="etabadge" style="display:none"></div><div class="scrim"></div></div>
 <div class="sheet">
 <div class="grab"></div>
@@ -648,6 +661,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 </div>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
+<div class="recentlist" id="recentlist"></div>
 <button id="continue" style="display:none;margin-top:16px" onclick="showStep(2)">Continue &rarr;</button>
 </div>
 <div id="step-details" style="display:none">
@@ -750,6 +764,8 @@ function setPin(which,d){
   else if(pts.length===1){ try{ map.flyTo(pts[0],15,{duration:.8}); }catch(e){ map.setView(pts[0],15); } }
   validate();
   if(picked.pickup&&picked.dropoff)quote();
+  // Bolt-style: once we have both ends, leave the search screen and reveal the map with the route.
+  if(picked.pickup&&picked.dropoff){ var ap=document.getElementById('app'); if(ap&&ap.classList.contains('searching')){ ap.classList.remove('searching'); setTimeout(function(){ try{map.invalidateSize();}catch(e){} var pp=[[picked.pickup.lat,picked.pickup.lng],[picked.dropoff.lat,picked.dropoff.lng]]; try{map.flyToBounds(pp,{padding:[45,45],maxZoom:15,duration:.7});}catch(e){try{map.fitBounds(pp,{padding:[45,45],maxZoom:15});}catch(e2){}} },90); } }
 }
 // Reverse-geocode a moved/located pin and update the field.
 function reverseSet(which,lat,lng){
@@ -934,6 +950,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   flagPhone('sphone');flagPhone('rphone');
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,title,value,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.innerHTML='<span class="ric">↩</span><span class="rl"><span class="rt"></span><span class="rv"></span></span>'; a.querySelector('.rt').textContent=title; a.querySelector('.rv').textContent=value; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
+  // Bolt-style recent/saved place row (shown as a tappable list on the search step).
+  function recentRow(icon,label,sub,fn){ var d=document.getElementById('recentlist'); if(!d)return; var r=document.createElement('div'); r.className='rr'; r.innerHTML='<span class="rc"></span><span class="rm"><span class="rn"></span><span class="rs"></span></span>'; r.querySelector('.rc').textContent=icon; r.querySelector('.rn').textContent=label; r.querySelector('.rs').textContent=sub||''; r.onclick=fn; d.appendChild(r); }
   fetch(api('action=prefill')).then(function(r){return r.json();}).then(function(p){
     if(!p) return;
     YOU_NAME=p.name||''; YOU_PHONE=p.phone||'';
@@ -947,6 +965,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Drop-off: same — open on the quoted spot, draggable to fine-tune.
     if(p.dropoff){ if(p.dropoff.from_chat){ document.getElementById('din').value=p.dropoff.address; if(p.dropoff.lat) setPin('dropoff',p.dropoff); }
       else if(p.dropoff.lat){ reuse('rdrop','Same drop-off',p.dropoff.address,function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); } }
+    // Bolt-style recent/saved places, shown as a tappable list on the search step.
+    if(p.dropoff&&p.dropoff.lat&&!p.dropoff.from_chat){ recentRow('🕘',p.dropoff.address,'Recent drop-off',function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); }
+    if(p.pickup&&p.pickup.lat&&!p.pickup.from_chat){ recentRow('🏠',p.pickup.address,'Saved pickup',function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); }
     if(p.receiver&&p.receiver.name){ if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }
       else { reuse('rrecv','Same receiver',p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
