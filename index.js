@@ -575,12 +575,13 @@ input,button,textarea,select{font-family:inherit}
 .grab::after{content:"";width:42px;height:5px;border-radius:99px;background:var(--line-2)}
 .grab:active{cursor:grabbing}
 /* ── Tap-driven details (less typing) ── */
-.chipwrap{display:flex;flex-wrap:wrap;gap:9px;margin:2px 0 2px}
-.ichip{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1.5px solid var(--line-2);border-radius:13px;padding:11px 15px;font-size:15px;font-weight:600;color:var(--ink);cursor:pointer;transition:transform .13s var(--ease),background .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease)}
+.chipwrap{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 2px}
+/* NOTE: the base button rule (width:100%, padding, box-shadow) MUST be fully reset here, or chips stack full-width. */
+.ichip{width:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;background:#fff;border:1.5px solid var(--line-2);border-radius:11px;padding:9px 13px;font-size:14px;font-weight:600;line-height:1;letter-spacing:0;color:var(--ink);box-shadow:none;cursor:pointer;transition:transform .13s cubic-bezier(.23,1,.32,1),background .15s ease,border-color .15s ease,color .15s ease}
 .ichip:active{transform:scale(.95)}
-.ichip.on{background:var(--plum);border-color:var(--plum);color:#fff}
-.morebtn{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--plum);font-weight:700;font-size:14px;padding:13px 2px;cursor:pointer;width:auto;text-align:left}
-.morebtn:active{opacity:.6}
+.ichip.on{background:var(--plum);border-color:var(--plum);color:#fff;box-shadow:none}
+.morebtn{width:auto;display:inline-flex;align-items:center;gap:6px;background:none;border:0;border-radius:0;box-shadow:none;color:var(--plum);font-weight:600;font-size:13.5px;letter-spacing:0;padding:9px 2px;margin:0;cursor:pointer;text-align:left}
+.morebtn:active{opacity:.55;transform:none}
 .dotlive{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block;margin-right:7px;box-shadow:0 0 0 3px rgba(22,163,74,.18)}
 #continue{display:flex;align-items:center;justify-content:center;gap:9px}
 .etabadge .i,.riderchip .i{opacity:.9}
@@ -593,6 +594,9 @@ input,button,textarea,select{font-family:inherit}
 .payopt .i{width:20px;height:20px;color:var(--ink-3)}
 .payopt:has(input:checked) .i{color:var(--plum)}
 .locp .i,.mic .i,.clr .i{width:19px;height:19px}
+.locp.busy{opacity:.4}
+.locp.busy .i{animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .clr .i{width:16px;height:16px}
 /* Press feedback — every pressable surface answers the finger */
 button,.reuse a,.recentlist .rr{transition:transform .16s cubic-bezier(.23,1,.32,1),background .16s cubic-bezier(.23,1,.32,1)}
@@ -851,9 +855,9 @@ function useLoc(which){
   which = which==='dropoff' ? 'dropoff' : 'pickup';
   var btns=document.querySelectorAll('.locp');
   if(!navigator.geolocation){ alert('Location is not available here — please type your area.'); return; }
-  btns.forEach(function(b){b.textContent='…';b.disabled=true;});
+  btns.forEach(function(b){b.classList.add('busy');b.disabled=true;});
   navigator.geolocation.getCurrentPosition(function(pos){
-    btns.forEach(function(b){b.textContent='📍';b.disabled=false;});
+    btns.forEach(function(b){b.classList.remove('busy');b.disabled=false;});
     var lat=pos.coords.latitude, lng=pos.coords.longitude;
     try{ map.flyTo([lat,lng],16,{duration:.8}); }catch(e){ map.setView([lat,lng],16); }
     document.getElementById(which==='pickup'?'pin':'din').value='Pinpointing…';
@@ -864,7 +868,7 @@ function useLoc(which){
     validate();
     liveSide=which; lockOtherLoc();   // your live location is one spot — lock the other end's 📍
   }, function(){
-    btns.forEach(function(b){b.textContent='📍';b.disabled=false;});
+    btns.forEach(function(b){b.classList.remove('busy');b.disabled=false;});
     lockOtherLoc();
     alert('Couldn\\'t get your location — please allow location access, or just type your area.');
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:0});
