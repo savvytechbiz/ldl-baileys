@@ -513,6 +513,9 @@ app.get('/', (req, res) => {
 const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Set your delivery — Lasalu Drop</title>
+<!-- Build stamp: bump on every change so we can confirm what is actually deployed.
+     Check live with:  curl -s https://ldl-baileys-v2.onrender.com/map | grep ldl-build -->
+<meta name="ldl-build" content="2026-07-18-06 stepped-icons-recent-paystep-nomic">
 <meta name="description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds.">
 <meta property="og:title" content="📦 Set your delivery — Lasalu Drop">
 <meta property="og:description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds 🛵">
@@ -631,9 +634,6 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .divln{height:1px;background:var(--line-2)}
 .locp{width:38px;min-width:38px;height:38px;padding:0;border:0;background:transparent;font-size:17px;color:var(--plum);cursor:pointer;border-radius:10px;transition:background .15s var(--ease),transform .12s var(--ease)}
 .locp:active{background:rgba(79,7,76,.09);transform:scale(.92)}
-.mic{width:38px;min-width:38px;height:38px;padding:0;border:0;background:transparent;font-size:16px;cursor:pointer;border-radius:10px;transition:background .15s var(--ease),transform .12s var(--ease)}
-.mic:active{background:rgba(79,7,76,.09);transform:scale(.92)}
-.mic.rec{background:rgba(226,58,124,.14)}
 .clr{width:30px;min-width:30px;height:30px;margin-right:5px;padding:0;border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer;display:none;border-radius:50%;transition:background .15s var(--ease)}
 .clr:active{background:rgba(79,7,76,.08)}
 .sug{position:absolute;z-index:2000;top:100%;left:-15px;right:-15px;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);margin-top:6px;box-shadow:var(--sh-pop);overflow:hidden;max-height:240px;overflow-y:auto}
@@ -688,9 +688,9 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="route">
   <div class="rail"><span class="dot"></span><span class="line"></span><span class="sq"></span></div>
   <div class="ins">
-    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><button type="button" class="clr" data-clr="pickup" aria-label="Clear pickup"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><button type="button" class="mic" data-for="pickup" aria-label="Speak pickup"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/></svg></button><button type="button" class="locp" data-for="pickup" aria-label="Use my location for pickup"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12h2.5M20 12h2.5"/></svg></button><div class="sug" id="psug" style="display:none"></div></div>
+    <div class="ri"><input id="pin" placeholder="Pickup" autocomplete="off"><button type="button" class="clr" data-clr="pickup" aria-label="Clear pickup"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><button type="button" class="locp" data-for="pickup" aria-label="Use my location for pickup"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12h2.5M20 12h2.5"/></svg></button><div class="sug" id="psug" style="display:none"></div></div>
     <div class="divln"></div>
-    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="clr" data-clr="dropoff" aria-label="Clear drop-off"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><button type="button" class="mic" data-for="dropoff" aria-label="Speak drop-off"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/></svg></button><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12h2.5M20 12h2.5"/></svg></button><div class="sug" id="dsug" style="display:none"></div></div>
+    <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="clr" data-clr="dropoff" aria-label="Clear drop-off"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12h2.5M20 12h2.5"/></svg></button><div class="sug" id="dsug" style="display:none"></div></div>
   </div>
 </div>
 <div class="reuse" id="rpickup"></div>
@@ -1010,22 +1010,6 @@ if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2
 else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
   Array.prototype.forEach.call(document.querySelectorAll('.clr'),function(b){ b.onclick=function(){ clearLoc(b.getAttribute('data-clr')); }; });
-  // 🎤 Voice address entry — speak instead of type. Uses the phone's built-in speech-to-text; where that
-  // isn't available (some in-app webviews) the mic simply hides, so nothing ever looks broken.
-  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ Array.prototype.forEach.call(document.querySelectorAll('.mic'),function(b){ b.style.display='none'; }); }
-  else { Array.prototype.forEach.call(document.querySelectorAll('.mic'),function(b){
-    b.onclick=function(){
-      var which=b.getAttribute('data-for'); var inp=document.getElementById(which==='pickup'?'pin':'din');
-      try{ var rec=new SR(); rec.lang='en-NG'; rec.interimResults=false; rec.maxAlternatives=1;
-        b.className='mic rec';
-        rec.onresult=function(ev){ var txt=(ev.results[0][0].transcript||'').trim(); if(txt){ inp.value=txt; inp.focus(); inp.dispatchEvent(new Event('input',{bubbles:true})); } };
-        rec.onerror=function(){ b.className='mic'; };
-        rec.onend=function(){ b.className='mic'; };
-        rec.start();
-      }catch(e){ b.className='mic'; }
-    };
-  }); }
   // ── Draggable bottom sheet (Bolt-style): drag the handle to fill the screen or shrink to see the map ──
   (function(){
     var sheet=document.querySelector('.sheet'), grab=document.querySelector('.grab'); if(!sheet||!grab) return;
