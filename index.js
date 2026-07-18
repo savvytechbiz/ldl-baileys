@@ -583,7 +583,7 @@ input,button,textarea,select{font-family:inherit}
 .morebtn{width:auto;display:inline-flex;align-items:center;gap:6px;background:none;border:0;border-radius:0;box-shadow:none;color:var(--plum);font-weight:600;font-size:13.5px;letter-spacing:0;padding:9px 2px;margin:0;cursor:pointer;text-align:left}
 .morebtn:active{opacity:.55;transform:none}
 .dotlive{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block;margin-right:7px;box-shadow:0 0 0 3px rgba(22,163,74,.18)}
-#continue{display:flex;align-items:center;justify-content:center;gap:9px}
+#continue,#tonext{display:flex;align-items:center;justify-content:center;gap:9px}
 .etabadge .i,.riderchip .i{opacity:.9}
 /* ── Icon system — one stroke weight, optical sizing, inherits colour ── */
 .i{width:19px;height:19px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
@@ -723,6 +723,10 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <input id="item" class="f1" placeholder="Type what you're sending" style="display:none;margin-top:2px">
 <button type="button" class="morebtn" id="addnote"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a note for the rider</button>
 <input id="dinstr" class="f1" placeholder="Note for the rider — e.g. call on arrival, gate code" maxlength="200" style="display:none;margin-top:8px">
+<button id="tonext" disabled style="margin-top:18px" onclick="showStep(3)">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+</div>
+<div id="step-pay" style="display:none">
+<a onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 8px">&lsaquo; Back to details</a>
 <div id="paysel" style="margin-top:2px">
   <div class="sec">Payment</div>
   <div id="payradios">
@@ -795,7 +799,13 @@ function reveal(id){var e=document.getElementById(id);if(e&&e.style.display==='n
 function anim(el,cls){if(!el)return;el.classList.remove('stepInL','stepInR','risein');void el.offsetWidth;el.classList.add(cls);}
 // Resize the draggable sheet to a fraction of the screen (with a smooth snap + map re-measure).
 function sheetH(frac){var sh=document.querySelector('.sheet');if(!sh)return;sh.classList.add('snapping');sh.style.height=Math.round((window.innerHeight||700)*frac)+'px';setTimeout(function(){try{map.invalidateSize();}catch(e){}},350);}
-function showStep(n){var r=document.getElementById('step-route'),d=document.getElementById('step-details'),sh=document.querySelector('.sheet');if(!r||!d)return;if(n===2){if(!(picked.pickup&&picked.dropoff))return;r.style.display='none';d.style.display='';anim(d,'stepInR');if(sh)sh.scrollTop=0;sheetH(0.92);}else{d.style.display='none';r.style.display='';anim(r,'stepInL');sheetH(0.58);}}
+function showStep(n){
+  var r=document.getElementById('step-route'),d=document.getElementById('step-details'),p=document.getElementById('step-pay'),sh=document.querySelector('.sheet');
+  if(!r||!d||!p)return;
+  if(n===2){ if(!(picked.pickup&&picked.dropoff))return; r.style.display='none'; p.style.display='none'; d.style.display=''; anim(d,'stepInR'); if(sh)sh.scrollTop=0; sheetH(0.92); }
+  else if(n===3){ r.style.display='none'; d.style.display='none'; p.style.display=''; anim(p,'stepInR'); if(sh)sh.scrollTop=0; sheetH(0.92); }
+  else { d.style.display='none'; p.style.display='none'; r.style.display=''; anim(r,'stepInL'); sheetH(0.58); }
+}
 // Reveal the "Continue" button only once both ends are set (and the map is pricing the trip).
 function step(){var c=document.getElementById('continue');if(!c)return;var show=!!(picked.pickup&&picked.dropoff);if(show){if(c.style.display==='none'||!c.style.display){c.style.display='block';anim(c,'risein');}}else c.style.display='none';}
 function setPin(which,d){
@@ -877,6 +887,9 @@ function val(id){return (document.getElementById(id).value||'').trim();}
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
 function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
 function validate(){
+  // Step 2 (details) completeness gates the Continue-to-payment button: one good phone + an item.
+  var _t=document.getElementById('tonext');
+  if(_t){ var _sp=val('sphone'), _rp=val('rphone'); _t.disabled=!((phoneOk(_sp)||phoneOk(_rp)) && val('item')); }
   // Names are optional. Each phone must be valid or blank, and at least one must be filled (the other
   // person's) — we fill the blank side with the booker's own WhatsApp number server-side.
   var sp=val('sphone'), rp=val('rphone');
