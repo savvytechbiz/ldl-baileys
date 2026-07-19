@@ -515,7 +515,7 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <title>Set your delivery — Lasalu Drop</title>
 <!-- Build stamp: bump on every change so we can confirm what is actually deployed.
      Check live with:  curl -s https://ldl-baileys-v2.onrender.com/map | grep ldl-build -->
-<meta name="ldl-build" content="2026-07-18-06 stepped-icons-recent-paystep-nomic">
+<meta name="ldl-build" content="2026-07-18-07 pickup-defaults-to-my-location">
 <meta name="description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds.">
 <meta property="og:title" content="📦 Set your delivery — Lasalu Drop">
 <meta property="og:description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds 🛵">
@@ -878,10 +878,12 @@ var liveSide=null;
 function lockOtherLoc(){ Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ var f=b.getAttribute('data-for'); if(liveSide && f!==liveSide){ b.disabled=true; b.style.opacity='0.3'; b.title='Your live location is one spot — type the other end'; } else { b.disabled=false; b.style.opacity=''; b.title=''; } }); }
 // Use the customer's GPS for EITHER the pickup or the drop-off. Pickup = they're sending (their
 // details go to Sender); drop-off = they're receiving (their details go to Receiver).
-function useLoc(which){
+// silent = the automatic pickup default on page open. It must NEVER pop an alert (a denied permission
+// is a normal outcome there); the manual 📍 tap still explains itself.
+function useLoc(which,silent){
   which = which==='dropoff' ? 'dropoff' : 'pickup';
   var btns=document.querySelectorAll('.locp');
-  if(!navigator.geolocation){ alert('Location is not available here — please type your area.'); return; }
+  if(!navigator.geolocation){ if(!silent) alert('Location is not available here — please type your area.'); return; }
   btns.forEach(function(b){b.classList.add('busy');b.disabled=true;});
   navigator.geolocation.getCurrentPosition(function(pos){
     btns.forEach(function(b){b.classList.remove('busy');b.disabled=false;});
@@ -897,7 +899,7 @@ function useLoc(which){
   }, function(){
     btns.forEach(function(b){b.classList.remove('busy');b.disabled=false;});
     lockOtherLoc();
-    alert('Couldn\\'t get your location — please allow location access, or just type your area.');
+    if(!silent) alert('Couldn\\'t get your location — please allow location access, or just type your area.');
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:0});
 }
 function val(id){return (document.getElementById(id).value||'').trim();}
@@ -1070,10 +1072,11 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
     if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
-    // Account-aware pickup DEFAULT (Bolt-style): if there's no saved pickup to suggest and the user has
-    // ALREADY granted location, drop their current-location pin on pickup automatically. A saved/usual
-    // pickup always wins (we skip when p.pickup exists), and they can still change it.
-    if(!p.pickup && !picked.pickup){ try{ if(navigator.permissions&&navigator.permissions.query){ navigator.permissions.query({name:'geolocation'}).then(function(st){ if(st.state==='granted'&&!picked.pickup) useLoc('pickup'); }).catch(function(){}); } }catch(e){} }
+    // PICKUP DEFAULT = where the booker is standing. Unless the chat already named a pickup, we drop
+    // their current-location pin automatically so the common case needs zero typing. They can clear it
+    // with the ✕ (clearLoc) or tap a saved place if we guessed wrong. A denied/failed fix just leaves
+    // the field empty — never blocks them. Small delay so the map + sheet paint before the permission ask.
+    if(!picked.pickup){ setTimeout(function(){ if(!picked.pickup) useLoc('pickup',true); }, 400); }
     validate(); step();
   }).catch(function(){});
   // COD: live "you'll be credited" = amount − our fee (COD_PCT%, CBN & bank charges; max ₦3,000) − delivery.
