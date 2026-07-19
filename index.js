@@ -515,7 +515,7 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <title>Set your delivery — Lasalu Drop</title>
 <!-- Build stamp: bump on every change so we can confirm what is actually deployed.
      Check live with:  curl -s https://ldl-baileys-v2.onrender.com/map | grep ldl-build -->
-<meta name="ldl-build" content="2026-07-18-10 voyager-tiles-street-zoom">
+<meta name="ldl-build" content="2026-07-18-11 closer-zoom">
 <meta name="description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds.">
 <meta property="og:title" content="📦 Set your delivery — Lasalu Drop">
 <meta property="og:description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds 🛵">
@@ -777,7 +777,7 @@ var picked={pickup:null,dropoff:null};
 var map,mP,mD;
 function initMap(){
   // Open at street level (15), not city level (12) — at 12 the roads barely render.
-  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([4.8156,7.0498],15);
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([4.8156,7.0498],16);
   // CARTO **Voyager** rastertiles. The old URL was light_all — CARTO's minimal wash, which has almost no
   // street names or POIs (why the map looked empty next to Bolt). Voyager carries road labels, POIs and
   // building detail; detectRetina pulls @2x tiles so it stays sharp on phones.
@@ -846,8 +846,8 @@ function setPin(which,d){
   step();
   var pts=[]; if(picked.pickup)pts.push([picked.pickup.lat,picked.pickup.lng]); if(picked.dropoff)pts.push([picked.dropoff.lat,picked.dropoff.lng]);
   // Bolt-style: the camera glides to frame the trip instead of snapping.
-  if(pts.length>1){ try{ map.flyToBounds(pts,{padding:[45,45],maxZoom:15,duration:.9}); }catch(e){ map.fitBounds(pts,{padding:[45,45],maxZoom:15}); } }
-  else if(pts.length===1){ try{ map.flyTo(pts[0],15,{duration:.8}); }catch(e){ map.setView(pts[0],15); } }
+  if(pts.length>1){ try{ map.flyToBounds(pts,{padding:[45,45],maxZoom:17,duration:.9}); }catch(e){ map.fitBounds(pts,{padding:[45,45],maxZoom:17}); } }
+  else if(pts.length===1){ try{ map.flyTo(pts[0],17,{duration:.8}); }catch(e){ map.setView(pts[0],17); } }
   validate();
   if(picked.pickup&&picked.dropoff)quote();
   // Once both ends are set a route exists — hide the recent list (Continue takes over). Map stays visible.
@@ -898,7 +898,7 @@ function useLoc(which,silent){
   navigator.geolocation.getCurrentPosition(function(pos){
     btns.forEach(function(b){b.classList.remove('busy');b.disabled=false;});
     var lat=pos.coords.latitude, lng=pos.coords.longitude;
-    try{ map.flyTo([lat,lng],16,{duration:.8}); }catch(e){ map.setView([lat,lng],16); }
+    try{ map.flyTo([lat,lng],17,{duration:.8}); }catch(e){ map.setView([lat,lng],17); }
     document.getElementById(which==='pickup'?'pin':'din').value='Pinpointing…';
     setPin(which,{address:'My current location',lat:lat,lng:lng});
     reverseSet(which,lat,lng);
@@ -985,7 +985,7 @@ function resolveAcct(){
      else { ACCT_OK=false; nm.style.color='#c0392b'; nm.textContent='Couldn\\'t verify that account — check the number and bank.'; }
    }).catch(function(){ nm.style.display='none'; });
 }
-function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#E23A7C',weight:5,opacity:.9,lineJoin:'round',className:'routeanim'}).addTo(map); try{ map.flyToBounds(routeLine.getBounds(),{padding:[50,50],maxZoom:15,duration:.9}); }catch(e){ map.fitBounds(routeLine.getBounds(),{padding:[50,50],maxZoom:15}); } }catch(e){} }
+function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#E23A7C',weight:5,opacity:.9,lineJoin:'round',className:'routeanim'}).addTo(map); try{ map.flyToBounds(routeLine.getBounds(),{padding:[40,40],maxZoom:16,duration:.9}); }catch(e){ map.fitBounds(routeLine.getBounds(),{padding:[40,40],maxZoom:16}); } }catch(e){} }
 function quote(){
   var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
   f.style.display='flex'; f.innerHTML='<div class="lbl">Calculating fee…</div>';
