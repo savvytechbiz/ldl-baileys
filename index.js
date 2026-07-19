@@ -515,7 +515,7 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <title>Set your delivery — Lasalu Drop</title>
 <!-- Build stamp: bump on every change so we can confirm what is actually deployed.
      Check live with:  curl -s https://ldl-baileys-v2.onrender.com/map | grep ldl-build -->
-<meta name="ldl-build" content="2026-07-18-07 pickup-defaults-to-my-location">
+<meta name="ldl-build" content="2026-07-18-10 voyager-tiles-street-zoom">
 <meta name="description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds.">
 <meta property="og:title" content="📦 Set your delivery — Lasalu Drop">
 <meta property="og:description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds 🛵">
@@ -566,9 +566,16 @@ input,button,textarea,select{font-family:inherit}
 .recentlist .rr{display:flex;align-items:center;gap:14px;padding:15px 4px;border-bottom:1px solid var(--line);cursor:pointer}
 .recentlist .rr:active{background:var(--lilac)}
 .recentlist .rc{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
-.recentlist .rm{flex:1;min-width:0}
-.recentlist .rn{font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.recentlist .rs{font-size:12.5px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* rn/rs are spans — they MUST be stacked explicitly or they run together on one line (margin-top is
+   ignored on inline elements). Flex column keeps the address above its area, cleanly separated. */
+.recentlist .rm{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.recentlist .rn{display:block;font-size:15px;font-weight:600;line-height:1.25;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recentlist .rs{display:block;font-size:12.5px;font-weight:500;line-height:1.2;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recentlist .rs:empty{display:none}
+/* The payment label used to be a bare text node, so the price had no room and broke onto two lines
+   ("+" above "N200"). Give the text its own flex box and pin the price to a single line. */
+.payopt .pt{flex:1;min-width:0;line-height:1.35}
+.payopt .sur{flex:none;white-space:nowrap;margin-left:auto;padding-left:12px;font-size:14px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
 /* ── Draggable bottom sheet (Bolt-style) — pull the handle up to fill the screen, down to see more map ── */
 .wrap{height:100dvh;overflow:hidden}
 .maphero{min-height:60px}
@@ -732,10 +739,10 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div id="paysel" style="margin-top:2px">
   <div class="sec">Payment</div>
   <div id="payradios">
-    <label class="payopt"><input type="radio" name="pay" value="now" checked style="width:18px;height:18px;accent-color:#4F074C"><svg class="i" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></svg>Pay now (card or transfer)</label>
-    <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod" style="width:18px;height:18px;accent-color:#4F074C"><svg class="i" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>Pay on delivery — cash to the rider</label>
+    <label class="payopt"><input type="radio" name="pay" value="now" checked style="width:18px;height:18px;accent-color:#4F074C"><svg class="i" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></svg><span class="pt">Pay now (card or transfer)</span></label>
+    <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod" style="width:18px;height:18px;accent-color:#4F074C"><svg class="i" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg><span class="pt">Pay on delivery — cash to the rider</span></label>
   </div>
-  <label class="payopt" id="opt-cod" style="display:none"><input type="checkbox" id="codbox" style="width:18px;height:18px;accent-color:#b45309"><svg class="i" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>The buyer hasn't paid for the item yet — we collect it for you</label>
+  <label class="payopt" id="opt-cod" style="display:none"><input type="checkbox" id="codbox" style="width:18px;height:18px;accent-color:#b45309"><svg class="i" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg><span class="pt">The buyer hasn't paid for the item yet — we collect it for you</span></label>
   <div id="codamt" style="display:none;margin-top:4px">
     <div style="font-size:12.5px;color:#6a626f;font-weight:700;margin:8px 2px 6px">How much should we collect from the buyer? (₦)</div>
     <input id="goods" type="number" inputmode="numeric" min="1" placeholder="e.g. 100000" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
@@ -769,9 +776,12 @@ function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 var picked={pickup:null,dropoff:null};
 var map,mP,mD;
 function initMap(){
-  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([4.82,7.03],12);
-  // Clean, modern basemap (CARTO Voyager) — soft tones, minimal clutter, sharp on retina phones.
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,detectRetina:true,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+  // Open at street level (15), not city level (12) — at 12 the roads barely render.
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([4.8156,7.0498],15);
+  // CARTO **Voyager** rastertiles. The old URL was light_all — CARTO's minimal wash, which has almost no
+  // street names or POIs (why the map looked empty next to Bolt). Voyager carries road labels, POIs and
+  // building detail; detectRetina pulls @2x tiles so it stays sharp on phones.
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,detectRetina:true,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
   L.control.attribution({position:'bottomright',prefix:false}).addTo(map);
   setTimeout(function(){ map.invalidateSize(); },250);
 }
@@ -1037,7 +1047,20 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,title,value,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.innerHTML='<span class="ric">↩</span><span class="rl"><span class="rt"></span><span class="rv"></span></span>'; a.querySelector('.rt').textContent=title; a.querySelector('.rv').textContent=value; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
   // Bolt-style recent/saved place row (shown as a tappable list on the search step).
-  function recentRow(icon,label,sub,fn){ var d=document.getElementById('recentlist'); if(!d)return; var r=document.createElement('div'); r.className='rr'; r.innerHTML='<span class="rc"></span><span class="rm"><span class="rn"></span><span class="rs"></span></span>'; r.querySelector('.rc').innerHTML=icon; r.querySelector('.rn').textContent=label; r.querySelector('.rs').textContent=sub||''; r.onclick=fn; d.appendChild(r); }
+  // Row = place on top, its area underneath (the icon already says recent vs saved, so we don't repeat it).
+  // "Waterlines, Port Harcourt" -> "Waterlines" / "Port Harcourt". No comma: fall back to the label.
+  function recentRow(icon,label,sub,fn){
+    var d=document.getElementById('recentlist'); if(!d)return;
+    var txt=String(label||'').trim(), i=txt.indexOf(',');
+    var main=i>0?txt.slice(0,i).trim():txt;
+    var area=i>0?txt.slice(i+1).trim():(sub||'');
+    var r=document.createElement('div'); r.className='rr';
+    r.innerHTML='<span class="rc"></span><span class="rm"><span class="rn"></span><span class="rs"></span></span>';
+    r.querySelector('.rc').innerHTML=icon;
+    r.querySelector('.rn').textContent=main;
+    r.querySelector('.rs').textContent=area;
+    r.onclick=fn; d.appendChild(r);
+  }
   fetch(api('action=prefill')).then(function(r){return r.json();}).then(function(p){
     if(!p) return;
     YOU_NAME=p.name||''; YOU_PHONE=p.phone||'';
@@ -1068,7 +1091,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
     showClr('dropoff',(document.getElementById('din').value||'').length>0);
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
-    if(p.pod_allowed){ var po=document.getElementById('opt-pod'); po.style.display='flex'; POD_SURCHARGE=Math.max(0,Number(p.pod_surcharge)||0); if(POD_SURCHARGE>0){ var ps=document.createElement('span'); ps.style.cssText='color:#6a626f;font-weight:600;margin-left:auto'; ps.textContent='+₦'+POD_SURCHARGE.toLocaleString(); po.appendChild(ps); } renderFee(); }
+    if(p.pod_allowed){ var po=document.getElementById('opt-pod'); po.style.display='flex'; POD_SURCHARGE=Math.max(0,Number(p.pod_surcharge)||0); if(POD_SURCHARGE>0){ var ps=document.createElement('span'); ps.className='sur'; ps.textContent='+₦'+POD_SURCHARGE.toLocaleString(); po.appendChild(ps); } renderFee(); }
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
     if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
