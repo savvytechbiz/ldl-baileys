@@ -1374,20 +1374,54 @@ button:disabled{background:#F0D9E8}
 // ── INTERNATIONAL shipping page (rider-first estimate) — premium look, no waybill ──
 const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Ship internationally — Lasalu Drop</title>
+<title>Ship internationally &mdash; Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
 ${FONT_LINK}<style>${BASE_CSS}
-.wrap{padding-bottom:96px}</style></head><body><div class="wrap" id="app">
-<div class="hero"><div class="glow">✈️</div>
-<h1>Ship internationally 🌍</h1>
+.wrap{padding-bottom:96px}
+.steps{display:flex;gap:6px;padding:0 4px 14px}
+.sd{flex:1;height:4px;border-radius:2px;background:var(--line-2);transition:background .3s var(--ease)}
+.sd.on{background:var(--pink)}
+.qh{font-size:23px;font-weight:800;letter-spacing:-.4px;color:var(--ink);margin:2px 0 6px;line-height:1.25}
+.qs{font-size:14px;color:var(--ink-2);margin:0 0 18px;line-height:1.5}
+.step{display:none}
+.step.on{display:block;animation:qin .28s var(--ease)}
+@keyframes qin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.svc{display:flex;flex-direction:column;gap:10px;margin-bottom:4px}
+.scard{display:flex;align-items:center;gap:13px;padding:15px;border:1.5px solid var(--line-2);border-radius:var(--r);background:#fff;cursor:pointer;transition:border-color .2s var(--ease),background .2s var(--ease);width:100%;text-align:left;box-shadow:none}
+.scard.on{border-color:var(--plum);background:var(--lilac)}
+.scard .em{font-size:24px;line-height:1}
+.scard .st1{font-size:16px;font-weight:700;color:var(--ink)}
+.scard .st2{font-size:13px;color:var(--ink-2);margin-top:2px}
+.wq{display:flex;gap:8px;margin:2px 0 14px;flex-wrap:wrap}
+.wq button{flex:0 0 auto;width:auto;padding:9px 15px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:14px;font-weight:700;color:var(--ink-2);box-shadow:none}
+.wq button.on{border-color:var(--plum);background:var(--plum);color:#fff}
+.sum{background:var(--lilac);border:1px solid #F3D9E5;border-radius:var(--r);padding:15px;margin-bottom:14px}
+.sum .r{display:flex;justify-content:space-between;gap:14px;padding:7px 0;font-size:14px}
+.sum .r .k{color:var(--ink-2);flex:0 0 auto}
+.sum .r .v{color:var(--ink);font-weight:700;text-align:right}
+.sum .tot{border-top:1px solid #F3D9E5;margin-top:8px;padding-top:12px}
+.sum .tot .v{font-size:19px;font-weight:800}
+.note{font-size:12.5px;color:var(--ink-2);line-height:1.55;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:var(--r);padding:12px;margin-bottom:14px}
+.nav{display:flex;gap:10px;align-items:center}
+.back{flex:0 0 auto;width:auto;padding:0 18px;height:52px;background:#fff;border:1.5px solid var(--line-2);color:var(--ink-2);font-weight:700;border-radius:var(--r);box-shadow:none}</style></head><body><div class="wrap" id="app">
+<div class="hero"><div class="glow">&#9992;&#65039;</div>
+<h1>Ship internationally</h1>
 <p>Door pickup in Port Harcourt, delivered worldwide. You only pay after our rider weighs it.</p></div>
 <div class="sheet">
-<div class="sec">Choose your service</div>
-<div class="pills">
-<div class="pill on" data-svc="express"><div class="pt">✈️ Air Express</div><div class="pd">Worldwide · 3–7 days</div></div>
-<div class="pill" data-svc="cargo"><div class="pt">📦 Air Cargo</div><div class="pd">UK/US/CA/GH · 10kg+</div></div>
+<div class="steps"><div class="sd on" id="sd0"></div><div class="sd" id="sd1"></div><div class="sd" id="sd2"></div><div class="sd" id="sd3"></div><div class="sd" id="sd4"></div></div>
+
+<div class="step on" id="s0">
+<div class="qh">How should it fly?</div>
+<div class="qs">Most people send Air Express. Cargo is cheaper for big, heavy loads.</div>
+<div class="svc">
+<button type="button" class="scard on" data-svc="express"><span class="em">&#9992;&#65039;</span><span><span class="st1">Air Express</span><span class="st2">Worldwide &middot; 3&ndash;7 days</span></span></button>
+<button type="button" class="scard" data-svc="cargo"><span class="em">&#128230;</span><span><span class="st1">Air Cargo</span><span class="st2">UK, USA, Canada &amp; Ghana &middot; 10kg and above</span></span></button>
 </div>
-<div class="sec">Shipment details</div>
+</div>
+
+<div class="step" id="s1">
+<div class="qh">Where is it going?</div>
+<div class="qs">Pick the country, then tell us roughly how heavy it is.</div>
 <div class="lbl">Destination country</div>
 <div class="fld"><select id="country">
 <option value="">Select destination…</option>
@@ -1400,36 +1434,88 @@ ${FONT_LINK}<style>${BASE_CSS}
 <optgroup label="Asia &amp; Oceania"><option value="CHINA (Z7)">China</option><option value="INDIA (Z7)">India</option><option value="JAPAN (Z7)">Japan</option><option value="SINGAPORE (Z7)">Singapore</option><option value="MALAYSIA (Z7)">Malaysia</option><option value="HONG KONG (Z7)">Hong Kong</option><option value="AUSTRALIA (Z7)">Australia</option><option value="PHILIPPINES (Z7)">Philippines</option><option value="THAILAND (Z7)">Thailand</option><option value="INDONESIA (Z7)">Indonesia</option><option value="VIETNAM (Z7)">Vietnam</option><option value="PAKISTAN (Z7)">Pakistan</option><option value="BANGLADESH (Z7)">Bangladesh</option><option value="TAIWAN (Z7)">Taiwan</option></optgroup>
 <optgroup label="Latin America &amp; Caribbean"><option value="BRAZIL (Z8)">Brazil</option><option value="ARGENTINA (Z8)">Argentina</option><option value="CHILE (Z8)">Chile</option><option value="COLOMBIA (Z8)">Colombia</option><option value="PERU (Z8)">Peru</option><option value="JAMAICA (Z8)">Jamaica</option><option value="NEW ZEALAND (Z8)">New Zealand</option><option value="PANAMA (Z8)">Panama</option><option value="VENEZUELA (Z8)">Venezuela</option></optgroup>
 </select></div>
-<div class="two"><div><div class="lbl">Weight (kg)</div><div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="2"></div></div>
-<div><div class="lbl">Item value (₦) <span class="req">*</span></div><div class="fld"><input id="value" type="number" min="1" inputmode="numeric" placeholder="What's it worth?"></div></div></div>
+<div class="lbl">About how heavy?</div>
+<div class="wq" id="wq"></div>
+<div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="Or type the weight in kg"></div>
+<div class="lbl">What is it worth? <span class="req">*</span></div>
+<div class="fld"><input id="value" type="number" min="1" inputmode="numeric" placeholder="Needed for customs"></div>
 <div class="estcard" id="fee"></div>
 <div class="err" id="err"></div>
-<div class="sec">Pickup — sender in Port Harcourt</div>
-<div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Your phone *"></div></div>
-<div class="lbl">Pickup address — where our rider collects <span class="req">*</span></div>
-<div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">📍</button><div class="sugbox" id="psug" style="display:none"></div></div>
-<div class="sec">Receiver — abroad</div>
-<div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Their phone"></div></div>
-<div class="fld"><input id="daddr" placeholder="Delivery address abroad…" autocomplete="off"><div class="sugbox" id="dsug" style="display:none"></div></div>
+</div>
+
+<div class="step" id="s2">
+<div class="qh">Where do we collect it?</div>
+<div class="qs">Our rider comes to this address, weighs the item in front of you, and packs it there.</div>
+<div class="two"><div class="fld"><input id="sname" placeholder="Your name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Your phone *"></div></div>
+<div class="lbl">Pickup address <span class="req">*</span></div>
+<div class="fld"><input id="paddr" placeholder="Start typing your address&hellip;" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">&#128205;</button><div class="sugbox" id="psug" style="display:none"></div></div>
+</div>
+
+<div class="step" id="s3">
+<div class="qh">Who is receiving it?</div>
+<div class="qs">Their address abroad, so we can deliver to their door.</div>
+<div class="two"><div class="fld"><input id="rname" placeholder="Receiver name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Their phone"></div></div>
+<div class="lbl">Delivery address abroad</div>
+<div class="fld"><input id="daddr" placeholder="Street, city, postcode&hellip;" autocomplete="off"><div class="sugbox" id="dsug" style="display:none"></div></div>
 <div class="lbl">What are you sending?</div>
 <div class="fld"><input id="item" placeholder="e.g. documents, clothes, a phone"></div>
-<div class="sec">Delivery instruction <span style="font-weight:600;text-transform:none;letter-spacing:0;color:#aab0b8">— optional</span></div>
-<div class="fld"><textarea id="dinstr" placeholder="Anything the rider should know? e.g. call on arrival, leave at reception, fragile…"></textarea></div>
-<p class="muted">🔒 Powered by Lasalu Drop Logistics</p>
+<div class="lbl">Anything we should know? <span style="font-weight:600;text-transform:none;letter-spacing:0;color:#aab0b8">&mdash; optional</span></div>
+<div class="fld"><textarea id="dinstr" placeholder="e.g. call on arrival, fragile, leave at reception"></textarea></div>
 </div>
-<div class="bar"><div class="bamt"><div class="s">Estimate</div><div class="v" id="baramt">—</div></div><button id="go" disabled>Request pickup</button></div>
+
+<div class="step" id="s4">
+<div class="qh">Check it over</div>
+<div class="qs">Nothing is charged now.</div>
+<div class="sum" id="sumbox"></div>
+<div class="note">This is an <b>estimate</b>. Our rider weighs the item in front of you and the exact price is confirmed then &mdash; it can go down if it is lighter. You pay only after it is weighed.</div>
+<div class="err" id="err2"></div>
+</div>
+
+<p class="muted">&#128274; Powered by Lasalu Drop Logistics</p>
+</div>
+<div class="bar"><div class="bamt"><div class="s">Estimate</div><div class="v" id="baramt">&mdash;</div></div><div class="nav"><button type="button" class="back" id="back" style="display:none">Back</button><button id="go">Continue</button></div></div>
 </div>
 <script>
-var SESSION=new URLSearchParams(location.search).get('session')||"";
-var VALID=SESSION?"1":"0";
-// A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
-(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
-var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
-var lastPrice=null, t, SVC='express';
+var SESSION=new URLSearchParams(location.search).get('session')||'';
+var VALID=SESSION?'1':'0';
+var API='https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker';
+var lastPrice=null,lastEtd='',t,SVC='express',STEP=0,LAST=4,APPMODE=false;
 function el(id){return document.getElementById(id);}
 function svc(){return SVC;}
-function val(id){return (el(id).value||'').trim();}
-function useLoc(){var b=el('ploc');if(!b)return;b.onclick=function(){if(!navigator.geolocation){alert('Location is not available here — please type your address.');return;}var prev=b.textContent;b.textContent='…';b.disabled=true;navigator.geolocation.getCurrentPosition(function(pos){el('paddr').value='Getting address…';fetch(API+'?action=reverse&session='+encodeURIComponent(SESSION)+'&lat='+pos.coords.latitude+'&lng='+pos.coords.longitude).then(function(r){return r.json();}).then(function(j){el('paddr').value=(j&&j.address)?j.address:'My current location';b.textContent=prev;b.disabled=false;validate();}).catch(function(){el('paddr').value='My current location';b.textContent=prev;b.disabled=false;validate();});},function(){b.textContent=prev;b.disabled=false;alert('Couldn\\'t get your location — please allow access or type your address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});};}
+function val(id){var e=el(id);return e?(e.value||'').trim():'';}
+function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+(function(){if(!SESSION)return;setTimeout(function(){try{fetch(API+'?action=check&session='+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement('div');b.style.cssText='position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif';b.textContent='This link has already been used or expired \u2014 ask us for a fresh one.';document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;}).catch(function(){});}catch(e){}},0);})();
+
+function showStep(n){
+  STEP=n;
+  for(var i=0;i<=LAST;i++){var st=el('s'+i);if(st)st.className=(i===n)?'step on':'step';var d=el('sd'+i);if(d)d.className=(i<=n)?'sd on':'sd';}
+  el('back').style.display=n===0?'none':'block';
+  if(n===LAST)buildSummary();
+  el('go').textContent=(n===LAST)?(APPMODE?'Confirm pickup':'Request pickup'):'Continue';
+  window.scrollTo({top:0,behavior:'smooth'});
+  syncGo();
+}
+function stepOk(n){
+  if(n===0)return true;
+  if(n===1)return !!lastPrice;
+  if(n===2)return !!(val('sname')&&phoneOk(val('sphone'))&&val('paddr'));
+  if(n===3)return !!(val('rname')&&phoneOk(val('rphone'))&&val('daddr')&&val('item'));
+  return !!lastPrice;
+}
+function syncGo(){el('go').disabled=!stepOk(STEP);}
+function buildSummary(){
+  var rows=''
+   +'<div class="r"><span class="k">Service</span><span class="v">'+(SVC==='cargo'?'Air Cargo':'Air Express')+'</span></div>'
+   +'<div class="r"><span class="k">Going to</span><span class="v">'+esc(val('country').replace(/\\s*\\(Z\\d\\)\\s*$/,''))+'</span></div>'
+   +'<div class="r"><span class="k">Weight</span><span class="v">'+esc(el('weight').value)+' kg</span></div>'
+   +'<div class="r"><span class="k">Pickup</span><span class="v">'+esc(val('paddr'))+'</span></div>'
+   +'<div class="r"><span class="k">Receiver</span><span class="v">'+esc(val('rname'))+'</span></div>'
+   +'<div class="r"><span class="k">Their address</span><span class="v">'+esc(val('daddr'))+'</span></div>'
+   +'<div class="r"><span class="k">Item</span><span class="v">'+esc(val('item'))+'</span></div>'
+   +'<div class="r tot"><span class="k">Estimate</span><span class="v">~&#8358;'+Number(lastPrice||0).toLocaleString()+'</span></div>';
+  el('sumbox').innerHTML=rows;
+}
+function useLoc(){var b=el('ploc');if(!b)return;b.onclick=function(){if(!navigator.geolocation){alert('Location is not available here \u2014 please type your address.');return;}b.classList.add('busy');b.disabled=true;navigator.geolocation.getCurrentPosition(function(pos){el('paddr').value='Getting address\u2026';fetch(API+'?action=reverse&session='+encodeURIComponent(SESSION)+'&lat='+pos.coords.latitude+'&lng='+pos.coords.longitude).then(function(r){return r.json();}).then(function(j){el('paddr').value=(j&&j.address)?j.address:'My current location';b.classList.remove('busy');b.disabled=false;syncGo();}).catch(function(){el('paddr').value='My current location';b.classList.remove('busy');b.disabled=false;syncGo();});},function(){b.classList.remove('busy');b.disabled=false;alert('Could not get your location \u2014 please allow access or type your address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});};}
 function pickupCity(){return /owerri|\\bimo\\b/i.test(val('paddr'))?'OWERRI':'PORT_HARCOURT';}
 function wireAuto(inId,sugId,region){
   var inp=el(inId),sug=el(sugId),tt;
@@ -1439,7 +1525,7 @@ function wireAuto(inId,sugId,region){
       fetch(API+'?action=autocomplete&session='+encodeURIComponent(SESSION)+'&q='+encodeURIComponent(q)+(region?'&region='+region:'')).then(function(r){return r.json();}).then(function(j){
         sug.innerHTML='';(j.predictions||[]).forEach(function(p){
           var dv=document.createElement('div');dv.textContent=p.label;
-          dv.onclick=function(){inp.value=p.label;sug.style.display='none';validate();};
+          dv.onclick=function(){inp.value=p.label;sug.style.display='none';syncGo();};
           sug.appendChild(dv);
         });
         sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';
@@ -1449,52 +1535,55 @@ function wireAuto(inId,sugId,region){
   inp.addEventListener('blur',function(){setTimeout(function(){sug.style.display='none';},200);});
 }
 function snapWeight(){var w=parseFloat(el('weight').value);if(!isNaN(w)&&w>0)el('weight').value=(Math.ceil(w*2)/2).toFixed(1);}
+function markWq(){var w=el('weight').value;Array.prototype.forEach.call(document.querySelectorAll('#wq button'),function(b){b.className=(b.getAttribute('data-kg')===w)?'on':'';});}
 function recalc(){
-  lastPrice=null;el('fee').style.display='none';el('baramt').textContent='—';el('err').textContent='';
+  lastPrice=null;el('fee').style.display='none';el('baramt').textContent='\u2014';el('err').textContent='';
   var d=val('country'),w=parseFloat(el('weight').value),v=parseFloat(el('value').value);
-  if(!d||isNaN(w)||w<=0){validate();return;}
-  if(isNaN(v)||v<=0){el('err').textContent='Please enter the item\\'s value to see the estimate.';validate();return;}
-  el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Calculating…</div></div><div class="amt">…</div>';
+  if(!d||isNaN(w)||w<=0){syncGo();return;}
+  if(isNaN(v)||v<=0){el('err').textContent='Add what the item is worth to see your estimate.';syncGo();return;}
+  el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Calculating\u2026</div></div><div class="amt">\u2026</div>';
   var qs='action=price&session='+encodeURIComponent(SESSION)+'&mode='+svc()+'&destination='+encodeURIComponent(d)+'&weight='+w+'&value='+v+'&pickup_city='+pickupCity();
   fetch(API+'?'+qs).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.price){lastPrice=j.price;var amt='~₦'+Number(j.price).toLocaleString();
-      el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Estimate · '+(j.ship_mode==='cargo'?'Air Cargo':'Air Express')+'</div><div class="sub">confirmed after the rider weighs it'+(j.etd?(' • '+j.etd):'')+'</div></div><div class="amt">'+amt+'</div>';
+    if(j&&j.price){lastPrice=j.price;lastEtd=j.etd||'';var amt='~\u20A6'+Number(j.price).toLocaleString();
+      el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Estimate \u00B7 '+(j.ship_mode==='cargo'?'Air Cargo':'Air Express')+'</div><div class="sub">confirmed after the rider weighs it'+(j.etd?(' \u2022 '+j.etd):'')+'</div></div><div class="amt">'+amt+'</div>';
       el('baramt').textContent=amt;}
-    else{el('fee').style.display='none';el('baramt').textContent='—';
-      if(j&&j.error==='cargo_min_weight')el('err').textContent='Air Cargo needs 10kg or more — try Express for lighter parcels.';
-      else if(j&&j.error==='cargo_unavailable')el('err').textContent='Air Cargo is UK, USA, Canada & Ghana only — use Express here.';
+    else{el('fee').style.display='none';el('baramt').textContent='\u2014';
+      if(j&&j.error==='cargo_min_weight')el('err').textContent='Air Cargo needs 10kg or more \u2014 use Air Express for lighter parcels.';
+      else if(j&&j.error==='cargo_unavailable')el('err').textContent='Air Cargo goes to the UK, USA, Canada and Ghana only \u2014 use Air Express here.';
       else if(j&&j.error==='unknown_country')el('err').textContent='Pick a destination from the list.';
     }
-    validate();
-  }).catch(function(){el('fee').style.display='none';el('baramt').textContent='—';validate();});
+    syncGo();
+  }).catch(function(){el('fee').style.display='none';el('baramt').textContent='\u2014';syncGo();});
 }
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
-function validate(){
-  var ok=lastPrice&&val('sname')&&phoneOk(val('sphone'))&&val('paddr')&&val('rname')&&phoneOk(val('rphone'))&&val('daddr')&&val('item');
-  el('go').disabled=!ok;
-}
+function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='That number looks off \u2014 Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',function(){u();syncGo();});e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
 function book(){
-  var b=el('go');b.disabled=true;b.textContent='Booking…';
+  var b=el('go');b.disabled=true;b.textContent='Booking\u2026';
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     session:SESSION,mode:svc(),destination:val('country'),weight:parseFloat(el('weight').value),value:parseFloat(el('value').value)||0,pickup_city:pickupCity(),
     sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item'),delivery_instruction:val('dinstr')
   })}).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your estimate is waiting in your WhatsApp chat — reply YES there to send the rider.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';}
-    else{b.disabled=false;b.textContent='Request pickup';el('err').textContent=(j&&j.error==='value_required')?'Please enter the item\\'s value.':(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
-  }).catch(function(){b.disabled=false;b.textContent='Request pickup';alert('Network hiccup — try again.');});
+    if(j&&j.ok&&j.booked){el('app').innerHTML='<div class="done"><h2>Pickup booked</h2><p class="muted">A rider will be assigned to come and weigh your item. The moment it is weighed we send your exact price and a payment link \u2014 nothing is charged before that.</p></div>';}
+    else if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>All set</h2><p class="muted">Your estimate is waiting in your WhatsApp chat \u2014 reply YES there to send the rider.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp</a></div>';}
+    else{b.disabled=false;b.textContent=APPMODE?'Confirm pickup':'Request pickup';el('err2').textContent=(j&&j.error==='value_required')?'Please enter what the item is worth.':(j&&j.error)?('Could not book: '+j.error):'Something went wrong \u2014 try again.';}
+  }).catch(function(){b.disabled=false;b.textContent=APPMODE?'Confirm pickup':'Request pickup';alert('Network hiccup \u2014 try again.');});
 }
 if(VALID!=='1'){el('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for a quote again.</p></div>';}
 else{
-  Array.prototype.forEach.call(document.querySelectorAll('.pill'),function(p){p.onclick=function(){SVC=p.getAttribute('data-svc');Array.prototype.forEach.call(document.querySelectorAll('.pill'),function(x){x.className='pill';});p.className='pill on';recalc();};});
-  el('weight').addEventListener('input',function(){recalc();});
-  el('weight').addEventListener('blur',function(){snapWeight();recalc();});
+  var WQ=[1,2,5,10,20];
+  el('wq').innerHTML=WQ.map(function(k){return '<button type="button" data-kg="'+k+'">'+k+'kg</button>';}).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('#wq button'),function(b){b.onclick=function(){el('weight').value=b.getAttribute('data-kg');markWq();recalc();};});
+  Array.prototype.forEach.call(document.querySelectorAll('.scard'),function(p){p.onclick=function(){SVC=p.getAttribute('data-svc');Array.prototype.forEach.call(document.querySelectorAll('.scard'),function(x){x.className='scard';});p.className='scard on';recalc();};});
+  el('weight').addEventListener('input',function(){markWq();recalc();});
+  el('weight').addEventListener('blur',function(){snapWeight();markWq();recalc();});
   el('country').addEventListener('change',recalc);
   el('value').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});
-  ['sname','sphone','paddr','rname','rphone','daddr','item'].forEach(function(id){el(id).addEventListener('input',validate);});
+  ['sname','paddr','rname','daddr','item'].forEach(function(id){el(id).addEventListener('input',syncGo);});
   flagPhone('sphone');flagPhone('rphone');
   wireAuto('paddr','psug','ng');wireAuto('daddr','dsug','');useLoc();
-  el('go').onclick=book;
+  el('back').onclick=function(){if(STEP>0)showStep(STEP-1);};
+  el('go').onclick=function(){if(STEP<LAST){if(stepOk(STEP))showStep(STEP+1);}else{book();}};
+  showStep(0);
 }
 </script></body></html>`;
 app.get('/quote', (req, res) => { res.type('html').send(withWa(QUOTE_PAGE)); });
