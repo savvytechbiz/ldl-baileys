@@ -1398,6 +1398,13 @@ ${FONT_LINK}<style>${BASE_CSS}
 .scard .txt{display:flex;flex-direction:column;gap:3px;min-width:0}
 .scard .st1{display:block;font-size:16.5px;font-weight:700;color:var(--ink);line-height:1.2}
 .scard .st2{display:block;font-size:13px;color:var(--ink-2);line-height:1.35}
+/* estcard is NOT in BASE_CSS - it was an undefined class on the old page, which is
+   why the amount crammed into the label. Defined properly here. JS flips it to flex.
+   NOTE: never put a backtick in this file - it terminates the page template literal. */
+.estcard{display:none;align-items:center;justify-content:space-between;gap:14px;background:var(--lilac);border:1px solid #F3D9E5;border-radius:var(--r);padding:14px 16px;margin:6px 0 2px}
+.estcard .l{font-size:13.5px;font-weight:700;color:var(--ink)}
+.estcard .sub{font-size:12px;color:var(--ink-2);line-height:1.45;margin-top:3px}
+.estcard .amt{font-size:21px;font-weight:800;color:var(--plum);white-space:nowrap;flex:none}
 .wq{display:flex;gap:8px;margin:2px 0 14px;flex-wrap:wrap}
 .wq button{flex:0 0 auto;width:auto;padding:9px 15px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:14px;font-weight:700;color:var(--ink-2);box-shadow:none}
 .wq button.on{border-color:var(--plum);background:var(--plum);color:#fff}
@@ -1504,7 +1511,7 @@ function showStep(n){
   if(n===LAST)buildSummary();
   el('go').textContent=(n===LAST)?(APPMODE?'Confirm pickup':'Request pickup'):'Continue';
   window.scrollTo({top:0,behavior:'smooth'});
-  syncGo();
+  syncEst();syncGo();
 }
 function stepOk(n){
   if(n===0)return true;
@@ -1514,6 +1521,9 @@ function stepOk(n){
   return !!lastPrice;
 }
 function syncGo(){el('go').disabled=!stepOk(STEP);}
+// The bar estimate is hidden on the step that already shows the estimate card --
+// the same number twice on one screen reads as a mistake.
+function syncEst(){el('estwrap').className=(lastPrice&&STEP!==1)?'bamt on':'bamt';}
 function buildSummary(){
   var rows=''
    +'<div class="r"><span class="k">Service</span><span class="v">'+(SVC==='cargo'?'Air Cargo':'Air Express')+'</span></div>'
@@ -1548,7 +1558,7 @@ function wireAuto(inId,sugId,region){
 function snapWeight(){var w=parseFloat(el('weight').value);if(!isNaN(w)&&w>0)el('weight').value=(Math.ceil(w*2)/2).toFixed(1);}
 function markWq(){var w=el('weight').value;Array.prototype.forEach.call(document.querySelectorAll('#wq button'),function(b){b.className=(b.getAttribute('data-kg')===w)?'on':'';});}
 function recalc(){
-  lastPrice=null;el('fee').style.display='none';el('baramt').textContent='\u2014';el('estwrap').className='bamt';el('err').textContent='';
+  lastPrice=null;el('fee').style.display='none';el('baramt').textContent='\u2014';syncEst();el('err').textContent='';
   var d=val('country'),w=parseFloat(el('weight').value),v=parseFloat(el('value').value);
   if(!d||isNaN(w)||w<=0){syncGo();return;}
   if(isNaN(v)||v<=0){el('err').textContent='Add what the item is worth to see your estimate.';syncGo();return;}
@@ -1557,7 +1567,7 @@ function recalc(){
   fetch(API+'?'+qs).then(function(r){return r.json();}).then(function(j){
     if(j&&j.price){lastPrice=j.price;lastEtd=j.etd||'';var amt='~\u20A6'+Number(j.price).toLocaleString();
       el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Estimate \u00B7 '+(j.ship_mode==='cargo'?'Air Cargo':'Air Express')+'</div><div class="sub">confirmed after the rider weighs it'+(j.etd?(' \u2022 '+j.etd):'')+'</div></div><div class="amt">'+amt+'</div>';
-      el('baramt').textContent=amt;el('estwrap').className='bamt on';}
+      el('baramt').textContent=amt;syncEst();}
     else{el('fee').style.display='none';el('baramt').textContent='\u2014';
       if(j&&j.error==='cargo_min_weight')el('err').textContent='Air Cargo needs 10kg or more \u2014 use Air Express for lighter parcels.';
       else if(j&&j.error==='cargo_unavailable')el('err').textContent='Air Cargo goes to the UK, USA, Canada and Ghana only \u2014 use Air Express here.';
@@ -1567,7 +1577,32 @@ function recalc(){
   }).catch(function(){el('fee').style.display='none';el('baramt').textContent='\u2014';syncGo();});
 }
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='That number looks off \u2014 Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',function(){u();syncGo();});e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
+// Phone fields NEVER scold you mid-typing. A half-typed number is not a mistake, it is
+// an unfinished thought -- turning the field red at digit 6 is the app calling you wrong
+// before you have finished speaking. So: clear any complaint while typing, and only
+// judge the number once you leave the field. Continue stays disabled either way, which
+// is the quiet signal that something is still missing.
+function clearPhoneErr(id){var e=el(id);if(e)e.style.borderColor='';var w=document.getElementById(id+'_pe');if(w&&w.parentNode)w.parentNode.removeChild(w);}
+function showPhoneErr(id){
+  var e=el(id);if(!e)return;var v=(e.value||'').trim();
+  if(!v||phoneOk(v)){clearPhoneErr(id);return;}
+  e.style.borderColor='#dc2626';
+  var box=e.closest('.row2,.two,.fld')||e.parentNode;
+  var w=document.getElementById(id+'_pe');
+  if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;line-height:1.45;margin:5px 2px 0';w.textContent='Nigerian numbers have 11 digits \u2014 e.g. 08012345678';box.parentNode.insertBefore(w,box.nextSibling);}
+}
+function flagPhone(id){
+  var e=el(id);if(!e)return;
+  e.addEventListener('input',function(){clearPhoneErr(id);syncGo();});
+  e.addEventListener('blur',function(){
+    var s=(e.value||''),d='';
+    for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}
+    if(d.slice(0,3)==='234')d=d.slice(3);
+    while(d.charAt(0)==='0')d=d.slice(1);
+    if(d)e.value='0'+d;
+    showPhoneErr(id);syncGo();
+  });
+}
 function book(){
   var b=el('go');b.disabled=true;b.textContent='Booking\u2026';
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
