@@ -515,7 +515,7 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <title>Set your delivery — Lasalu Drop</title>
 <!-- Build stamp: bump on every change so we can confirm what is actually deployed.
      Check live with:  curl -s https://ldl-baileys-v2.onrender.com/map | grep ldl-build -->
-<meta name="ldl-build" content="2026-07-18-11 closer-zoom">
+<meta name="ldl-build" content="2026-07-18-13 confirm-pickup-step">
 <meta name="description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds.">
 <meta property="og:title" content="📦 Set your delivery — Lasalu Drop">
 <meta property="og:description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds 🛵">
@@ -572,6 +572,28 @@ input,button,textarea,select{font-family:inherit}
 .recentlist .rn{display:block;font-size:15px;font-weight:600;line-height:1.25;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .recentlist .rs{display:block;font-size:12.5px;font-weight:500;line-height:1.2;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .recentlist .rs:empty{display:none}
+/* ── Order summary on the confirm/pay step — review everything before money moves ── */
+.summary{background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px;margin:0 0 6px}
+.summary .route2{display:flex;gap:11px}
+.summary .rail2{display:flex;flex-direction:column;align-items:center;padding:5px 0 3px}
+.summary .rail2 .d1{width:9px;height:9px;border-radius:50%;background:var(--plum);flex:none}
+.summary .rail2 .ln{flex:1;width:2px;background:var(--line-2);margin:4px 0;min-height:16px}
+.summary .rail2 .d2{width:9px;height:9px;border-radius:2px;background:var(--pink);flex:none}
+.summary .addrs{flex:1;min-width:0}
+.summary .a1{font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:14px}
+.summary .a2{font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.3}
+.summary .srow{display:flex;gap:12px;align-items:flex-start;padding:9px 0 0;margin-top:9px;border-top:1px solid var(--line)}
+.summary .sk{font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;width:62px;flex:none;padding-top:3px}
+.summary .sv{font-size:14px;font-weight:600;color:var(--ink);flex:1;min-width:0;line-height:1.35}
+/* Tells the customer exactly what is still missing instead of a silently dead button */
+.needhint{font-size:12.5px;font-weight:500;color:var(--amber);text-align:center;margin-top:10px;line-height:1.35}
+.needhint:empty{display:none}
+.reqtag{font-size:10.5px;font-weight:700;color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase;margin-left:6px}
+/* Confirm-pickup step — the address big, with a nudge that the pin is draggable */
+.pickconf{background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px}
+.pickconf .pcaddr{font-size:16px;font-weight:700;color:var(--ink);line-height:1.3}
+.pickconf .pchint{font-size:12.5px;font-weight:500;color:var(--ink-2);margin-top:7px;line-height:1.4}
+#pickok{display:flex;align-items:center;justify-content:center;gap:9px}
 /* The payment label used to be a bare text node, so the price had no room and broke onto two lines
    ("+" above "N200"). Give the text its own flex box and pin the price to a single line. */
 .payopt .pt{flex:1;min-width:0;line-height:1.35}
@@ -705,11 +727,17 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="recentlist" id="recentlist"></div>
 <button id="continue" style="display:none;margin-top:16px" onclick="showStep(2)">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
 </div>
+<div id="step-pickup" style="display:none">
+<a onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 8px">&lsaquo; Back to route</a>
+<div class="sec first">Where should the rider come?</div>
+<div class="pickconf" id="pickconf"></div>
+<button id="pickok" style="margin-top:16px" onclick="showStep(3)">Confirm pickup<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+</div>
 <div id="step-details" style="display:none">
-<a id="backstep" onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:700;font-size:14px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to route</a>
-<div class="sec">Who's receiving it?</div>
+<a id="backstep" onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to pickup</a>
+<div class="sec">Who's receiving it?<span class="reqtag">Required</span></div>
 <div class="reuse" id="rrecv"></div>
-<input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone" class="f1" style="margin-top:0">
+<input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone number" class="f1" style="margin-top:0">
 <div id="codrphint" class="hint" style="display:none;color:#b45309;margin:5px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
 <button type="button" class="morebtn" id="addrname"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add receiver's name</button>
 <input id="rname" class="f1" placeholder="Receiver's name (optional)" style="display:none;margin-top:8px">
@@ -718,7 +746,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
   <div class="lbl2">Pickup contact <span class="hint">— who we collect from</span></div>
   <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
 </div>
-<div class="sec">What are you sending?</div>
+<div class="sec">What are you sending?<span class="reqtag">Required</span></div>
 <div class="chipwrap" id="itemchips">
   <button type="button" class="ichip" data-i="Documents"><svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 13h7M8.5 17h5"/></svg>Documents</button>
   <button type="button" class="ichip" data-i="Food"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 11h17a8.5 8.5 0 0 1-17 0z"/><path d="M12 4v3.5"/><path d="M2.5 20h19"/></svg>Food</button>
@@ -732,10 +760,13 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <input id="item" class="f1" placeholder="Type what you're sending" style="display:none;margin-top:2px">
 <button type="button" class="morebtn" id="addnote"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a note for the rider</button>
 <input id="dinstr" class="f1" placeholder="Note for the rider — e.g. call on arrival, gate code" maxlength="200" style="display:none;margin-top:8px">
-<button id="tonext" disabled style="margin-top:18px" onclick="showStep(3)">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+<button id="tonext" disabled style="margin-top:18px" onclick="showStep(4)">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+<div class="needhint" id="needhint"></div>
 </div>
 <div id="step-pay" style="display:none">
-<a onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 8px">&lsaquo; Back to details</a>
+<a onclick="showStep(3)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 8px">&lsaquo; Back to details</a>
+<div class="sec first">Check your order</div>
+<div class="summary" id="paysummary"></div>
 <div id="paysel" style="margin-top:2px">
   <div class="sec">Payment</div>
   <div id="payradios">
@@ -825,13 +856,42 @@ function sheetH(maxFrac){
   sh.style.height=Math.max(Math.round(vh*0.26),Math.min(Math.round(vh*maxFrac),natural))+'px';
   setTimeout(function(){try{map.invalidateSize();}catch(e){}},350);
 }
+// Escape anything the customer typed before it touches innerHTML.
+function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// The confirm screen: show the whole order back to them before any money moves.
+function buildSummary(){
+  var el=document.getElementById('paysummary'); if(!el)return;
+  var h='<div class="route2"><div class="rail2"><span class="d1"></span><span class="ln"></span><span class="d2"></span></div><div class="addrs">'
+      + '<div class="a1">'+esc(picked.pickup?picked.pickup.address:'')+'</div>'
+      + '<div class="a2">'+esc(picked.dropoff?picked.dropoff.address:'')+'</div></div></div>';
+  var rn=val('rname'), rp=val('rphone'), it=val('item'), nt=val('dinstr');
+  if(rp||rn) h+='<div class="srow"><span class="sk">Receiver</span><span class="sv">'+esc(rn?(rn+' · '+rp):rp)+'</span></div>';
+  if(it)     h+='<div class="srow"><span class="sk">Sending</span><span class="sv">'+esc(it)+'</span></div>';
+  if(nt)     h+='<div class="srow"><span class="sk">Note</span><span class="sv">'+esc(nt)+'</span></div>';
+  el.innerHTML=h;
+}
+// The exact pickup spot, shown big so they can drag the pin if GPS put it on the wrong side of the road.
+function buildPickConf(){
+  var el=document.getElementById('pickconf'); if(!el)return;
+  el.innerHTML='<div class="pcaddr">'+esc(picked.pickup?picked.pickup.address:'')+'</div>'
+    +'<div class="pchint">Drag the purple pin on the map if the rider should come somewhere else.</div>';
+}
+// 4 steps: 1 route → 2 confirm pickup → 3 details → 4 check & pay.
 function showStep(n){
-  var r=document.getElementById('step-route'),d=document.getElementById('step-details'),p=document.getElementById('step-pay'),sh=document.querySelector('.sheet');
-  if(!r||!d||!p)return;
-  var app=document.getElementById('app');
-  if(n===2){ if(!(picked.pickup&&picked.dropoff))return; r.style.display='none'; p.style.display='none'; d.style.display=''; anim(d,'stepInR'); if(sh)sh.scrollTop=0; if(app)app.classList.add('instep'); sheetH(0.9); }
-  else if(n===3){ r.style.display='none'; d.style.display='none'; p.style.display=''; anim(p,'stepInR'); if(sh)sh.scrollTop=0; if(app)app.classList.add('instep'); sheetH(0.9); }
-  else { d.style.display='none'; p.style.display='none'; r.style.display=''; anim(r,'stepInL'); if(app)app.classList.remove('instep'); sheetH(0.6); }
+  var r=document.getElementById('step-route'),k=document.getElementById('step-pickup'),
+      d=document.getElementById('step-details'),p=document.getElementById('step-pay'),
+      sh=document.querySelector('.sheet'),app=document.getElementById('app');
+  if(!r||!k||!d||!p)return;
+  function only(el,cls){ [r,k,d,p].forEach(function(x){ x.style.display='none'; }); el.style.display=''; anim(el,cls); if(sh)sh.scrollTop=0; }
+  if(n===2){
+    if(!(picked.pickup&&picked.dropoff))return;
+    buildPickConf(); only(k,'stepInR'); if(app)app.classList.remove('instep'); sheetH(0.44);
+    // Zoom right in on the pickup so the exact spot is obvious and the pin is easy to drag.
+    setTimeout(function(){ try{ map.invalidateSize(); map.flyTo([picked.pickup.lat,picked.pickup.lng],18,{duration:.7}); }catch(e){} },360);
+  }
+  else if(n===3){ only(d,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9); }
+  else if(n===4){ buildSummary(); only(p,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9); }
+  else { only(r,'stepInL'); if(app)app.classList.remove('instep'); sheetH(0.6); }
 }
 // Reveal the "Continue" button only once both ends are set (and the map is pricing the trip).
 function step(){var c=document.getElementById('continue');if(!c)return;var show=!!(picked.pickup&&picked.dropoff);if(show){if(c.style.display==='none'||!c.style.display){c.style.display='block';anim(c,'risein');}}else c.style.display='none';}
@@ -862,6 +922,7 @@ function reverseSet(which,lat,lng){
   fetch(api('action=reverse&lat='+lat+'&lng='+lng)).then(function(r){return r.json();}).then(function(d){
     var addr=(d&&d.address)?d.address:picked[which].address;
     fld.value=addr; picked[which].address=addr;   // show the REAL address, and save it for the order
+    try{ buildPickConf(); }catch(e){}             // keep the confirm-pickup panel in step with a dragged pin
   }).catch(function(){ fld.value=picked[which].address; });
 }
 // Show/hide the little ✕ clear button when a field has text.
@@ -917,8 +978,15 @@ function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0
 function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
 function validate(){
   // Step 2 (details) completeness gates the Continue-to-payment button: one good phone + an item.
+  // Never leave a dead grey button — say exactly what is still missing.
   var _t=document.getElementById('tonext');
-  if(_t){ var _sp=val('sphone'), _rp=val('rphone'); _t.disabled=!((phoneOk(_sp)||phoneOk(_rp)) && val('item')); }
+  if(_t){
+    var _sp=val('sphone'), _rp=val('rphone'), _ph=(phoneOk(_sp)||phoneOk(_rp)), _it=!!val('item');
+    _t.disabled=!(_ph&&_it);
+    var _h=document.getElementById('needhint');
+    if(_h){ var _need=[]; if(!_ph)_need.push("the receiver's phone"); if(!_it)_need.push("what you're sending");
+      _h.textContent=_need.length?('Add '+_need.join(' and ')+' to continue'):''; }
+  }
   // Names are optional. Each phone must be valid or blank, and at least one must be filled (the other
   // person's) — we fill the blank side with the booker's own WhatsApp number server-side.
   var sp=val('sphone'), rp=val('rphone');
