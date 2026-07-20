@@ -515,7 +515,7 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <title>Set your delivery — Lasalu Drop</title>
 <!-- Build stamp: bump on every change so we can confirm what is actually deployed.
      Check live with:  curl -s https://ldl-baileys-v2.onrender.com/map | grep ldl-build -->
-<meta name="ldl-build" content="2026-07-18-13 confirm-pickup-step">
+<meta name="ldl-build" content="2026-07-18-14 pink-surfaces">
 <meta name="description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds.">
 <meta property="og:title" content="📦 Set your delivery — Lasalu Drop">
 <meta property="og:description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds 🛵">
@@ -526,9 +526,9 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --plum:#4F074C;--plum-d:#3A0537;--pink:#E23A7C;--pink-soft:#FCEBF2;--lilac:#F6EFF5;
+  --plum:#4F074C;--plum-d:#3A0537;--pink:#E23A7C;--pink-soft:#FCEBF2;--lilac:#FBE9F1;
   --ink:#241a29;--ink-2:#6a626f;--ink-3:#a8a0ae;
-  --line:#ece7ef;--line-2:#ded6e2;--surface:#fff;--bg:#f7f4f8;
+  --line:#ece7ef;--line-2:#ded6e2;--surface:#fff;--bg:#FBF3F7;
   --amber:#b45309;--amber-line:#ffe0a6;--amber-bg:#fff8ec;
   --r:14px;--r-lg:18px;--r-xl:26px;
   --ease:cubic-bezier(.23,1,.32,1);
@@ -1256,7 +1256,7 @@ app.get('/v/:t', (req, res) => res.redirect(302, `/vendor?session=${encodeURICom
 // clean white + green look of the local map page.
 // ── Shared premium design system (the map page's tokens/components, for the no-map booking pages) ──
 const FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">`;
-const BASE_CSS = `:root{--plum:#4F074C;--plum-d:#3A0537;--pink:#E23A7C;--pink-soft:#FCEBF2;--lilac:#F6EFF5;--ink:#241a29;--ink-2:#6a626f;--ink-3:#a8a0ae;--line:#ece7ef;--line-2:#ded6e2;--surface:#fff;--bg:#f7f4f8;--amber:#b45309;--amber-line:#ffe0a6;--amber-bg:#fff8ec;--r:14px;--r-lg:18px;--r-xl:26px;--ease:cubic-bezier(.23,1,.32,1);--sh-1:0 1px 2px rgba(58,5,55,.05),0 3px 10px rgba(58,5,55,.05);--sh-pop:0 18px 44px rgba(58,5,55,.16)}
+const BASE_CSS = `:root{--plum:#4F074C;--plum-d:#3A0537;--pink:#E23A7C;--pink-soft:#FCEBF2;--lilac:#FBE9F1;--ink:#241a29;--ink-2:#6a626f;--ink-3:#a8a0ae;--line:#ece7ef;--line-2:#ded6e2;--surface:#fff;--bg:#FBF3F7;--amber:#b45309;--amber-line:#ffe0a6;--amber-bg:#fff8ec;--r:14px;--r-lg:18px;--r-xl:26px;--ease:cubic-bezier(.23,1,.32,1);--sh-1:0 1px 2px rgba(58,5,55,.05),0 3px 10px rgba(58,5,55,.05);--sh-pop:0 18px 44px rgba(58,5,55,.16)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
