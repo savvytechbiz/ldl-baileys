@@ -1378,7 +1378,9 @@ const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="theme-color" content="#4F074C">
 ${FONT_LINK}<style>${BASE_CSS}
 .wrap{padding-bottom:96px}
-.steps{display:flex;gap:6px;padding:0 4px 14px}
+/* The sheet reaches the action bar, so a short step never leaves a dead pale band. */
+.sheet{display:flex;flex-direction:column;min-height:calc(100vh - 232px)}
+.steps{display:flex;gap:6px;padding:0 4px 16px}
 .sd{flex:1;height:4px;border-radius:2px;background:var(--line-2);transition:background .3s var(--ease)}
 .sd.on{background:var(--pink)}
 .qh{font-size:23px;font-weight:800;letter-spacing:-.4px;color:var(--ink);margin:2px 0 6px;line-height:1.25}
@@ -1386,12 +1388,16 @@ ${FONT_LINK}<style>${BASE_CSS}
 .step{display:none}
 .step.on{display:block;animation:qin .28s var(--ease)}
 @keyframes qin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.svc{display:flex;flex-direction:column;gap:10px;margin-bottom:4px}
-.scard{display:flex;align-items:center;gap:13px;padding:15px;border:1.5px solid var(--line-2);border-radius:var(--r);background:#fff;cursor:pointer;transition:border-color .2s var(--ease),background .2s var(--ease);width:100%;text-align:left;box-shadow:none}
+/* Service cards. The label block is a COLUMN — inline spans would run the title and
+   the detail together on one line, which is exactly how this shipped the first time. */
+.svc{display:flex;flex-direction:column;gap:11px}
+.scard{display:flex;align-items:center;gap:14px;padding:16px;border:1.5px solid var(--line-2);border-radius:var(--r);background:#fff;cursor:pointer;transition:border-color .2s var(--ease),background .2s var(--ease);width:100%;text-align:left;box-shadow:none}
 .scard.on{border-color:var(--plum);background:var(--lilac)}
-.scard .em{font-size:24px;line-height:1}
-.scard .st1{font-size:16px;font-weight:700;color:var(--ink)}
-.scard .st2{font-size:13px;color:var(--ink-2);margin-top:2px}
+.scard:active{transform:scale(.995)}
+.scard .ic{width:26px;height:26px;flex:none;fill:none;stroke:var(--plum);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.scard .txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.scard .st1{display:block;font-size:16.5px;font-weight:700;color:var(--ink);line-height:1.2}
+.scard .st2{display:block;font-size:13px;color:var(--ink-2);line-height:1.35}
 .wq{display:flex;gap:8px;margin:2px 0 14px;flex-wrap:wrap}
 .wq button{flex:0 0 auto;width:auto;padding:9px 15px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:14px;font-weight:700;color:var(--ink-2);box-shadow:none}
 .wq button.on{border-color:var(--plum);background:var(--plum);color:#fff}
@@ -1402,8 +1408,13 @@ ${FONT_LINK}<style>${BASE_CSS}
 .sum .tot{border-top:1px solid #F3D9E5;margin-top:8px;padding-top:12px}
 .sum .tot .v{font-size:19px;font-weight:800}
 .note{font-size:12.5px;color:var(--ink-2);line-height:1.55;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:var(--r);padding:12px;margin-bottom:14px}
-.nav{display:flex;gap:10px;align-items:center}
-.back{flex:0 0 auto;width:auto;padding:0 18px;height:52px;background:#fff;border:1.5px solid var(--line-2);color:var(--ink-2);font-weight:700;border-radius:var(--r);box-shadow:none}</style></head><body><div class="wrap" id="app">
+/* Footer sits at the bottom of the sheet rather than floating under a short step. */
+.pw{margin-top:auto;padding-top:22px}
+.nav{display:flex;gap:10px;align-items:center;flex:1}
+.back{flex:0 0 auto;width:auto;padding:0 18px;height:52px;background:#fff;border:1.5px solid var(--line-2);color:var(--ink-2);font-weight:700;border-radius:var(--r);box-shadow:none}
+/* No estimate yet = no estimate readout. A bare dash reads as broken. */
+#estwrap{display:none}
+#estwrap.on{display:block}</style></head><body><div class="wrap" id="app">
 <div class="hero"><div class="glow">&#9992;&#65039;</div>
 <h1>Ship internationally</h1>
 <p>Door pickup in Port Harcourt, delivered worldwide. You only pay after our rider weighs it.</p></div>
@@ -1414,8 +1425,8 @@ ${FONT_LINK}<style>${BASE_CSS}
 <div class="qh">How should it fly?</div>
 <div class="qs">Most people send Air Express. Cargo is cheaper for big, heavy loads.</div>
 <div class="svc">
-<button type="button" class="scard on" data-svc="express"><span class="em">&#9992;&#65039;</span><span><span class="st1">Air Express</span><span class="st2">Worldwide &middot; 3&ndash;7 days</span></span></button>
-<button type="button" class="scard" data-svc="cargo"><span class="em">&#128230;</span><span><span class="st1">Air Cargo</span><span class="st2">UK, USA, Canada &amp; Ghana &middot; 10kg and above</span></span></button>
+<button type="button" class="scard on" data-svc="express"><svg class="ic" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg><span class="txt"><span class="st1">Air Express</span><span class="st2">Worldwide &middot; 3&ndash;7 days</span></span></button>
+<button type="button" class="scard" data-svc="cargo"><svg class="ic" viewBox="0 0 24 24"><path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg><span class="txt"><span class="st1">Air Cargo</span><span class="st2">UK, USA, Canada &amp; Ghana &middot; 10kg and above</span></span></button>
 </div>
 </div>
 
@@ -1471,9 +1482,9 @@ ${FONT_LINK}<style>${BASE_CSS}
 <div class="err" id="err2"></div>
 </div>
 
-<p class="muted">&#128274; Powered by Lasalu Drop Logistics</p>
+<p class="muted pw">&#128274; Powered by Lasalu Drop Logistics</p>
 </div>
-<div class="bar"><div class="bamt"><div class="s">Estimate</div><div class="v" id="baramt">&mdash;</div></div><div class="nav"><button type="button" class="back" id="back" style="display:none">Back</button><button id="go">Continue</button></div></div>
+<div class="bar"><div class="bamt" id="estwrap"><div class="s">Estimate</div><div class="v" id="baramt">&mdash;</div></div><div class="nav"><button type="button" class="back" id="back" style="display:none">Back</button><button id="go">Continue</button></div></div>
 </div>
 <script>
 var SESSION=new URLSearchParams(location.search).get('session')||'';
@@ -1537,7 +1548,7 @@ function wireAuto(inId,sugId,region){
 function snapWeight(){var w=parseFloat(el('weight').value);if(!isNaN(w)&&w>0)el('weight').value=(Math.ceil(w*2)/2).toFixed(1);}
 function markWq(){var w=el('weight').value;Array.prototype.forEach.call(document.querySelectorAll('#wq button'),function(b){b.className=(b.getAttribute('data-kg')===w)?'on':'';});}
 function recalc(){
-  lastPrice=null;el('fee').style.display='none';el('baramt').textContent='\u2014';el('err').textContent='';
+  lastPrice=null;el('fee').style.display='none';el('baramt').textContent='\u2014';el('estwrap').className='bamt';el('err').textContent='';
   var d=val('country'),w=parseFloat(el('weight').value),v=parseFloat(el('value').value);
   if(!d||isNaN(w)||w<=0){syncGo();return;}
   if(isNaN(v)||v<=0){el('err').textContent='Add what the item is worth to see your estimate.';syncGo();return;}
@@ -1546,7 +1557,7 @@ function recalc(){
   fetch(API+'?'+qs).then(function(r){return r.json();}).then(function(j){
     if(j&&j.price){lastPrice=j.price;lastEtd=j.etd||'';var amt='~\u20A6'+Number(j.price).toLocaleString();
       el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Estimate \u00B7 '+(j.ship_mode==='cargo'?'Air Cargo':'Air Express')+'</div><div class="sub">confirmed after the rider weighs it'+(j.etd?(' \u2022 '+j.etd):'')+'</div></div><div class="amt">'+amt+'</div>';
-      el('baramt').textContent=amt;}
+      el('baramt').textContent=amt;el('estwrap').className='bamt on';}
     else{el('fee').style.display='none';el('baramt').textContent='\u2014';
       if(j&&j.error==='cargo_min_weight')el('err').textContent='Air Cargo needs 10kg or more \u2014 use Air Express for lighter parcels.';
       else if(j&&j.error==='cargo_unavailable')el('err').textContent='Air Cargo goes to the UK, USA, Canada and Ghana only \u2014 use Air Express here.';
