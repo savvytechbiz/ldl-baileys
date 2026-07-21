@@ -743,7 +743,8 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <a id="backstep" onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to pickup</a>
 <div class="sec">Who's receiving it?<span class="reqtag">Required</span></div>
 <div class="reuse" id="rrecv"></div>
-<input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone number" class="f1" style="margin-top:0">
+<input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's number — e.g. 0803 123 4567" class="f1" style="margin-top:0">
+<div class="hint" style="margin:6px 2px 0;color:var(--ink-3)">The rider calls this number at drop-off, so double-check it.</div>
 <div id="codrphint" class="hint" style="display:none;color:#b45309;margin:5px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
 <button type="button" class="morebtn" id="addrname"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add receiver's name</button>
 <input id="rname" class="f1" placeholder="Receiver's name (optional)" style="display:none;margin-top:8px">
@@ -986,7 +987,7 @@ function useLoc(which,silent){
 }
 function val(id){return (document.getElementById(id).value||'').trim();}
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
+function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var ok=v&&phoneOk(v);var bad=v&&!ok;e.style.borderColor=bad?'#dc2626':(ok?'#16a34a':'');e.style.borderWidth=ok?'1.5px':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
 function validate(){
   // Step 2 (details) completeness gates the Continue-to-payment button: one good phone + an item.
   // Never leave a dead grey button — say exactly what is still missing.
