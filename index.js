@@ -611,6 +611,10 @@ input,button,textarea,select{font-family:inherit}
 .stoprole{font-size:11.5px;font-weight:600;color:var(--ink-3)}
 .stopadr{font-size:12px;font-weight:600;color:var(--ink-2);margin:4px 0 10px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stopc .reuse{margin:0 0 9px}
+.pickbtn{display:none;align-items:center;gap:7px;background:var(--lilac);border:1px solid var(--line-2);border-radius:11px;padding:9px 13px;font-size:13px;font-weight:700;color:var(--plum);cursor:pointer;margin:0 0 9px;transition:transform .13s cubic-bezier(.23,1,.32,1)}
+.pickbtn:active{transform:scale(.96)}
+.pickbtn .i{width:17px;height:17px}
+.cover{font-size:12.5px;font-weight:600;color:#166534;margin-top:9px;line-height:1.35}
 #pickok{display:flex;align-items:center;justify-content:center;gap:9px}
 /* The payment label used to be a bare text node, so the price had no room and broke onto two lines
    ("+" above "N200"). Give the text its own flex box and pin the price to a single line. */
@@ -753,21 +757,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 </div>
 <div id="step-details" style="display:none">
 <a id="backstep" onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to pickup</a>
-<div class="sec">Who's on this trip?</div>
-<div class="youbar"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v2.9a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.1 2 2 0 0 1 4.1 2H7a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L7.9 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg><span>We already have <b>your</b> number. Just fill in the other person — whichever stop below isn't you.</span></div>
-<div class="stopc">
-  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who hands it over</span></div>
-  <div class="stopadr" id="cpaddr"></div>
-  <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
-</div>
-<div class="stopc">
-  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Drop-off</span><span class="stoprole">· who receives it</span></div>
-  <div class="stopadr" id="cdaddr"></div>
-  <div class="reuse" id="rrecv"></div>
-  <div class="row2"><input id="rname" placeholder="Name (optional)"><input id="rphone" type="tel" inputmode="tel" placeholder="Phone"></div>
-</div>
-<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:8px 2px 0">👆 For collect-on-delivery, add the <b>Drop-off</b> (buyer) phone — they get the payment request.</div>
-<div class="sec">What are you sending?<span class="reqtag">Required</span></div>
+<div class="sec first">What are you sending?<span class="reqtag">Required</span></div>
 <div class="chipwrap" id="itemchips">
   <button type="button" class="ichip" data-i="Documents"><svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 13h7M8.5 17h5"/></svg>Documents</button>
   <button type="button" class="ichip" data-i="Food"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 11h17a8.5 8.5 0 0 1-17 0z"/><path d="M12 4v3.5"/><path d="M2.5 20h19"/></svg>Food</button>
@@ -780,7 +770,32 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 </div>
 <input id="item" class="f1" placeholder="Type what you're sending" style="display:none;margin-top:2px">
 <button type="button" class="morebtn" id="addnote"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a note for the rider</button>
-<input id="dinstr" class="f1" placeholder="Note for the rider — e.g. call on arrival, gate code" maxlength="200" style="display:none;margin-top:8px">
+<div id="notebox" style="display:none;margin-top:8px">
+  <div class="chipwrap">
+    <button type="button" class="ichip nchip" data-n="Call on arrival">Call on arrival</button>
+    <button type="button" class="ichip nchip" data-n="Fragile — handle with care">Fragile</button>
+    <button type="button" class="ichip nchip" data-n="Wait at the gate">Wait at the gate</button>
+  </div>
+  <input id="dinstr" class="f1" placeholder="Or type your own — gate code, landmark…" maxlength="200" style="margin-top:8px">
+</div>
+<div class="sec">Who's on this trip?<span class="reqtag">Required</span></div>
+<div class="youbar"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v2.9a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.1 2 2 0 0 1 4.1 2H7a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L7.9 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg><span>We already have <b>your</b> number. Just fill in the other person — whichever stop below isn't you.</span></div>
+<div class="stopc">
+  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who hands it over</span></div>
+  <div class="stopadr" id="cpaddr"></div>
+  <button type="button" class="pickbtn" id="pickc_s"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
+  <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
+  <div class="cover" id="pkcover" style="display:none">✓ If this stop is you, leave it blank — we already have your number</div>
+</div>
+<div class="stopc">
+  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Drop-off</span><span class="stoprole">· who receives it</span></div>
+  <div class="stopadr" id="cdaddr"></div>
+  <div class="reuse" id="rrecv"></div>
+  <button type="button" class="pickbtn" id="pickc_r"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
+  <div class="row2"><input id="rname" placeholder="Name (optional)"><input id="rphone" type="tel" inputmode="tel" placeholder="Phone"></div>
+  <div class="cover" id="dpcover" style="display:none">✓ If this stop is you, leave it blank — we already have your number</div>
+</div>
+<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:8px 2px 0">👆 For collect-on-delivery, add the <b>Drop-off</b> (buyer) phone — they get the payment request.</div>
 <button id="tonext" disabled style="margin-top:18px" onclick="showStep(4)">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
 <div class="needhint" id="needhint"></div>
 </div>
@@ -1017,8 +1032,14 @@ function validate(){
     var _sp=val('sphone'), _rp=val('rphone'), _ph=(phoneOk(_sp)||phoneOk(_rp)), _it=!!val('item');
     _t.disabled=!(_ph&&_it);
     var _h=document.getElementById('needhint');
-    if(_h){ var _need=[]; if(!_ph)_need.push("a phone number for the other person"); if(!_it)_need.push("what you're sending");
+    if(_h){ var _need=[]; if(!_it)_need.push("what you're sending"); if(!_ph)_need.push("the other person's phone");
       _h.textContent=_need.length?('Add '+_need.join(' and ')+' to continue'):''; }
+    // Live "leave it blank" cue: the moment ONE side has a good number, the empty side says the
+    // booker's own number covers it — the auto-fill rule taught at exactly the right moment,
+    // no mode toggle. COD keeps it off Drop-off (the buyer's real phone is required there).
+    var _cbx=document.getElementById('codbox');
+    var _pkc=document.getElementById('pkcover'); if(_pkc)_pkc.style.display=(phoneOk(_rp)&&!_sp)?'block':'none';
+    var _dpc=document.getElementById('dpcover'); if(_dpc)_dpc.style.display=(phoneOk(_sp)&&!_rp&&!(_cbx&&_cbx.checked))?'block':'none';
   }
   // Names are optional. Each phone must be valid or blank, and at least one must be filled (the other
   // person's) — we fill the blank side with the booker's own WhatsApp number server-side.
@@ -1141,8 +1162,42 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   Array.prototype.forEach.call(document.querySelectorAll('#itemchips .ichip'),function(c){ c.onclick=function(){ Array.prototype.forEach.call(document.querySelectorAll('#itemchips .ichip'),function(x){x.classList.remove('on');}); c.classList.add('on'); var v=c.getAttribute('data-i'); var it=document.getElementById('item'); if(v==='__other'){ it.style.display='block'; it.value=''; sheetH(0.9); it.focus(); } else { it.style.display='none'; it.value=v; sheetH(0.9); } validate(); }; });
   // Optional fields stay hidden until tapped — keeps the screen from feeling like a form.
   // Revealing an optional field grows the content — re-fit the sheet so it never scrolls unnecessarily.
-  var _an=document.getElementById('addnote'); if(_an)_an.onclick=function(){ var n=document.getElementById('dinstr'); n.style.display='block'; this.style.display='none'; sheetH(0.9); n.focus(); };
+  // Reveal presets FIRST, no autofocus — the keyboard only opens if they tap the text box.
+  var _an=document.getElementById('addnote'); if(_an)_an.onclick=function(){ document.getElementById('notebox').style.display='block'; this.style.display='none'; sheetH(0.9); };
+  // Rider-note presets: the common notes are one tap; tap again to remove. Text box stays for the rest.
+  Array.prototype.forEach.call(document.querySelectorAll('.nchip'),function(ch){
+    ch.onclick=function(){
+      var d=document.getElementById('dinstr'), t=ch.getAttribute('data-n');
+      if(ch.classList.contains('on')){
+        d.value=d.value.split('; ').filter(function(x){ return x!==t; }).join('; ');
+        ch.classList.remove('on');
+      } else {
+        d.value=d.value?(d.value+'; '+t):t;
+        ch.classList.add('on');
+      }
+    };
+  });
   flagPhone('sphone');flagPhone('rphone');
+  // "More taps, less typing": where the browser has the Contact Picker (Chrome on Android —
+  // most of our customers), the other person comes straight from the phone book: one tap,
+  // name + number filled, the blur pass normalises +234/spaces to 0803… and paints it green.
+  // Unsupported browsers (iOS, in-app webviews) simply never see the button.
+  function pickContact(nid,pid){
+    navigator.contacts.select(['name','tel'],{multiple:false}).then(function(cs){
+      var c=(cs&&cs[0])||null; if(!c)return;
+      var tel=(c.tel&&c.tel.length)?String(c.tel[0]||''):'';
+      var pe=document.getElementById(pid);
+      if(tel&&pe){ pe.value=tel; pe.dispatchEvent(new Event('blur')); }
+      var ne=document.getElementById(nid);
+      if(ne&&!ne.value&&c.name&&c.name.length)ne.value=String(c.name[0]||'');
+      validate();
+    }).catch(function(){});
+  }
+  if(navigator.contacts&&navigator.contacts.select){
+    var _pc1=document.getElementById('pickc_s'), _pc2=document.getElementById('pickc_r');
+    if(_pc1){ _pc1.style.display='inline-flex'; _pc1.onclick=function(){ pickContact('sname','sphone'); }; }
+    if(_pc2){ _pc2.style.display='inline-flex'; _pc2.onclick=function(){ pickContact('rname','rphone'); }; }
+  }
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,title,value,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.innerHTML='<span class="ric">↩</span><span class="rl"><span class="rt"></span><span class="rv"></span></span>'; a.querySelector('.rt').textContent=title; a.querySelector('.rv').textContent=value; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
   // Bolt-style recent/saved place row (shown as a tappable list on the search step).
@@ -1185,8 +1240,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(p.pickup&&p.pickup.lat&&!p.pickup.from_chat){ recentRow(_home,p.pickup.address,'Saved pickup',function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); }
     // The list arrives AFTER the sheet was first sized — re-fit so the places are never clipped.
     if(document.querySelectorAll('#recentlist .rr').length) sheetH(0.74);
-    if(p.receiver&&p.receiver.name){ if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }
-      else { reuse('rrecv','Same receiver',p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; }); } }
+    if(p.receiver&&p.receiver.name){ var _rpB=function(){ document.getElementById('rphone').dispatchEvent(new Event('blur')); };
+      if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; _rpB(); }
+      else { reuse('rrecv','Same receiver',p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; _rpB(); }); } }
     showClr('pickup',(document.getElementById('pin').value||'').length>0);
     showClr('dropoff',(document.getElementById('din').value||'').length>0);
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
