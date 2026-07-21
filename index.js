@@ -615,6 +615,17 @@ input,button,textarea,select{font-family:inherit}
 .pickbtn:active{transform:scale(.96)}
 .pickbtn .i{width:17px;height:17px}
 .cover{font-size:12.5px;font-weight:600;color:#166534;margin-top:9px;line-height:1.35}
+.search{text-align:center;padding:10px 6px 4px}
+.search h2{font-size:21px;font-weight:800;color:var(--plum-d);letter-spacing:-.02em;margin:0 0 6px}
+.search .smut{font-size:13.5px;color:var(--ink-2);line-height:1.45;margin:0 0 2px}
+.search .ssub{font-size:12px;color:var(--ink-3);margin:10px 0 0;line-height:1.4}
+.sbar{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin:16px 8px 12px}
+.sfill{height:100%;width:6%;border-radius:99px;background:var(--plum);animation:screep 75s cubic-bezier(.25,.6,.3,1) forwards}
+@keyframes screep{0%{width:6%}15%{width:34%}45%{width:60%}100%{width:88%}}
+.radar{position:relative;width:18px;height:18px;pointer-events:none}
+.radar span{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:rgba(79,7,76,.30);animation:radarp 2.4s ease-out infinite}
+.radar span+span{animation-delay:1.2s}
+@keyframes radarp{0%{transform:scale(.5);opacity:.9}70%{opacity:.15}100%{transform:scale(8);opacity:0}}
 #pickok{display:flex;align-items:center;justify-content:center;gap:9px}
 /* The payment label used to be a bare text node, so the price had no room and broke onto two lines
    ("+" above "N200"). Give the text its own flex box and pin the price to a single line. */
@@ -906,8 +917,12 @@ function buildSummary(){
       + '<div class="a1">'+esc(picked.pickup?picked.pickup.address:'')+'</div>'
       + '<div class="a2">'+esc(picked.dropoff?picked.dropoff.address:'')+'</div></div></div>';
   var sn=val('sname'), sp=val('sphone'), rn=val('rname'), rp=val('rphone'), it=val('item'), nt=val('dinstr');
-  if(sp||sn) h+='<div class="srow"><span class="sk">Pickup</span><span class="sv">'+esc(sn?(sn+' · '+sp):sp)+'</span></div>';
-  if(rp||rn) h+='<div class="srow"><span class="sk">Drop-off</span><span class="sv">'+esc(rn?(rn+' · '+rp):rp)+'</span></div>';
+  // Both stops ALWAYS show who's there — name · phone when given. The blank side is the booker
+  // (their WhatsApp number fills it at booking), and the summary says so instead of hiding the row:
+  // this is the last look before money moves, so a wrong number must be catchable here.
+  function who(nm,ph){ if(nm&&ph)return esc(nm+' · '+ph); if(nm||ph)return esc(nm||ph); return '<span style="color:var(--ink-2);font-weight:500">You — your WhatsApp number</span>'; }
+  h+='<div class="srow"><span class="sk">Pickup</span><span class="sv">'+who(sn,sp)+'</span></div>';
+  h+='<div class="srow"><span class="sk">Drop-off</span><span class="sv">'+who(rn,rp)+'</span></div>';
   if(it)     h+='<div class="srow"><span class="sk">Sending</span><span class="sv">'+esc(it)+'</span></div>';
   if(nt)     h+='<div class="srow"><span class="sk">Note</span><span class="sv">'+esc(nt)+'</span></div>';
   el.innerHTML=h;
@@ -1301,6 +1316,51 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   bankInp.addEventListener('blur',function(){ setTimeout(function(){ var b=document.getElementById('banksug'); if(b)b.style.display='none'; },150); });
   document.getElementById('bankchange').onclick=function(e){ e.preventDefault(); BANK_SAVED=false; ACCT_OK=false; SEL_BANK_CODE=''; SEL_BANK_NAME=''; bankInp.value='';
     document.getElementById('banksaved').style.display='none'; document.getElementById('bankbox').style.display='block'; loadBanks(); validate(); };
+  // ── Bolt-style "Finding your rider…" after booking ── The map STAYS alive: the pickup pin gets a
+  // radar pulse, the sheet becomes a searching panel with a creeping bar, and we poll the REAL order
+  // status (the same shipdayWebhook milestones that message the customer) so "Rider assigned" here is
+  // true, never theater. If the status endpoint is not live yet (older mapPicker), the panel simply
+  // settles into the honest "we confirm on WhatsApp" line — nothing breaks, nothing lies.
+  var radarM=null, pollT=null, pollN=0;
+  function searchUI(h,sub,extra,foot){
+    var box=document.getElementById('searchbox'); if(!box)return;
+    box.innerHTML='<div class="search"><h2>'+h+'</h2><p class="smut">'+sub+'</p>'
+      +'<div class="sbar"><div class="sfill" id="sfill"></div></div>'
+      +(extra?('<p class="smut">'+extra+'</p>'):'')
+      +'<p class="ssub">'+foot+'</p></div>';
+  }
+  function riderFound(){
+    if(pollT){clearInterval(pollT);pollT=null;}
+    if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
+    searchUI('Rider assigned 🎉','Your rider is heading to the pickup now.','','Name &amp; details are in your WhatsApp chat.');
+    var f=document.getElementById('sfill'); if(f){f.style.animation='none';f.style.width='100%';f.style.background='#16a34a';}
+  }
+  function settleSearch(){
+    searchUI('Still matching you 🛵','Riders are confirming — the moment one accepts, we message you on WhatsApp.','','No need to wait here — you can close this page anytime.');
+  }
+  function showSearching(j){
+    ['step-route','step-pickup','step-details','step-pay'].forEach(function(id){ var e=document.getElementById(id); if(e)e.style.display='none'; });
+    var sh=document.querySelector('.sheet');
+    if(sh&&!document.getElementById('searchbox')){ var bx=document.createElement('div'); bx.id='searchbox'; sh.appendChild(bx); }
+    var fee=j.fee?('The receiver pays <b>₦'+Number(j.fee).toLocaleString()+'</b> in cash on delivery.'):(j.cod_booked?'Your full breakdown is in your WhatsApp chat 🧾':'');
+    searchUI('Finding your rider…','Your order is out to riders nearby.',fee,'You can close this page — every update also lands in your WhatsApp chat.');
+    try{ sheetH(0.44); }catch(e){}
+    if(picked.pickup){
+      try{ map.flyTo([picked.pickup.lat,picked.pickup.lng],16,{duration:.9}); }catch(e){}
+      try{ radarM=L.marker([picked.pickup.lat,picked.pickup.lng],{interactive:false,zIndexOffset:-200,icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class="radar"><span></span><span></span></div>'})}).addTo(map); }catch(e){}
+    }
+    var num=j.order_number||'';
+    if(num){
+      pollT=setInterval(function(){
+        pollN++;
+        if(pollN>30){ clearInterval(pollT); pollT=null; settleSearch(); return; }
+        fetch(api('action=orderstatus&order='+encodeURIComponent(num))).then(function(r){return r.json();}).then(function(s){
+          var st=(s&&s.status)?String(s.status):'';
+          if(st==='assigned'||st==='ontheway'||st==='delivered')riderFound();
+        }).catch(function(){});
+      },8000);
+    } else { setTimeout(settleSearch,150000); }
+  }
   document.getElementById('go').onclick=function(){
     var codOn=document.getElementById('codbox').checked;
     var payVal=codOn?'cod':(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })();
@@ -1318,8 +1378,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
      .then(r=>r.json()).then(j=>{
        // App (pay now): the server returns a payment link — go straight to secure checkout, no WhatsApp.
        if(j&&j.pay_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment 🔒</p></div>'; window.location.href=j.pay_url; return; }
-       // App (pay on delivery): rider booked now, receiver pays cash — confirm in-app, no WhatsApp.
-       if(j&&j.booked){ document.getElementById('app').innerHTML='<div class="done"><h2>✅ Booked!</h2><p class="muted">We are assigning your rider now 🛵'+(j.fee?(' — the receiver pays <b>₦'+Number(j.fee).toLocaleString()+'</b> in cash on delivery.'):'')+'</p></div>'; return; }
+       // Rider dispatched now (pay-on-delivery or COD): keep the map alive and search Bolt-style —
+       // radar pulse on the pickup, creeping bar, real "Rider assigned" the moment Shipday confirms.
+       if(j&&(j.booked||j.cod_booked)){ showSearching(j); return; }
        // Chat sessions: the order + price are waiting in WhatsApp (reply YES to pay).
        document.getElementById('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
      }).catch(function(){ b.disabled=false; b.textContent='Confirm & book'; alert('Network hiccup — try again.'); });
