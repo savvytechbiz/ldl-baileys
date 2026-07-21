@@ -548,6 +548,12 @@ input,button,textarea,select{font-family:inherit}
 .stepInL{animation:stepInL .24s cubic-bezier(.23,1,.32,1)}
 @keyframes pindrop{0%{transform:translateY(-24px) scale(.4);opacity:0}55%{transform:translateY(3px) scale(1.08);opacity:1}100%{transform:none;opacity:1}}
 .pindrop{animation:pindrop .34s cubic-bezier(.34,1.4,.64,1)}
+/* Bolt-style location pin: teardrop that gently bounces so it's obviously draggable. */
+.pinwrap{position:relative;width:34px;height:48px}
+.pinbob{animation:pinbob 1.15s ease-in-out infinite;transform-origin:50% 100%}
+.pinsh{position:absolute;left:50%;bottom:3px;width:15px;height:5px;margin-left:-7.5px;border-radius:50%;background:rgba(0,0,0,.3);animation:pinsh 1.15s ease-in-out infinite}
+@keyframes pinbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes pinsh{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(.6);opacity:.14}}
 @keyframes popin{from{opacity:0;transform:translateY(10px) scale(.88)}to{opacity:1;transform:none}}
 .popin{animation:popin .22s cubic-bezier(.23,1,.32,1)}
 @keyframes risein{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
@@ -663,6 +669,11 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .divln{height:1px;background:var(--line-2)}
 .locp{width:38px;min-width:38px;height:38px;padding:0;border:0;background:transparent;font-size:17px;color:var(--plum);cursor:pointer;border-radius:10px;transition:background .15s var(--ease),transform .12s var(--ease)}
 .locp:active{background:rgba(79,7,76,.09);transform:scale(.92)}
+/* A clearly-labelled "use my location" button — the icon alone wasn't understood. */
+.locbig{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:46px;margin-top:12px;border:1.5px solid var(--line-2);border-radius:12px;background:var(--lilac);color:var(--plum);font-weight:700;font-size:14px;cursor:pointer;transition:transform .12s var(--ease),background .15s var(--ease)}
+.locbig .i{width:19px;height:19px;stroke:var(--plum)}
+.locbig:active{transform:scale(.985);background:var(--pink-soft)}
+.locbig.busy{opacity:.55}
 .clr{width:30px;min-width:30px;height:30px;margin-right:5px;padding:0;border:0;background:transparent;color:var(--ink-3);font-size:15px;cursor:pointer;display:none;border-radius:50%;transition:background .15s var(--ease)}
 .clr:active{background:rgba(79,7,76,.08)}
 .sug{position:absolute;z-index:2000;top:100%;left:-15px;right:-15px;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);margin-top:6px;box-shadow:var(--sh-pop);overflow:hidden;max-height:240px;overflow-y:auto}
@@ -722,6 +733,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
     <div class="ri"><input id="din" placeholder="Drop-off" autocomplete="off"><button type="button" class="clr" data-clr="dropoff" aria-label="Clear drop-off"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><button type="button" class="locp" data-for="dropoff" aria-label="Use my location for drop-off"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12h2.5M20 12h2.5"/></svg></button><div class="sug" id="dsug" style="display:none"></div></div>
   </div>
 </div>
+<button type="button" class="locbig" id="locbig"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12h2.5M20 12h2.5"/></svg><span>Use my current location</span></button>
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
 <div class="recentlist" id="recentlist"></div>
@@ -816,12 +828,17 @@ function initMap(){
   L.control.attribution({position:'bottomright',prefix:false}).addTo(map);
   setTimeout(function(){ map.invalidateSize(); },250);
 }
-// Clean ride-app markers: a green dot for pickup, a dark rounded square for drop-off.
+// Bolt-style teardrop pin that gently bounces so it reads as draggable. Plum = pickup,
+// magenta = drop-off; the tip sits on the exact spot, a soft shadow pulses beneath it.
 function pinIcon(which){
-  var c = which==='pickup'
-    ? '<div class="pindrop" style="width:18px;height:18px;border-radius:50%;background:#4F074C;border:3px solid #fff;box-shadow:0 3px 8px rgba(79,7,76,.45)"></div>'
-    : '<div class="pindrop" style="width:18px;height:18px;border-radius:5px;background:#E23A7C;border:3px solid #fff;box-shadow:0 3px 8px rgba(226,58,124,.45)"></div>';
-  return L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],html:c});
+  var col = which==='pickup' ? '#4F074C' : '#E23A7C';
+  var html = '<div class="pinwrap">'
+    + '<div class="pinsh"></div>'
+    + '<div class="pinbob"><svg width="34" height="44" viewBox="0 0 24 32" fill="none">'
+    + '<path d="M12 1.2C6 1.2 1.2 6 1.2 11.9 1.2 19.7 12 30.8 12 30.8s10.8-11.1 10.8-18.9C22.8 6 18 1.2 12 1.2z" fill="' + col + '" stroke="#fff" stroke-width="1.8"/>'
+    + '<circle cx="12" cy="11.6" r="4.4" fill="#fff"/></svg></div>'
+    + '</div>';
+  return L.divIcon({className:'',iconSize:[34,48],iconAnchor:[17,44],html:html});
 }
 // Real on-shift rider dots (anonymous + privacy-fuzzed by the server). Refreshes every ~25s so the
 // dots drift roughly with the riders — like Bolt/inDrive, but honest (no fake bikes, no ETA promises).
@@ -1089,6 +1106,7 @@ function wire(inId,sugId,which){
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
 else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
+  var lb=document.getElementById('locbig'); if(lb){ lb.onclick=function(){ useLoc('pickup'); }; }
   Array.prototype.forEach.call(document.querySelectorAll('.clr'),function(b){ b.onclick=function(){ clearLoc(b.getAttribute('data-clr')); }; });
   // ── Draggable bottom sheet (Bolt-style): drag the handle to fill the screen or shrink to see the map ──
   (function(){
