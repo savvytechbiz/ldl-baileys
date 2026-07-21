@@ -626,6 +626,16 @@ input,button,textarea,select{font-family:inherit}
 .radar span{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:rgba(79,7,76,.30);animation:radarp 2.4s ease-out infinite}
 .radar span+span{animation-delay:1.2s}
 @keyframes radarp{0%{transform:scale(.5);opacity:.9}70%{opacity:.15}100%{transform:scale(8);opacity:0}}
+.trk{margin:14px 4px 2px;text-align:left}
+.tkrow{display:flex;align-items:center;gap:11px;padding:7px 0}
+.tkd{width:22px;height:22px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.tk-done .tkd{background:var(--plum);color:#fff}
+.tk-cur .tkd{background:#fff;border:2px solid var(--pink);animation:tkpulse 1.6s ease-in-out infinite}
+.tk-todo .tkd{background:#fff;border:2px solid var(--line-2)}
+.tkl{font-size:14px;font-weight:600;color:var(--ink)}
+.tk-todo .tkl{color:var(--ink-3);font-weight:500}
+.tk-cur .tkl{color:var(--plum-d);font-weight:700}
+@keyframes tkpulse{0%,100%{box-shadow:0 0 0 3px rgba(226,58,124,.20)}50%{box-shadow:0 0 0 8px rgba(226,58,124,.06)}}
 #pickok{display:flex;align-items:center;justify-content:center;gap:9px}
 /* The payment label used to be a bare text node, so the price had no room and broke onto two lines
    ("+" above "N200"). Give the text its own flex box and pin the price to a single line. */
@@ -1321,45 +1331,70 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // status (the same shipdayWebhook milestones that message the customer) so "Rider assigned" here is
   // true, never theater. If the status endpoint is not live yet (older mapPicker), the panel simply
   // settles into the honest "we confirm on WhatsApp" line — nothing breaks, nothing lies.
-  var radarM=null, pollT=null, pollN=0;
-  function searchUI(h,sub,extra,foot){
+  var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='';
+  // The 4 milestones the customer sees. "On the way" lives in the HEADLINE (our webhook folds
+  // picked-up + on-the-way into one milestone) — the dots mark what has HAPPENED.
+  var TRK=['Order placed','Rider assigned','Picked up','Delivered'];
+  function trkHead(st){
+    if(st==='searching')return ['Finding your rider…','Your order is out to riders nearby.'];
+    if(st==='assigned')return ['Rider assigned 🎉','Your rider is heading to the pickup now.'];
+    if(st==='ontheway')return ['Picked up — on the way 🛵','Your parcel is moving — we message you at every step too.'];
+    if(st==='delivered')return ['Delivered 🎉','Thank you for sending with Lasalu Drop 💜'];
+    if(st==='failed')return ['Delivery issue 🙏','Something interrupted this delivery — our team is on it and will message you.'];
+    return ['Still matching you 🛵','Riders are confirming — the moment one accepts, we update here and on WhatsApp.'];
+  }
+  function stageN(st){ if(st==='assigned')return 2; if(st==='ontheway')return 3; if(st==='delivered')return 4; return 1; }
+  function trackUI(st){
     var box=document.getElementById('searchbox'); if(!box)return;
-    box.innerHTML='<div class="search"><h2>'+h+'</h2><p class="smut">'+sub+'</p>'
-      +'<div class="sbar"><div class="sfill" id="sfill"></div></div>'
-      +(extra?('<p class="smut">'+extra+'</p>'):'')
-      +'<p class="ssub">'+foot+'</p></div>';
+    var h=trkHead(st), rows='', i, cls;
+    for(i=0;i<TRK.length;i++){
+      cls='tk-todo';
+      if(i<doneN)cls='tk-done'; else if(i===doneN&&st!=='failed')cls='tk-cur';
+      rows+='<div class="tkrow '+cls+'"><span class="tkd">'+(i<doneN?'✓':'')+'</span><span class="tkl">'+TRK[i]+'</span></div>';
+    }
+    box.innerHTML='<div class="search"><h2>'+h[0]+'</h2><p class="smut">'+h[1]+'</p>'
+      +((st==='searching'||st==='settle')?'<div class="sbar"><div class="sfill"></div></div>':'')
+      +'<div class="trk">'+rows+'</div>'
+      +(feeLine&&st!=='delivered'&&st!=='failed'?('<p class="smut">'+feeLine+'</p>'):'')
+      +(st==='delivered'?'':'<p class="ssub">You can close this page — every update also lands in your WhatsApp chat.</p>')
+      +'</div>';
   }
-  function riderFound(){
-    if(pollT){clearInterval(pollT);pollT=null;}
+  function stopPoll(){ if(pollT){clearInterval(pollT);pollT=null;} }
+  function startPoll(ms){
+    stopPoll();
+    pollT=setInterval(function(){
+      pollN++;
+      if(pollN>400){ stopPoll(); return; }
+      if(trkState==='searching'&&pollN===30) trackUI('settle');
+      fetch(api('action=orderstatus&order='+encodeURIComponent(ORDNUM))).then(function(r){return r.json();}).then(function(s){
+        applyStatus(String((s&&s.status)||''));
+      }).catch(function(){});
+    },ms);
+  }
+  function applyStatus(raw){
+    var st=(raw==='assigned'||raw==='ontheway'||raw==='delivered'||raw==='failed')?raw:'';
+    if(!st||st===trkState)return;
+    trkState=st;
+    if(st!=='failed')doneN=stageN(st);
     if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
-    searchUI('Rider assigned 🎉','Your rider is heading to the pickup now.','','Name &amp; details are in your WhatsApp chat.');
-    var f=document.getElementById('sfill'); if(f){f.style.animation='none';f.style.width='100%';f.style.background='#16a34a';}
-  }
-  function settleSearch(){
-    searchUI('Still matching you 🛵','Riders are confirming — the moment one accepts, we message you on WhatsApp.','','No need to wait here — you can close this page anytime.');
+    trackUI(st);
+    if(st==='delivered'||st==='failed'){ stopPoll(); }
+    else { startPoll(15000); }   // matched — keep tracking to the door at a gentler cadence
   }
   function showSearching(j){
     ['step-route','step-pickup','step-details','step-pay'].forEach(function(id){ var e=document.getElementById(id); if(e)e.style.display='none'; });
     var sh=document.querySelector('.sheet');
     if(sh&&!document.getElementById('searchbox')){ var bx=document.createElement('div'); bx.id='searchbox'; sh.appendChild(bx); }
-    var fee=j.fee?('The receiver pays <b>₦'+Number(j.fee).toLocaleString()+'</b> in cash on delivery.'):(j.cod_booked?'Your full breakdown is in your WhatsApp chat 🧾':'');
-    searchUI('Finding your rider…','Your order is out to riders nearby.',fee,'You can close this page — every update also lands in your WhatsApp chat.');
+    feeLine=j.fee?('The receiver pays <b>₦'+Number(j.fee).toLocaleString()+'</b> in cash on delivery.'):(j.cod_booked?'Your full breakdown is in your WhatsApp chat 🧾':'');
+    trkState='searching'; doneN=1; trackUI('searching');
     try{ sheetH(0.44); }catch(e){}
     if(picked.pickup){
       try{ map.flyTo([picked.pickup.lat,picked.pickup.lng],16,{duration:.9}); }catch(e){}
       try{ radarM=L.marker([picked.pickup.lat,picked.pickup.lng],{interactive:false,zIndexOffset:-200,icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class="radar"><span></span><span></span></div>'})}).addTo(map); }catch(e){}
     }
-    var num=j.order_number||'';
-    if(num){
-      pollT=setInterval(function(){
-        pollN++;
-        if(pollN>30){ clearInterval(pollT); pollT=null; settleSearch(); return; }
-        fetch(api('action=orderstatus&order='+encodeURIComponent(num))).then(function(r){return r.json();}).then(function(s){
-          var st=(s&&s.status)?String(s.status):'';
-          if(st==='assigned'||st==='ontheway'||st==='delivered')riderFound();
-        }).catch(function(){});
-      },8000);
-    } else { setTimeout(settleSearch,150000); }
+    ORDNUM=j.order_number||'';
+    if(ORDNUM){ startPoll(8000); }
+    else { setTimeout(function(){ if(trkState==='searching')trackUI('settle'); },150000); }
   }
   document.getElementById('go').onclick=function(){
     var codOn=document.getElementById('codbox').checked;
