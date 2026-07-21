@@ -599,6 +599,18 @@ input,button,textarea,select{font-family:inherit}
 .pickconf{background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px}
 .pickconf .pcaddr{font-size:16px;font-weight:700;color:var(--ink);line-height:1.3}
 .pickconf .pchint{font-size:12.5px;font-weight:500;color:var(--ink-2);margin-top:7px;line-height:1.4}
+.youbar{display:flex;gap:10px;align-items:flex-start;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;margin:2px 0 2px;font-size:13px;font-weight:600;color:var(--plum-d);line-height:1.42}
+.youbar .i{width:18px;height:18px;color:var(--plum);margin-top:1px;stroke-width:1.9}
+.youbar b{font-weight:800}
+.stopc{border:1px solid var(--line-2);border-radius:var(--r-lg);padding:12px 13px 13px;margin-top:11px;background:#fff}
+.stophd{display:flex;align-items:center;gap:8px}
+.stopdot{width:10px;height:10px;border-radius:50%;flex:none}
+.stopdot.pk{background:var(--plum);box-shadow:0 0 0 3px rgba(79,7,76,.14)}
+.stopdot.dp{background:var(--pink);box-shadow:0 0 0 3px rgba(226,58,124,.16)}
+.stopnm{font-size:13.5px;font-weight:800;color:var(--ink);letter-spacing:.01em}
+.stoprole{font-size:11.5px;font-weight:600;color:var(--ink-3)}
+.stopadr{font-size:12px;font-weight:600;color:var(--ink-2);margin:4px 0 10px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stopc .reuse{margin:0 0 9px}
 #pickok{display:flex;align-items:center;justify-content:center;gap:9px}
 /* The payment label used to be a bare text node, so the price had no room and broke onto two lines
    ("+" above "N200"). Give the text its own flex box and pin the price to a single line. */
@@ -741,18 +753,20 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 </div>
 <div id="step-details" style="display:none">
 <a id="backstep" onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to pickup</a>
-<div class="sec">Who's receiving it?<span class="reqtag">Required</span></div>
-<div class="reuse" id="rrecv"></div>
-<input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's number — e.g. 0803 123 4567" class="f1" style="margin-top:0">
-<div class="hint" style="margin:6px 2px 0;color:var(--ink-3)">The rider calls this number at drop-off, so double-check it.</div>
-<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:5px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
-<button type="button" class="morebtn" id="addrname"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add receiver's name</button>
-<input id="rname" class="f1" placeholder="Receiver's name (optional)" style="display:none;margin-top:8px">
-<button type="button" class="morebtn" id="addpickup"><svg class="i" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Someone else is sending? Add their number</button>
-<div id="pickupbox" style="display:none;margin-top:2px">
-  <div class="lbl2">Pickup contact <span class="hint">— who we collect from</span></div>
+<div class="sec">Who's on this trip?</div>
+<div class="youbar"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v2.9a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.1 2 2 0 0 1 4.1 2H7a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L7.9 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg><span>We already have <b>your</b> number. Just fill in the other person — whichever stop below isn't you.</span></div>
+<div class="stopc">
+  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who hands it over</span></div>
+  <div class="stopadr" id="cpaddr"></div>
   <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
 </div>
+<div class="stopc">
+  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Drop-off</span><span class="stoprole">· who receives it</span></div>
+  <div class="stopadr" id="cdaddr"></div>
+  <div class="reuse" id="rrecv"></div>
+  <div class="row2"><input id="rname" placeholder="Name (optional)"><input id="rphone" type="tel" inputmode="tel" placeholder="Phone"></div>
+</div>
+<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:8px 2px 0">👆 For collect-on-delivery, add the <b>Drop-off</b> (buyer) phone — they get the payment request.</div>
 <div class="sec">What are you sending?<span class="reqtag">Required</span></div>
 <div class="chipwrap" id="itemchips">
   <button type="button" class="ichip" data-i="Documents"><svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 13h7M8.5 17h5"/></svg>Documents</button>
@@ -876,8 +890,9 @@ function buildSummary(){
   var h='<div class="route2"><div class="rail2"><span class="d1"></span><span class="ln"></span><span class="d2"></span></div><div class="addrs">'
       + '<div class="a1">'+esc(picked.pickup?picked.pickup.address:'')+'</div>'
       + '<div class="a2">'+esc(picked.dropoff?picked.dropoff.address:'')+'</div></div></div>';
-  var rn=val('rname'), rp=val('rphone'), it=val('item'), nt=val('dinstr');
-  if(rp||rn) h+='<div class="srow"><span class="sk">Receiver</span><span class="sv">'+esc(rn?(rn+' · '+rp):rp)+'</span></div>';
+  var sn=val('sname'), sp=val('sphone'), rn=val('rname'), rp=val('rphone'), it=val('item'), nt=val('dinstr');
+  if(sp||sn) h+='<div class="srow"><span class="sk">Pickup</span><span class="sv">'+esc(sn?(sn+' · '+sp):sp)+'</span></div>';
+  if(rp||rn) h+='<div class="srow"><span class="sk">Drop-off</span><span class="sv">'+esc(rn?(rn+' · '+rp):rp)+'</span></div>';
   if(it)     h+='<div class="srow"><span class="sk">Sending</span><span class="sv">'+esc(it)+'</span></div>';
   if(nt)     h+='<div class="srow"><span class="sk">Note</span><span class="sv">'+esc(nt)+'</span></div>';
   el.innerHTML=h;
@@ -901,7 +916,13 @@ function showStep(n){
     // Zoom right in on the pickup so the exact spot is obvious and the pin is easy to drag.
     setTimeout(function(){ try{ map.invalidateSize(); map.flyTo([picked.pickup.lat,picked.pickup.lng],18,{duration:.7}); }catch(e){} },360);
   }
-  else if(n===3){ only(d,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9); }
+  else if(n===3){
+    // Anchor each contact to its real address so the booker knows which stop is which
+    // (drop-off = my friend's place → I put her number there; my own end I leave blank).
+    var _cp=document.getElementById('cpaddr'); if(_cp) _cp.textContent=picked.pickup?picked.pickup.address:'';
+    var _cd=document.getElementById('cdaddr'); if(_cd) _cd.textContent=picked.dropoff?picked.dropoff.address:'';
+    only(d,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9);
+  }
   else if(n===4){ buildSummary(); only(p,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9); }
   else { only(r,'stepInL'); if(app)app.classList.remove('instep'); sheetH(0.6); }
 }
@@ -996,7 +1017,7 @@ function validate(){
     var _sp=val('sphone'), _rp=val('rphone'), _ph=(phoneOk(_sp)||phoneOk(_rp)), _it=!!val('item');
     _t.disabled=!(_ph&&_it);
     var _h=document.getElementById('needhint');
-    if(_h){ var _need=[]; if(!_ph)_need.push("the receiver's phone"); if(!_it)_need.push("what you're sending");
+    if(_h){ var _need=[]; if(!_ph)_need.push("a phone number for the other person"); if(!_it)_need.push("what you're sending");
       _h.textContent=_need.length?('Add '+_need.join(' and ')+' to continue'):''; }
   }
   // Names are optional. Each phone must be valid or blank, and at least one must be filled (the other
@@ -1121,8 +1142,6 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // Optional fields stay hidden until tapped — keeps the screen from feeling like a form.
   // Revealing an optional field grows the content — re-fit the sheet so it never scrolls unnecessarily.
   var _an=document.getElementById('addnote'); if(_an)_an.onclick=function(){ var n=document.getElementById('dinstr'); n.style.display='block'; this.style.display='none'; sheetH(0.9); n.focus(); };
-  var _arn=document.getElementById('addrname'); if(_arn)_arn.onclick=function(){ var n=document.getElementById('rname'); n.style.display='block'; this.style.display='none'; sheetH(0.9); n.focus(); };
-  var _apu=document.getElementById('addpickup'); if(_apu)_apu.onclick=function(){ document.getElementById('pickupbox').style.display='block'; this.style.display='none'; sheetH(0.9); };
   flagPhone('sphone');flagPhone('rphone');
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,title,value,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.innerHTML='<span class="ric">↩</span><span class="rl"><span class="rt"></span><span class="rv"></span></span>'; a.querySelector('.rt').textContent=title; a.querySelector('.rv').textContent=value; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
