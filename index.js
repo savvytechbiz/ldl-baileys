@@ -636,6 +636,10 @@ input,button,textarea,select{font-family:inherit}
 .tk-todo .tkl{color:var(--ink-3);font-weight:500}
 .tk-cur .tkl{color:var(--plum-d);font-weight:700}
 @keyframes tkpulse{0%,100%{box-shadow:0 0 0 3px rgba(226,58,124,.20)}50%{box-shadow:0 0 0 8px rgba(226,58,124,.06)}}
+.trkact{display:flex;gap:10px;margin-top:14px}
+.trkact button{flex:1;width:auto;height:44px;margin:0;padding:0 10px;background:#fff;border:1.5px solid var(--line-2);border-radius:12px;box-shadow:none;color:var(--plum-d);font-size:13.5px;font-weight:700;letter-spacing:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.trkact button:disabled{opacity:.55}
+.trkact .tkx{border-color:#f2c6c6;color:#b3261e}
 #pickok{display:flex;align-items:center;justify-content:center;gap:9px}
 /* The payment label used to be a bare text node, so the price had no room and broke onto two lines
    ("+" above "N200"). Give the text its own flex box and pin the price to a single line. */
@@ -802,21 +806,21 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="sec">Who's on this trip?<span class="reqtag">Required</span></div>
 <div class="youbar"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v2.9a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.1 2 2 0 0 1 4.1 2H7a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L7.9 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg><span>We already have <b>your</b> number. Just fill in the other person — whichever stop below isn't you.</span></div>
 <div class="stopc">
-  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who hands it over</span></div>
+  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who we collect from</span></div>
   <div class="stopadr" id="cpaddr"></div>
   <button type="button" class="pickbtn" id="pickc_s"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
   <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
   <div class="cover" id="pkcover" style="display:none">✓ If this stop is you, leave it blank — we already have your number</div>
 </div>
 <div class="stopc">
-  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Drop-off</span><span class="stoprole">· who receives it</span></div>
+  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Receiver</span><span class="stoprole">· who we deliver to</span></div>
   <div class="stopadr" id="cdaddr"></div>
   <div class="reuse" id="rrecv"></div>
   <button type="button" class="pickbtn" id="pickc_r"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
   <div class="row2"><input id="rname" placeholder="Name (optional)"><input id="rphone" type="tel" inputmode="tel" placeholder="Phone"></div>
   <div class="cover" id="dpcover" style="display:none">✓ If this stop is you, leave it blank — we already have your number</div>
 </div>
-<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:8px 2px 0">👆 For collect-on-delivery, add the <b>Drop-off</b> (buyer) phone — they get the payment request.</div>
+<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:8px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
 <button id="tonext" disabled style="margin-top:18px" onclick="showStep(4)">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
 <div class="needhint" id="needhint"></div>
 </div>
@@ -920,6 +924,9 @@ function sheetH(maxFrac){
 }
 // Escape anything the customer typed before it touches innerHTML.
 function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Who the booker is (from prefill) — printed on the summary for whichever side they left blank,
+// so "You" is their real name and number, exactly what the rider will be given.
+var MYNAME='', MYPHONE='';
 // The confirm screen: show the whole order back to them before any money moves.
 function buildSummary(){
   var el=document.getElementById('paysummary'); if(!el)return;
@@ -930,9 +937,11 @@ function buildSummary(){
   // Both stops ALWAYS show who's there — name · phone when given. The blank side is the booker
   // (their WhatsApp number fills it at booking), and the summary says so instead of hiding the row:
   // this is the last look before money moves, so a wrong number must be catchable here.
-  function who(nm,ph){ if(nm&&ph)return esc(nm+' · '+ph); if(nm||ph)return esc(nm||ph); return '<span style="color:var(--ink-2);font-weight:500">You — your WhatsApp number</span>'; }
+  function who(nm,ph){ if(nm&&ph)return esc(nm+' · '+ph); if(nm||ph)return esc(nm||ph);
+    if(MYPHONE)return esc((MYNAME?(MYNAME+' · '):'')+MYPHONE)+' <span style="color:var(--ink-2);font-weight:500">(you)</span>';
+    return '<span style="color:var(--ink-2);font-weight:500">You — your WhatsApp number</span>'; }
   h+='<div class="srow"><span class="sk">Pickup</span><span class="sv">'+who(sn,sp)+'</span></div>';
-  h+='<div class="srow"><span class="sk">Drop-off</span><span class="sv">'+who(rn,rp)+'</span></div>';
+  h+='<div class="srow"><span class="sk">Receiver</span><span class="sv">'+who(rn,rp)+'</span></div>';
   if(it)     h+='<div class="srow"><span class="sk">Sending</span><span class="sv">'+esc(it)+'</span></div>';
   if(nt)     h+='<div class="srow"><span class="sk">Note</span><span class="sv">'+esc(nt)+'</span></div>';
   el.innerHTML=h;
@@ -1265,6 +1274,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(p.pickup&&p.pickup.lat&&!p.pickup.from_chat){ recentRow(_home,p.pickup.address,'Saved pickup',function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); }
     // The list arrives AFTER the sheet was first sized — re-fit so the places are never clipped.
     if(document.querySelectorAll('#recentlist .rr').length) sheetH(0.74);
+    if(p.me_phone)MYPHONE=String(p.me_phone);
+    if(p.me_name)MYNAME=String(p.me_name);
     if(p.receiver&&p.receiver.name){ var _rpB=function(){ document.getElementById('rphone').dispatchEvent(new Event('blur')); };
       if(p.receiver.from_chat){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; _rpB(); }
       else { reuse('rrecv','Same receiver',p.receiver.name,function(){ document.getElementById('rname').value=p.receiver.name; document.getElementById('rphone').value=p.receiver.phone||''; _rpB(); }); } }
@@ -1331,7 +1342,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // status (the same shipdayWebhook milestones that message the customer) so "Rider assigned" here is
   // true, never theater. If the status endpoint is not live yet (older mapPicker), the panel simply
   // settles into the honest "we confirm on WhatsApp" line — nothing breaks, nothing lies.
-  var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='';
+  var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='';
   // The 4 milestones the customer sees. "On the way" lives in the HEADLINE (our webhook folds
   // picked-up + on-the-way into one milestone) — the dots mark what has HAPPENED.
   var TRK=['Order placed','Rider assigned','Picked up','Delivered'];
@@ -1341,6 +1352,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(st==='ontheway')return ['Picked up — on the way 🛵','Your parcel is moving — we message you at every step too.'];
     if(st==='delivered')return ['Delivered 🎉','Thank you for sending with Lasalu Drop 💜'];
     if(st==='failed')return ['Delivery issue 🙏','Something interrupted this delivery — our team is on it and will message you.'];
+    if(st==='cancelled')return ['Order cancelled ✅','Nothing was charged — book again anytime 💜'];
     return ['Still matching you 🛵','Riders are confirming — the moment one accepts, we update here and on WhatsApp.'];
   }
   function stageN(st){ if(st==='assigned')return 2; if(st==='ontheway')return 3; if(st==='delivered')return 4; return 1; }
@@ -1349,15 +1361,22 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var h=trkHead(st), rows='', i, cls;
     for(i=0;i<TRK.length;i++){
       cls='tk-todo';
-      if(i<doneN)cls='tk-done'; else if(i===doneN&&st!=='failed')cls='tk-cur';
+      if(i<doneN)cls='tk-done'; else if(i===doneN&&st!=='failed'&&st!=='cancelled')cls='tk-cur';
       rows+='<div class="tkrow '+cls+'"><span class="tkd">'+(i<doneN?'✓':'')+'</span><span class="tkl">'+TRK[i]+'</span></div>';
     }
+    // Cancel / edit are offered ONLY while it is money-safe: pay-on-delivery, nothing paid,
+    // and the parcel not yet picked up (searching or just-assigned). They vanish on their own
+    // the moment the status moves on — the server re-checks everything anyway.
+    var act=(MODE==='pod'&&ORDNUM&&(st==='searching'||st==='settle'||st==='assigned'));
     box.innerHTML='<div class="search"><h2>'+h[0]+'</h2><p class="smut">'+h[1]+'</p>'
       +((st==='searching'||st==='settle')?'<div class="sbar"><div class="sfill"></div></div>':'')
       +'<div class="trk">'+rows+'</div>'
-      +(feeLine&&st!=='delivered'&&st!=='failed'?('<p class="smut">'+feeLine+'</p>'):'')
-      +(st==='delivered'?'':'<p class="ssub">You can close this page — every update also lands in your WhatsApp chat.</p>')
+      +(feeLine&&st!=='delivered'&&st!=='failed'&&st!=='cancelled'?('<p class="smut">'+feeLine+'</p>'):'')
+      +(act?'<div class="trkact"><button type="button" id="trkedit">✎ Edit location</button><button type="button" id="trkcancel" class="tkx">Cancel order</button></div>':'')
+      +((st==='delivered'||st==='cancelled')?'':'<p class="ssub">You can close this page — every update also lands in your WhatsApp chat.</p>')
       +'</div>';
+    var _eb=document.getElementById('trkedit'); if(_eb)_eb.onclick=editLoc;
+    var _cb=document.getElementById('trkcancel'); if(_cb)_cb.onclick=cancelOrd;
   }
   function stopPoll(){ if(pollT){clearInterval(pollT);pollT=null;} }
   function startPoll(ms){
@@ -1372,6 +1391,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     },ms);
   }
   function applyStatus(raw){
+    if(trkState==='cancelled')return;   // a poll already in flight must never repaint a cancelled order
     var st=(raw==='assigned'||raw==='ontheway'||raw==='delivered'||raw==='failed')?raw:'';
     if(!st||st===trkState)return;
     trkState=st;
@@ -1381,11 +1401,41 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(st==='delivered'||st==='failed'){ stopPoll(); }
     else { startPoll(15000); }   // matched — keep tracking to the door at a gentler cadence
   }
+  // Cancel the live order server-side (strictly POD + unpaid + not picked up — the server re-checks).
+  function doCancel(onOk){
+    var eb=document.getElementById('trkedit'), cbb=document.getElementById('trkcancel');
+    if(eb)eb.disabled=true; if(cbb){cbb.disabled=true;cbb.textContent='Cancelling…';}
+    fetch(api('action=cancelorder&order='+encodeURIComponent(ORDNUM))).then(function(r){return r.json();}).then(function(s){
+      if(s&&(s.cancelled||s.already)){ onOk(); return; }
+      if(s&&s.error==='too-late'){ alert('The rider already has your parcel — message us on WhatsApp and we will sort it out 🙏'); trackUI(trkState); return; }
+      alert('Could not cancel just now — please try again, or message us on WhatsApp.'); trackUI(trkState);
+    }).catch(function(){ alert('Network hiccup — please try again.'); trackUI(trkState); });
+  }
+  function cancelOrd(){
+    if(!confirm('Cancel this delivery? Nothing has been paid, so there is no charge.'))return;
+    doCancel(function(){
+      stopPoll(); if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
+      trkState='cancelled'; trackUI('cancelled');
+    });
+  }
+  // "Edit location" = cancel the unpaid order, keep EVERYTHING typed, reopen the map at step 1 —
+  // they adjust a pin and re-book at the honest new price. No stale price ever rides along.
+  function editLoc(){
+    if(!confirm('Change a location? We cancel this unpaid order and keep all your details, so you can adjust the map and book again at the right price.'))return;
+    doCancel(function(){
+      stopPoll(); if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
+      var bx=document.getElementById('searchbox'); if(bx&&bx.parentNode)bx.parentNode.removeChild(bx);
+      trkState=''; doneN=1; ORDNUM='';
+      var g=document.getElementById('go'); if(g){g.disabled=false; g.textContent='Confirm & book';}
+      showStep(1);
+    });
+  }
   function showSearching(j){
     ['step-route','step-pickup','step-details','step-pay'].forEach(function(id){ var e=document.getElementById(id); if(e)e.style.display='none'; });
     var sh=document.querySelector('.sheet');
     if(sh&&!document.getElementById('searchbox')){ var bx=document.createElement('div'); bx.id='searchbox'; sh.appendChild(bx); }
     feeLine=j.fee?('The receiver pays <b>₦'+Number(j.fee).toLocaleString()+'</b> in cash on delivery.'):(j.cod_booked?'Your full breakdown is in your WhatsApp chat 🧾':'');
+    MODE=j.cod_booked?'cod':'pod'; pollN=0;
     trkState='searching'; doneN=1; trackUI('searching');
     try{ sheetH(0.44); }catch(e){}
     if(picked.pickup){
