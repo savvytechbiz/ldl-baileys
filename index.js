@@ -599,9 +599,8 @@ input,button,textarea,select{font-family:inherit}
 .pickconf{background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px}
 .pickconf .pcaddr{font-size:16px;font-weight:700;color:var(--ink);line-height:1.3}
 .pickconf .pchint{font-size:12.5px;font-weight:500;color:var(--ink-2);margin-top:7px;line-height:1.4}
-.youbar{display:flex;gap:10px;align-items:flex-start;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;margin:2px 0 2px;font-size:13px;font-weight:600;color:var(--plum-d);line-height:1.42}
-.youbar .i{width:18px;height:18px;color:var(--plum);margin-top:1px;stroke-width:1.9}
-.youbar b{font-weight:800}
+.mebtn{margin-left:auto;flex:none;width:auto;background:#fff;border:1.5px solid var(--line-2);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;color:var(--plum);box-shadow:none;letter-spacing:0;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
+.mebtn.on{background:var(--plum);border-color:var(--plum);color:#fff}
 .stopc{border:1px solid var(--line-2);border-radius:var(--r-lg);padding:12px 13px 13px;margin-top:11px;background:#fff}
 .stophd{display:flex;align-items:center;gap:8px}
 .stopdot{width:10px;height:10px;border-radius:50%;flex:none}
@@ -804,16 +803,16 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
   <input id="dinstr" class="f1" placeholder="Or type your own — gate code, landmark…" maxlength="200" style="margin-top:8px">
 </div>
 <div class="sec">Who's on this trip?<span class="reqtag">Required</span></div>
-<div class="youbar"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v2.9a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.1 2 2 0 0 1 4.1 2H7a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L7.9 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg><span>We already have <b>your</b> number. Just fill in the other person — whichever stop below isn't you.</span></div>
+<div class="hint" style="margin:2px 2px 10px;color:var(--ink-3)">Fill both stops — or tap "This is me" on your own stop.</div>
 <div class="stopc">
-  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who we collect from</span></div>
+  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who we collect from</span><button type="button" class="mebtn" id="mepk">This is me</button></div>
   <div class="stopadr" id="cpaddr"></div>
   <button type="button" class="pickbtn" id="pickc_s"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
   <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
   <div class="cover" id="pkcover" style="display:none">✓ If this stop is you, leave it blank — we already have your number</div>
 </div>
 <div class="stopc">
-  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Receiver</span><span class="stoprole">· who we deliver to</span></div>
+  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Receiver</span><span class="stoprole">· who we deliver to</span><button type="button" class="mebtn" id="merc">This is me</button></div>
   <div class="stopadr" id="cdaddr"></div>
   <div class="reuse" id="rrecv"></div>
   <button type="button" class="pickbtn" id="pickc_r"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
@@ -927,6 +926,41 @@ function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,
 // Who the booker is (from prefill) — printed on the summary for whichever side they left blank,
 // so "You" is their real name and number, exactly what the rider will be given.
 var MYNAME='', MYPHONE='';
+// "This is me" — a one-tap declaration per stop card. NOT a mode: it simply fills that side with
+// the booker's own details (or marks it covered when their number is hidden) and leaves the other
+// card as the only thing to complete. Filling both stops by hand still works exactly as before.
+var MESIDE='', MEFILL_S=false, MEFILL_R=false;
+function digTail(v){ var s=String(v||''),d='',i,c; for(i=0;i<s.length;i++){ c=s.charAt(i); if(c>='0'&&c<='9')d+=c; } return d.slice(-10); }
+function isMyNum(v){ return !!(MYPHONE&&v&&digTail(v)===digTail(MYPHONE)); }
+// The gate must be satisfied by the OTHER person's phone — the booker's own number alone books an
+// order where the rider can reach nobody but the booker (both ends auto-fill to them). Their own
+// side is covered without typing anything.
+function otherPhoneOk(sp,rp){ return (phoneOk(sp)&&!isMyNum(sp))||(phoneOk(rp)&&!isMyNum(rp)); }
+function updateMeChips(){
+  var a=document.getElementById('mepk'), b=document.getElementById('merc'), on;
+  if(a){ on=(MESIDE==='pickup'); a.className='mebtn'+(on?' on':''); a.textContent=on?'✓ You':'This is me'; }
+  if(b){ on=(MESIDE==='recv'); b.className='mebtn'+(on?' on':''); b.textContent=on?'✓ You':'This is me'; }
+}
+function clearMe(side){
+  var n,p;
+  if(side==='pickup'&&MEFILL_S){ n=document.getElementById('sname'); p=document.getElementById('sphone');
+    if(n&&n.value===(MYNAME||''))n.value=''; if(p&&isMyNum(p.value)){ p.value=''; p.dispatchEvent(new Event('input')); } MEFILL_S=false; }
+  if(side==='recv'&&MEFILL_R){ n=document.getElementById('rname'); p=document.getElementById('rphone');
+    if(n&&n.value===(MYNAME||''))n.value=''; if(p&&isMyNum(p.value)){ p.value=''; p.dispatchEvent(new Event('input')); } MEFILL_R=false; }
+}
+function setMe(side){
+  if(MESIDE===side){ clearMe(side); MESIDE=''; updateMeChips(); validate(); return; }
+  if(MESIDE)clearMe(MESIDE);
+  MESIDE=side;
+  var n,p;
+  if(MYPHONE){
+    if(side==='pickup'){ n=document.getElementById('sname'); p=document.getElementById('sphone');
+      if(n&&(!n.value||MEFILL_S))n.value=MYNAME||''; if(p){ p.value=MYPHONE; p.dispatchEvent(new Event('blur')); } MEFILL_S=true; }
+    else { n=document.getElementById('rname'); p=document.getElementById('rphone');
+      if(n&&(!n.value||MEFILL_R))n.value=MYNAME||''; if(p){ p.value=MYPHONE; p.dispatchEvent(new Event('blur')); } MEFILL_R=true; }
+  }
+  updateMeChips(); validate();
+}
 // The confirm screen: show the whole order back to them before any money moves.
 function buildSummary(){
   var el=document.getElementById('paysummary'); if(!el)return;
@@ -937,8 +971,12 @@ function buildSummary(){
   // Both stops ALWAYS show who's there — name · phone when given. The blank side is the booker
   // (their WhatsApp number fills it at booking), and the summary says so instead of hiding the row:
   // this is the last look before money moves, so a wrong number must be catchable here.
-  function who(nm,ph){ if(nm&&ph)return esc(nm+' · '+ph); if(nm||ph)return esc(nm||ph);
-    if(MYPHONE)return esc((MYNAME?(MYNAME+' · '):'')+MYPHONE)+' <span style="color:var(--ink-2);font-weight:500">(you)</span>';
+  function who(nm,ph){
+    var tag=' <span style="color:var(--ink-2);font-weight:500">(you)</span>';
+    var mine=isMyNum(ph);
+    if(nm&&ph)return esc(nm+' · '+ph)+(mine?tag:'');
+    if(nm||ph)return esc(nm||ph)+(mine?tag:'');
+    if(MYPHONE)return esc((MYNAME?(MYNAME+' · '):'')+MYPHONE)+tag;
     return '<span style="color:var(--ink-2);font-weight:500">You — your WhatsApp number</span>'; }
   h+='<div class="srow"><span class="sk">Pickup</span><span class="sv">'+who(sn,sp)+'</span></div>';
   h+='<div class="srow"><span class="sk">Receiver</span><span class="sv">'+who(rn,rp)+'</span></div>';
@@ -970,6 +1008,9 @@ function showStep(n){
     // (drop-off = my friend's place → I put her number there; my own end I leave blank).
     var _cp=document.getElementById('cpaddr'); if(_cp) _cp.textContent=picked.pickup?picked.pickup.address:'';
     var _cd=document.getElementById('cdaddr'); if(_cd) _cd.textContent=picked.dropoff?picked.dropoff.address:'';
+    // Coming BACK to details with COD already ticked: the receiver seat belongs to the buyer.
+    var _mrv=document.getElementById('merc'), _cbv=document.getElementById('codbox');
+    if(_mrv)_mrv.style.display=(_cbv&&_cbv.checked)?'none':'';
     only(d,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9);
   }
   else if(n===4){ buildSummary(); only(p,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9); }
@@ -1063,22 +1104,24 @@ function validate(){
   // Never leave a dead grey button — say exactly what is still missing.
   var _t=document.getElementById('tonext');
   if(_t){
-    var _sp=val('sphone'), _rp=val('rphone'), _ph=(phoneOk(_sp)||phoneOk(_rp)), _it=!!val('item');
+    var _sp=val('sphone'), _rp=val('rphone'), _ph=otherPhoneOk(_sp,_rp), _it=!!val('item');
     _t.disabled=!(_ph&&_it);
     var _h=document.getElementById('needhint');
     if(_h){ var _need=[]; if(!_it)_need.push("what you're sending"); if(!_ph)_need.push("the other person's phone");
       _h.textContent=_need.length?('Add '+_need.join(' and ')+' to continue'):''; }
-    // Live "leave it blank" cue: the moment ONE side has a good number, the empty side says the
-    // booker's own number covers it — the auto-fill rule taught at exactly the right moment,
-    // no mode toggle. COD keeps it off Drop-off (the buyer's real phone is required there).
+    // Hand-editing a claimed side to a different number quietly withdraws the "This is me" claim.
+    if(MESIDE==='pickup'&&MEFILL_S&&MYPHONE&&digTail(_sp)!==digTail(MYPHONE)){ MESIDE=''; MEFILL_S=false; updateMeChips(); }
+    if(MESIDE==='recv'&&MEFILL_R&&MYPHONE&&digTail(_rp)!==digTail(MYPHONE)){ MESIDE=''; MEFILL_R=false; updateMeChips(); }
+    // Live "leave it blank" cue: shown when the other side is done OR this side is claimed as "me"
+    // while the number stays hidden. COD keeps it off Receiver (the buyer's real phone is required).
     var _cbx=document.getElementById('codbox');
-    var _pkc=document.getElementById('pkcover'); if(_pkc)_pkc.style.display=(phoneOk(_rp)&&!_sp)?'block':'none';
-    var _dpc=document.getElementById('dpcover'); if(_dpc)_dpc.style.display=(phoneOk(_sp)&&!_rp&&!(_cbx&&_cbx.checked))?'block':'none';
+    var _pkc=document.getElementById('pkcover'); if(_pkc)_pkc.style.display=((phoneOk(_rp)||MESIDE==='pickup')&&!_sp)?'block':'none';
+    var _dpc=document.getElementById('dpcover'); if(_dpc)_dpc.style.display=((phoneOk(_sp)||MESIDE==='recv')&&!_rp&&!(_cbx&&_cbx.checked))?'block':'none';
   }
   // Names are optional. Each phone must be valid or blank, and at least one must be filled (the other
   // person's) — we fill the blank side with the booker's own WhatsApp number server-side.
   var sp=val('sphone'), rp=val('rphone');
-  var phonesOk=(!sp||phoneOk(sp))&&(!rp||phoneOk(rp))&&(phoneOk(sp)||phoneOk(rp));
+  var phonesOk=(!sp||phoneOk(sp))&&(!rp||phoneOk(rp))&&otherPhoneOk(sp,rp);
   var cb=document.getElementById('codbox');
   // COD: the receiver IS the buyer, so their phone is required (they get the payment request).
   if(cb&&cb.checked) phonesOk=phonesOk&&phoneOk(rp);
@@ -1212,6 +1255,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     };
   });
   flagPhone('sphone');flagPhone('rphone');
+  var _mp=document.getElementById('mepk'); if(_mp)_mp.onclick=function(){ setMe('pickup'); };
+  var _mr=document.getElementById('merc'); if(_mr)_mr.onclick=function(){ setMe('recv'); };
   // "More taps, less typing": where the browser has the Contact Picker (Chrome on Android —
   // most of our customers), the other person comes straight from the phone book: one tap,
   // name + number filled, the blur pass normalises +234/spaces to 0803… and paints it green.
@@ -1316,6 +1361,10 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   }
   document.getElementById('codbox').addEventListener('change',function(){
     var on=this.checked;
+    // COD: the receiver IS the buyer — the booker cannot claim that seat. Withdraw the claim
+    // (clearing any auto-filled own number) and hide the receiver "This is me" chip while COD is on.
+    if(on&&MESIDE==='recv'){ clearMe('recv'); MESIDE=''; updateMeChips(); }
+    var _mrc=document.getElementById('merc'); if(_mrc)_mrc.style.display=on?'none':'';
     document.getElementById('codamt').style.display=on?'block':'none';
     document.getElementById('payradios').style.display=on?'none':'block';
     // COD needs the receiver (buyer) phone — say so, so a blank field never leaves the button silently dead.
