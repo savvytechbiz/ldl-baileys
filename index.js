@@ -803,16 +803,16 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
   <input id="dinstr" class="f1" placeholder="Or type your own — gate code, landmark…" maxlength="200" style="margin-top:8px">
 </div>
 <div class="sec">Who's on this trip?<span class="reqtag">Required</span></div>
-<div class="hint" style="margin:2px 2px 10px;color:var(--ink-3)">Fill both stops — or tap "This is me" on your own stop.</div>
+<div class="hint" style="margin:2px 2px 10px;color:var(--ink-3)">Tick who you are — your side fills in automatically.</div>
 <div class="stopc">
-  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who we collect from</span><label class="melab" id="mepk_w"><input type="checkbox" id="mepk">This is me</label></div>
+  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><label class="melab" id="mepk_w"><input type="checkbox" id="mepk">I am the sender</label></div>
   <div class="stopadr" id="cpaddr"></div>
   <button type="button" class="pickbtn" id="pickc_s"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
   <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
   <div class="cover" id="pkcover" style="display:none">✓ If this stop is you, leave it blank — we already have your number</div>
 </div>
 <div class="stopc">
-  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Receiver</span><span class="stoprole">· who we deliver to</span><label class="melab" id="merc_w"><input type="checkbox" id="merc">This is me</label></div>
+  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Receiver</span><label class="melab" id="merc_w"><input type="checkbox" id="merc">I am the receiver</label></div>
   <div class="stopadr" id="cdaddr"></div>
   <div class="reuse" id="rrecv"></div>
   <button type="button" class="pickbtn" id="pickc_r"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
