@@ -599,8 +599,8 @@ input,button,textarea,select{font-family:inherit}
 .pickconf{background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px}
 .pickconf .pcaddr{font-size:16px;font-weight:700;color:var(--ink);line-height:1.3}
 .pickconf .pchint{font-size:12.5px;font-weight:500;color:var(--ink-2);margin-top:7px;line-height:1.4}
-.melab{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--plum);cursor:pointer;-webkit-user-select:none;user-select:none}
-.melab input{width:17px;height:17px;accent-color:var(--plum);margin:0;cursor:pointer}
+.melab{flex:none;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--plum);cursor:pointer;-webkit-user-select:none;user-select:none;padding:12px 0 12px 12px;margin:-12px 0 -12px auto}
+.melab input{width:18px;height:18px;accent-color:var(--plum);margin:0;cursor:pointer;flex:none}
 .stopc{border:1px solid var(--line-2);border-radius:var(--r-lg);padding:12px 13px 13px;margin-top:11px;background:#fff}
 .stophd{display:flex;align-items:center;gap:8px}
 .stopdot{width:10px;height:10px;border-radius:50%;flex:none}
@@ -639,6 +639,10 @@ input,button,textarea,select{font-family:inherit}
 .trkact button{flex:1;width:auto;height:44px;margin:0;padding:0 10px;background:#fff;border:1.5px solid var(--line-2);border-radius:12px;box-shadow:none;color:var(--plum-d);font-size:13.5px;font-weight:700;letter-spacing:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
 .trkact button:disabled{opacity:.55}
 .trkact .tkx{border-color:#f2c6c6;color:#b3261e}
+.riderrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:12px}
+.riderrow .rdrnm{font-size:13.5px;font-weight:800;color:var(--plum-d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.riderrow .rdrcall{flex:none;display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;border-radius:10px;background:var(--plum);color:#fff;font-size:12.5px;font-weight:800;text-decoration:none}
+.tknew{display:block;width:100%;margin:10px 0 0;padding:10px 0;background:none;border:none;box-shadow:none;color:var(--plum);font-size:13px;font-weight:700;letter-spacing:0;cursor:pointer;height:auto}
 #pickok{display:flex;align-items:center;justify-content:center;gap:9px}
 /* The payment label used to be a bare text node, so the price had no room and broke onto two lines
    ("+" above "N200"). Give the text its own flex box and pin the price to a single line. */
@@ -1343,6 +1347,20 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // the field empty — never blocks them. Small delay so the map + sheet paint before the permission ask.
     if(!picked.pickup){ setTimeout(function(){ if(!picked.pickup) useLoc('pickup',true); }, 400); }
     validate(); step();
+    // ── Auto-resume: a live order owns the screen (the server sends p.active for app sessions only,
+    // so a chat booking link never gets hijacked). Reopens the tracker exactly where the order
+    // stands — searching / assigned / on the way — with the route pins restored, ride-app style.
+    // "Book another delivery" exits to a fresh step 1 without touching the running order.
+    if(p.active&&p.active.order_number){
+      try{
+        if(p.active.pickup&&p.active.pickup.lat){ document.getElementById('pin').value=p.active.pickup.address||''; setPin('pickup',p.active.pickup); }
+        if(p.active.dropoff&&p.active.dropoff.lat){ document.getElementById('din').value=p.active.dropoff.address||''; setPin('dropoff',p.active.dropoff); }
+      }catch(e){}
+      RESUMED=true;
+      var ap=document.getElementById('app'); if(ap)ap.classList.add('instep');   // keeps the price pill off the tracker map
+      showSearching({booked:true,fee:(p.active.mode==='pod'?p.active.fee:0),cod_booked:p.active.mode!=='pod',order_number:p.active.order_number});
+      if(p.active.status)applyStatus(String(p.active.status));
+    }
   }).catch(function(){});
   // COD: live "you'll be credited" = amount − our fee (COD_PCT%, CBN & bank charges; max ₦3,000) − delivery.
   function codBreak(){
@@ -1397,7 +1415,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // status (the same shipdayWebhook milestones that message the customer) so "Rider assigned" here is
   // true, never theater. If the status endpoint is not live yet (older mapPicker), the panel simply
   // settles into the honest "we confirm on WhatsApp" line — nothing breaks, nothing lies.
-  var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='';
+  var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null;
   // The 4 milestones the customer sees. "On the way" lives in the HEADLINE (our webhook folds
   // picked-up + on-the-way into one milestone) — the dots mark what has HAPPENED.
   var TRK=['Order placed','Rider assigned','Picked up','Delivered'];
@@ -1423,15 +1441,39 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // and the parcel not yet picked up (searching or just-assigned). They vanish on their own
     // the moment the status moves on — the server re-checks everything anyway.
     var act=(MODE==='pod'&&ORDNUM&&(st==='searching'||st==='settle'||st==='assigned'));
+    var ended=(st==='delivered'||st==='failed'||st==='cancelled');
+    // Rider row: once a real person has the job, show who they are with a one-tap Call button —
+    // the same trust move Bolt makes the moment a driver accepts.
+    var riderRow=(RIDER&&(RIDER.name||RIDER.phone)&&(st==='assigned'||st==='ontheway'))
+      ?('<div class="riderrow"><span class="rdrnm">🛵 '+esc(RIDER.name||'Your rider')+'</span>'
+        +(RIDER.phone?('<a class="rdrcall" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'">📞 Call</a>'):'')+'</div>')
+      :'';
     box.innerHTML='<div class="search"><h2>'+h[0]+'</h2><p class="smut">'+h[1]+'</p>'
       +((st==='searching'||st==='settle')?'<div class="sbar"><div class="sfill"></div></div>':'')
       +'<div class="trk">'+rows+'</div>'
-      +(feeLine&&st!=='delivered'&&st!=='failed'&&st!=='cancelled'?('<p class="smut">'+feeLine+'</p>'):'')
+      +riderRow
+      +(feeLine&&!ended?('<p class="smut">'+feeLine+'</p>'):'')
       +(act?'<div class="trkact"><button type="button" id="trkedit">✎ Edit location</button><button type="button" id="trkcancel" class="tkx">Cancel order</button></div>':'')
+      +(ended?'<div class="trkact"><button type="button" id="trknew">Book another delivery</button></div>'
+             :(RESUMED?'<button type="button" id="trknew" class="tknew">＋ Book another delivery</button>':''))
       +((st==='delivered'||st==='cancelled')?'':'<p class="ssub">You can close this page — every update also lands in your WhatsApp chat.</p>')
       +'</div>';
     var _eb=document.getElementById('trkedit'); if(_eb)_eb.onclick=editLoc;
     var _cb=document.getElementById('trkcancel'); if(_cb)_cb.onclick=cancelOrd;
+    var _nb=document.getElementById('trknew'); if(_nb)_nb.onclick=newBooking;
+  }
+  // Leave the tracker WITHOUT touching the live order (unlike editLoc, which cancels it):
+  // used by "Book another delivery" — the active order keeps running and keeps messaging
+  // WhatsApp; refreshing the page resumes it again.
+  function newBooking(){
+    stopPoll(); if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
+    var bx=document.getElementById('searchbox'); if(bx&&bx.parentNode)bx.parentNode.removeChild(bx);
+    RESUMED=false; RIDER=null; trkState=''; doneN=1; ORDNUM=''; MODE=''; pollN=0;
+    // Clear the finished/running order's route completely — a stale prefilled route here would
+    // let one absent-minded Continue re-book the SAME trip, so the new booking starts clean.
+    try{ clearLoc('pickup'); clearLoc('dropoff'); }catch(e){}
+    var g=document.getElementById('go'); if(g){g.disabled=false; g.textContent='Confirm & book';}
+    showStep(1);
   }
   function stopPoll(){ if(pollT){clearInterval(pollT);pollT=null;} }
   function startPoll(ms){
@@ -1441,7 +1483,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       if(pollN>400){ stopPoll(); return; }
       if(trkState==='searching'&&pollN===30) trackUI('settle');
       fetch(api('action=orderstatus&order='+encodeURIComponent(ORDNUM))).then(function(r){return r.json();}).then(function(s){
+        // Rider identity rides along with the status — if it arrives AFTER the "assigned" repaint,
+        // refresh the panel once so the name + Call button appear without waiting for the next stage.
+        var hadRider=!!(RIDER&&(RIDER.name||RIDER.phone));
+        if(s&&(s.rider_name||s.rider_phone)) RIDER={name:String(s.rider_name||''),phone:String(s.rider_phone||'')};
         applyStatus(String((s&&s.status)||''));
+        if(!hadRider&&RIDER&&(RIDER.name||RIDER.phone)&&(trkState==='assigned'||trkState==='ontheway')) trackUI(trkState);
       }).catch(function(){});
     },ms);
   }
@@ -1490,14 +1537,15 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var sh=document.querySelector('.sheet');
     if(sh&&!document.getElementById('searchbox')){ var bx=document.createElement('div'); bx.id='searchbox'; sh.appendChild(bx); }
     feeLine=j.fee?('The receiver pays <b>₦'+Number(j.fee).toLocaleString()+'</b> in cash on delivery.'):(j.cod_booked?'Your full breakdown is in your WhatsApp chat 🧾':'');
-    MODE=j.cod_booked?'cod':'pod'; pollN=0;
+    // MODE and ORDNUM must be set BEFORE the first render — the cancel/edit buttons key off them,
+    // and the searching phase is exactly when those buttons matter most.
+    MODE=j.cod_booked?'cod':'pod'; pollN=0; ORDNUM=j.order_number||'';
     trkState='searching'; doneN=1; trackUI('searching');
     try{ sheetH(0.44); }catch(e){}
     if(picked.pickup){
       try{ map.flyTo([picked.pickup.lat,picked.pickup.lng],16,{duration:.9}); }catch(e){}
       try{ radarM=L.marker([picked.pickup.lat,picked.pickup.lng],{interactive:false,zIndexOffset:-200,icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class="radar"><span></span><span></span></div>'})}).addTo(map); }catch(e){}
     }
-    ORDNUM=j.order_number||'';
     if(ORDNUM){ startPoll(8000); }
     else { setTimeout(function(){ if(trkState==='searching')trackUI('settle'); },150000); }
   }
