@@ -599,8 +599,8 @@ input,button,textarea,select{font-family:inherit}
 .pickconf{background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px}
 .pickconf .pcaddr{font-size:16px;font-weight:700;color:var(--ink);line-height:1.3}
 .pickconf .pchint{font-size:12.5px;font-weight:500;color:var(--ink-2);margin-top:7px;line-height:1.4}
-.mebtn{margin-left:auto;flex:none;width:auto;background:#fff;border:1.5px solid var(--line-2);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;color:var(--plum);box-shadow:none;letter-spacing:0;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
-.mebtn.on{background:var(--plum);border-color:var(--plum);color:#fff}
+.melab{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--plum);cursor:pointer;-webkit-user-select:none;user-select:none}
+.melab input{width:17px;height:17px;accent-color:var(--plum);margin:0;cursor:pointer}
 .stopc{border:1px solid var(--line-2);border-radius:var(--r-lg);padding:12px 13px 13px;margin-top:11px;background:#fff}
 .stophd{display:flex;align-items:center;gap:8px}
 .stopdot{width:10px;height:10px;border-radius:50%;flex:none}
@@ -805,14 +805,14 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="sec">Who's on this trip?<span class="reqtag">Required</span></div>
 <div class="hint" style="margin:2px 2px 10px;color:var(--ink-3)">Fill both stops — or tap "This is me" on your own stop.</div>
 <div class="stopc">
-  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who we collect from</span><button type="button" class="mebtn" id="mepk">This is me</button></div>
+  <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><span class="stoprole">· who we collect from</span><label class="melab" id="mepk_w"><input type="checkbox" id="mepk">This is me</label></div>
   <div class="stopadr" id="cpaddr"></div>
   <button type="button" class="pickbtn" id="pickc_s"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
   <div class="row2"><input id="sname" placeholder="Name (optional)"><input id="sphone" type="tel" inputmode="tel" placeholder="Phone"></div>
   <div class="cover" id="pkcover" style="display:none">✓ If this stop is you, leave it blank — we already have your number</div>
 </div>
 <div class="stopc">
-  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Receiver</span><span class="stoprole">· who we deliver to</span><button type="button" class="mebtn" id="merc">This is me</button></div>
+  <div class="stophd"><span class="stopdot dp"></span><span class="stopnm">Receiver</span><span class="stoprole">· who we deliver to</span><label class="melab" id="merc_w"><input type="checkbox" id="merc">This is me</label></div>
   <div class="stopadr" id="cdaddr"></div>
   <div class="reuse" id="rrecv"></div>
   <button type="button" class="pickbtn" id="pickc_r"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><circle cx="12" cy="9.5" r="2.6"/><path d="M7.8 16.5a4.4 4.4 0 0 1 8.4 0"/></svg>Pick from my contacts</button>
@@ -937,9 +937,15 @@ function isMyNum(v){ return !!(MYPHONE&&v&&digTail(v)===digTail(MYPHONE)); }
 // side is covered without typing anything.
 function otherPhoneOk(sp,rp){ return (phoneOk(sp)&&!isMyNum(sp))||(phoneOk(rp)&&!isMyNum(rp)); }
 function updateMeChips(){
-  var a=document.getElementById('mepk'), b=document.getElementById('merc'), on;
-  if(a){ on=(MESIDE==='pickup'); a.className='mebtn'+(on?' on':''); a.textContent=on?'✓ You':'This is me'; }
-  if(b){ on=(MESIDE==='recv'); b.className='mebtn'+(on?' on':''); b.textContent=on?'✓ You':'This is me'; }
+  var a=document.getElementById('mepk'), b=document.getElementById('merc');
+  var aw=document.getElementById('mepk_w'), bw=document.getElementById('merc_w');
+  var cod=document.getElementById('codbox'), codOn=!!(cod&&cod.checked);
+  if(a)a.checked=(MESIDE==='pickup');
+  if(b)b.checked=(MESIDE==='recv');
+  // You can only be ONE of them: ticking a side hides the other box entirely.
+  // COD also keeps the Receiver box away — that seat belongs to the buyer.
+  if(aw)aw.style.display=(MESIDE==='recv')?'none':'';
+  if(bw)bw.style.display=(MESIDE==='pickup'||codOn)?'none':'';
 }
 function clearMe(side){
   var n,p;
@@ -1008,9 +1014,9 @@ function showStep(n){
     // (drop-off = my friend's place → I put her number there; my own end I leave blank).
     var _cp=document.getElementById('cpaddr'); if(_cp) _cp.textContent=picked.pickup?picked.pickup.address:'';
     var _cd=document.getElementById('cdaddr'); if(_cd) _cd.textContent=picked.dropoff?picked.dropoff.address:'';
-    // Coming BACK to details with COD already ticked: the receiver seat belongs to the buyer.
-    var _mrv=document.getElementById('merc'), _cbv=document.getElementById('codbox');
-    if(_mrv)_mrv.style.display=(_cbv&&_cbv.checked)?'none':'';
+    // Coming BACK to details: re-sync the "This is me" boxes (claimed side ticked, other hidden,
+    // and COD keeps the Receiver box away — that seat belongs to the buyer).
+    updateMeChips();
     only(d,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9);
   }
   else if(n===4){ buildSummary(); only(p,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9); }
@@ -1255,8 +1261,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     };
   });
   flagPhone('sphone');flagPhone('rphone');
-  var _mp=document.getElementById('mepk'); if(_mp)_mp.onclick=function(){ setMe('pickup'); };
-  var _mr=document.getElementById('merc'); if(_mr)_mr.onclick=function(){ setMe('recv'); };
+  var _mp=document.getElementById('mepk'); if(_mp)_mp.onchange=function(){ setMe('pickup'); };
+  var _mr=document.getElementById('merc'); if(_mr)_mr.onchange=function(){ setMe('recv'); };
   // "More taps, less typing": where the browser has the Contact Picker (Chrome on Android —
   // most of our customers), the other person comes straight from the phone book: one tap,
   // name + number filled, the blur pass normalises +234/spaces to 0803… and paints it green.
@@ -1363,8 +1369,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var on=this.checked;
     // COD: the receiver IS the buyer — the booker cannot claim that seat. Withdraw the claim
     // (clearing any auto-filled own number) and hide the receiver "This is me" chip while COD is on.
-    if(on&&MESIDE==='recv'){ clearMe('recv'); MESIDE=''; updateMeChips(); }
-    var _mrc=document.getElementById('merc'); if(_mrc)_mrc.style.display=on?'none':'';
+    if(on&&MESIDE==='recv'){ clearMe('recv'); MESIDE=''; }
+    updateMeChips();
     document.getElementById('codamt').style.display=on?'block':'none';
     document.getElementById('payradios').style.display=on?'none':'block';
     // COD needs the receiver (buyer) phone — say so, so a blank field never leaves the button silently dead.
