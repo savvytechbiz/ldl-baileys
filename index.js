@@ -1214,8 +1214,16 @@ function bookBatch(pm){
 }
 // Live batch tracker — one status chip per delivery (same pipeline as the standalone /bulk tracker).
 function bChip(st){ if(st==='delivered')return '<span class="bchip bc-del">Delivered ✓</span>'; if(st==='failed'||st==='cancelled')return '<span class="bchip bc-fail">'+(st==='failed'?'Failed':'Cancelled')+'</span>'; if(st==='ontheway')return '<span class="bchip bc-otw">On the way</span>'; if(st==='assigned')return '<span class="bchip bc-asg">Rider assigned</span>'; return '<span class="bchip bc-wait">Finding rider…</span>'; }
+// A delivery can be called off by the client only while it hasn't been picked up — finding-a-rider ('')
+// or rider-assigned. Once it's on the way / delivered / already cancelled, the cancel option disappears.
+function btCancellable(st){ return st===''||st==='assigned'; }
 function btRender(){
-  var rows=BT.list.map(function(o){ return '<div class="btrow"><div class="nm">'+esc(o.receiver||'Delivery')+(o.rider?('<span class="rd">'+esc(o.rider)+'</span>'):'')+'</div>'+bChip(o.status)+'</div>'; }).join('');
+  var rows=BT.list.map(function(o,i){
+    var line='<div class="nm">'+esc(o.receiver||'Delivery')+(o.rider?('<span class="rd">'+esc(o.rider)+'</span>'):'')+'</div>'+bChip(o.status);
+    var act= o.cancelling ? '<div class="btca btca-wait">Cancelling…</div>'
+           : btCancellable(o.status) ? '<button class="btca" onclick="cancelBatchOrder('+i+')">Cancel this delivery</button>' : '';
+    return '<div class="btrow">'+line+act+'</div>';
+  }).join('');
   var doneAll=BT.list.length&&BT.list.every(function(o){return o.status==='delivered'||o.status==='failed'||o.status==='cancelled';});
   document.getElementById('app').innerHTML='<div class="brevfull"><h2>Your deliveries</h2><p class="bsub">Live status of each rider — updated as they move.</p><div class="btrk">'+rows+'</div>'
     +(doneAll?(BATCH?'<p class="bnote">All delivered — thanks for shipping with us</p>':'<a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a>')
@@ -1231,6 +1239,20 @@ function openBatchTracker(orders){
        BT.list.forEach(function(o){var u=by[o.n]; if(u){ if((u.status||'')!==o.status||String(u.rider||'')!==String(o.rider||''))chg=true; o.status=u.status||o.status; o.rider=u.rider||o.rider; }}); if(chg)btRender();
      }).catch(function(){});
   },10000);
+}
+// Client-side cancel of ONE delivery in the batch (server re-checks ownership + "not picked up yet").
+function cancelBatchOrder(i){
+  var o=BT.list[i]; if(!o||o.cancelling||!btCancellable(o.status))return;
+  if(!confirm('Cancel the delivery to '+(o.receiver||'this stop')+'? The rest of your batch is unaffected.'))return;
+  o.cancelling=true; btRender();
+  var _to={}; try{ if(window.AbortSignal&&AbortSignal.timeout)_to={signal:AbortSignal.timeout(25000)}; }catch(e){}
+  fetch(BULK_API+'?session='+encodeURIComponent(SESSION)+'&action=cancelorder&order='+encodeURIComponent(o.n),Object.assign({method:'POST'},_to))
+   .then(function(r){return r.json();}).then(function(j){
+     o.cancelling=false;
+     if(j&&(j.cancelled||j.already)){ o.status='cancelled'; btRender(); return; }
+     if(j&&j.error==='too-late'){ o.status='ontheway'; btRender(); alert('That delivery has already been picked up, so it can no longer be cancelled here. Message us on WhatsApp and we will sort it out.'); return; }
+     btRender(); alert('Could not cancel just now — please try again, or message us on WhatsApp.');
+   }).catch(function(){ o.cancelling=false; btRender(); alert('Network hiccup — please try again.'); });
 }
 // Batch-mode chrome: relabel the route CTA to "Add location", inject the batch CSS. Batch NEVER
 // uses the single-delivery details/pay steps — phase 2 is the card overlay (showDetails).
@@ -1251,7 +1273,9 @@ function initBatch(){
    +'.bclose{width:34px;height:34px;background:#fff;border:1px solid var(--line);border-radius:50%;font-size:19px;color:var(--ink-2);cursor:pointer;line-height:1}'
    +'.bsub{font-size:13px;color:var(--ink-2);margin:5px 2px 14px;line-height:1.5}.bsub #btot{font-weight:800;color:var(--plum)}'
    +'.brev,.brevfull{padding:20px 18px}.brevfull h2,.brev h2{font-size:22px;font-weight:800;margin:6px 2px 4px}'
-   +'.btrk{margin:2px 0 6px}.btrow{display:flex;align-items:center;gap:10px;padding:12px 13px;background:#fff;border:1px solid var(--line-2);border-radius:13px;margin-bottom:9px}'
+   +'.btrk{margin:2px 0 6px}.btrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 13px;background:#fff;border:1px solid var(--line-2);border-radius:13px;margin-bottom:9px}'
+   +'.btca{flex-basis:100%;margin-top:2px;padding-top:10px;border:none;border-top:1px solid var(--line);background:none;text-align:left;color:#b3261e;font-size:12.5px;font-weight:700;cursor:pointer}.btca:active{opacity:.6}'
+   +'.btca-wait{color:var(--ink-3);cursor:default;font-weight:600}'
    +'.btrow .nm{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.btrow .rd{display:block;font-size:11px;font-weight:600;color:var(--ink-3);margin-top:2px}'
    +'.btrow .bx{flex:none;width:28px;height:28px;border:none;background:var(--bg);border-radius:50%;color:var(--ink-3);font-size:16px;cursor:pointer}'
    +'.bchip{flex:none;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:99px;font-size:11.5px;font-weight:800}'
