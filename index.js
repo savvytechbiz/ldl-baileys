@@ -2322,7 +2322,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 <div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div></div>
 </div>
 <div class="chap" id="ch4">
-<div class="sec">Who collects it at the park?</div>
+<div class="sec" id="wrecvq">Who collects it at the park?</div>
 <div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone *"></div></div>
 <div class="echips" id="witems">
 <button type="button" data-i="Documents">&#128196; Documents</button>
@@ -2341,7 +2341,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 // A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
-(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.active&&j.active.order_number&&typeof openTracker==="function"){openTracker(j.active.order_number,j.active.status||"");}}).catch(function(){});}catch(e){}},0);})();
+(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.rider_cities&&typeof DOORCSV!=="undefined"){DOORCSV=String(j.rider_cities);if(typeof syncMode==="function")syncMode();if(typeof state!=="undefined"&&state&&typeof recalc==="function")recalc();}if(j&&j.active&&j.active.order_number&&typeof openTracker==="function"){openTracker(j.active.order_number,j.active.status||"");}}).catch(function(){});}catch(e){}},0);})();
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
 ${TRACK_JS}
 // Live pickup tracker (same system as local delivery). Waybill riders are booked by the team
@@ -2366,7 +2366,39 @@ function el(id){return document.getElementById(id);}
 function val(id){return (el(id).value||'').trim();}
 function useLoc(){var b=el('ploc');if(!b)return;b.onclick=function(){if(!navigator.geolocation){alert('Location is not available here — please type your address.');return;}var prev=b.textContent;b.textContent='…';b.disabled=true;navigator.geolocation.getCurrentPosition(function(pos){el('paddr').value='Getting address…';fetch(API+'?action=reverse&session='+encodeURIComponent(SESSION)+'&lat='+pos.coords.latitude+'&lng='+pos.coords.longitude).then(function(r){return r.json();}).then(function(j){el('paddr').value=(j&&j.address)?j.address:'My current location';b.textContent=prev;b.disabled=false;validate();}).catch(function(){el('paddr').value='My current location';b.textContent=prev;b.disabled=false;validate();});},function(){b.textContent=prev;b.disabled=false;alert('Couldn\\'t get your location — please allow access or type your address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});};}
 function nameOf(s){return NAMES[s]||(s?s.charAt(0)+s.slice(1).toLowerCase():s);}
-function parkHTML(dest,over5){return over5?'📦 For a heavier item (over 5kg), our team works out the best price and confirms it in your chat 🙏 Your receiver collects at the <b>'+dest+' park</b> — <b>no home delivery</b>.':'🚚 We waybill to <b>'+dest+'</b> through our partner parks. Our rider takes your item to the park and <b>confirms we can waybill it there</b>, then sends you the <b>exact fee</b> (worked out by weight). Your receiver collects it at the <b>'+dest+' park</b> — <b>no home delivery</b>.';}
+// Where LDL's OWN connecting riders deliver the destination leg to the DOOR. Same source of
+// truth as chat (app_settings.rider_cities via check response); this is only the fallback.
+var DOORCSV='Owerri, Port Harcourt, Umuahia, Lagos, Ibadan';
+var STATECITY={ABIA:'Umuahia',IMO:'Owerri',OYO:'Ibadan',BAYELSA:'Yenagoa',RIVERS:'Port Harcourt'};
+// Returns the MATCHED rider city/state name (so copy can say exactly where), or null → park pickup.
+function doorFor(s){
+  if(!s)return null;
+  var cands=[nameOf(s)], extra=STATECITY[s]||'';
+  if(extra){var xs=extra.split(',');for(var i=0;i<xs.length;i++){if(xs[i])cands.push(xs[i]);}}
+  var list=DOORCSV.split(',');
+  for(var a=0;a<cands.length;a++){var c=cands[a].toLowerCase().replace(/^\\s+|\\s+$/g,'');
+    for(var b2=0;b2<list.length;b2++){var L=list[b2].toLowerCase().replace(/^\\s+|\\s+$/g,'');
+      if(L&&L===c)return cands[a];}}
+  return null;
+}
+// The three-leg journey, told honestly: ① our rider brings it to Waterlines park (paid now-side),
+// ② the park's waybill fee — confirmed LIVE at the park and told to you before it's paid,
+// ③ door states only: our connecting rider delivers to the receiver's door (charged on arrival).
+function legsHTML(dest,doorName){
+  return '<div style="margin-top:10px;line-height:1.7">'
+    +'<b>How you pay, as it moves:</b><br>'
+    +'&#9312; &#128757; Now — our rider, your door &rarr; <b>Waterlines park</b><br>'
+    +'&#9313; &#127970; At the park — the park&rsquo;s waybill fee, <b>confirmed live</b> and told to you before it&rsquo;s paid'
+    +(doorName?('<br>&#9314; &#127968; On arrival — our rider in <b>'+doorName+'</b> delivers to the receiver&rsquo;s door (<b>charged separately</b> when it lands)'):'')
+    +'</div>';
+}
+function parkHTML(dest,over5,doorName){
+  var last=doorName
+    ?('&#127968; <b>Door delivery:</b> our own rider in <b>'+doorName+'</b> picks it up at the park and delivers it <b>to your receiver&rsquo;s door</b>.')
+    :('Your receiver collects it at the <b>'+dest+' park</b>.');
+  if(over5)return '📦 For a heavier item (over 5kg), our team works out the best price and confirms it in your chat 🙏 '+last;
+  return '🚚 We waybill to <b>'+dest+'</b> through our partner parks. Our rider takes your item to the park and <b>confirms we can waybill it there</b>. '+last+legsHTML(dest,doorName);
+}
 ${EXP_JS}
 function selectState(s,fromCard){state=s;lastPrice=null;isPark=false;
   Array.prototype.forEach.call(document.querySelectorAll('.st'),function(x){x.className='st'+(x.getAttribute('data-s')===s?' on':'');});
@@ -2395,14 +2427,20 @@ function recalc(){
   if(!state){validate();return;}
   var w=parseFloat(el('weight').value);
   if(!FLAT[state]){ // any other state → via a partner park (no instant price)
-    isPark=true;el('parkinfo').style.display='block';el('parkinfo').innerHTML=parkHTML(nameOf(state),false);validate();return;
+    isPark=true;el('parkinfo').style.display='block';el('parkinfo').innerHTML=parkHTML(nameOf(state),false,doorFor(state));validate();return;
   }
   if(isNaN(w)||w<=0){validate();return;}
   el('fee').style.display='flex';el('fee').innerHTML='<div class="l">Calculating…</div>';
   fetch(API+'?action=price&session='+encodeURIComponent(SESSION)+'&mode=waybill&destination='+encodeURIComponent(state)+'&weight='+w).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.price){lastPrice=j.price;el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Waybill to '+nameOf(state)+'</div><div class="sub">up to 5kg • receiver collects at the '+nameOf(state)+' park</div></div><div class="amt"></div>';
+    if(j&&j.price){lastPrice=j.price;var _dn=doorFor(state);
+      // Owner-confirmed money semantics (2026-07-24): the flat price covers leg ① (pickup →
+      // Waterlines) + leg ② (the park's waybill) ONLY. The door leg ③ is charged on arrival.
+      el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Waybill to '+nameOf(state)+'</div><div class="sub">up to 5kg • covers pickup + the park waybill</div>'
+        +(_dn?('<div class="sub">🏠 our rider in '+_dn+' then delivers to the door — that delivery fee is <b>charged on arrival</b>, not in this price</div>')
+             :('<div class="sub">receiver collects at the '+nameOf(state)+' park — nothing more to pay</div>'))
+        +'</div><div class="amt"></div>';
       countUp(el('fee').querySelector('.amt'),Number(j.price),'');}
-    else if(j&&j.park){isPark=true;el('fee').style.display='none';el('parkinfo').style.display='block';el('parkinfo').innerHTML=parkHTML(nameOf(state),!!j.over5);}
+    else if(j&&j.park){isPark=true;el('fee').style.display='none';el('parkinfo').style.display='block';el('parkinfo').innerHTML=parkHTML(nameOf(state),!!j.over5,doorFor(state));}
     else{el('fee').style.display='none';}
     validate();
   }).catch(function(){el('fee').style.display='none';validate();});
@@ -2424,7 +2462,9 @@ if(VALID!=='1'){el('app').innerHTML='<div class="body"><div class="done"><h2>Lin
 else{
   Array.prototype.forEach.call(document.querySelectorAll('.st'),function(b){b.onclick=function(){selectState(b.getAttribute('data-s'),true);};});
   // Every other state = a tappable pill (the select was the last form-feel holdout here).
-  var OTHERS=['ADAMAWA','AKWA IBOM','ANAMBRA','BAUCHI','BAYELSA','BENUE','BORNO','CROSS RIVER','DELTA','EBONYI','EDO','EKITI','ENUGU','GOMBE','JIGAWA','KADUNA','KANO','KATSINA','KEBBI','KOGI','KWARA','NASARAWA','NIGER','OGUN','ONDO','OSUN','OYO','PLATEAU','SOKOTO','TARABA','YOBE','ZAMFARA'];
+  // ABIA included (it was missing from the original select) — Umuahia is a connecting-rider
+  // door-delivery city, so Abia must be selectable beyond the Aba flat card.
+  var OTHERS=['ABIA','ADAMAWA','AKWA IBOM','ANAMBRA','BAUCHI','BAYELSA','BENUE','BORNO','CROSS RIVER','DELTA','EBONYI','EDO','EKITI','ENUGU','GOMBE','JIGAWA','KADUNA','KANO','KATSINA','KEBBI','KOGI','KWARA','NASARAWA','NIGER','OGUN','ONDO','OSUN','OYO','PLATEAU','SOKOTO','TARABA','YOBE','ZAMFARA'];
   el('stategrid').innerHTML=OTHERS.map(function(s){return '<button type="button" data-s="'+s+'">'+nameOf(s)+'</button>';}).join('');
   Array.prototype.forEach.call(document.querySelectorAll('#stategrid button'),function(b){b.onclick=function(){selectState(b.getAttribute('data-s'),false);};});
   // Weight = a tap, not a keyboard: destination-tap → weight-tap → the price lands. Typing stays possible.
@@ -2459,8 +2499,17 @@ else{
     if(n===WLAST)validate(); else wSyncGo();
   }
   var _wv=validate; validate=function(){_wv(); wSyncGo();};
+  // Door vs park changes what page four ASKS: door destinations need the receiver's address
+  // (it rides in delivery_instruction — the payload stays identical), park destinations only
+  // need who collects. Re-synced whenever the destination or the rider-cities list changes.
+  function syncMode(){
+    var dn=doorFor(state), q=el('wrecvq'), di=el('dinstr');
+    if(q)q.textContent=dn?'Who receives it at their door?':'Who collects it at the park?';
+    if(di)di.placeholder=dn?('Receiver\\u2019s address in '+dn+' + any note for the rider'):'Note for our rider — optional';
+  }
+  syncMode();
   // The tap IS the answer on page one — picking a destination turns the page itself.
-  var _ss=selectState; selectState=function(s,f){_ss(s,f); if(WSTEP===0&&state)setTimeout(function(){if(WSTEP===0)wShow(1);},260);};
+  var _ss=selectState; selectState=function(s,f){_ss(s,f); syncMode(); if(WSTEP===0&&state)setTimeout(function(){if(WSTEP===0)wShow(1);},260);};
   el('wback').onclick=function(){if(WSTEP>0)wShow(WSTEP-1);};
   wShow(0);
   Array.prototype.forEach.call(document.querySelectorAll('#witems button'),function(b){
