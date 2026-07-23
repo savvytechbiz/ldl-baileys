@@ -2277,10 +2277,14 @@ const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <title>Send a waybill — Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
 ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
-/* This page's asks are EARNED one chapter at a time; the CTA floats app-style once the last chapter opens. */
+/* Paged wizard (quote-page model): one question per SCREEN, progress dots, floating Back/Continue. */
 #weight{font-size:26px;font-weight:800}
-#go{display:none;position:fixed;left:16px;right:16px;bottom:14px;max-width:448px;margin:0 auto;z-index:80;box-shadow:0 10px 26px rgba(79,7,76,.35)}
-#go.on{display:block}
+.steps{display:flex;gap:6px;padding:14px 2px 2px}
+.sd{flex:1;height:4px;border-radius:2px;background:var(--line-2);transition:background .3s var(--ease)}
+.sd.on{background:var(--pink)}
+.wbar{position:fixed;left:16px;right:16px;bottom:14px;z-index:80;display:flex;gap:10px;max-width:448px;margin:0 auto}
+.wbar .back{flex:0 0 auto;width:auto;padding:0 18px;height:52px;background:#fff;border:1.5px solid var(--line-2);color:var(--ink-2);font-weight:700;border-radius:14px;box-shadow:none}
+.wbar #go{flex:1;box-shadow:0 10px 26px rgba(79,7,76,.35)}
 .body{padding-bottom:130px}
 .parkinfo{display:none;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:var(--r-lg);padding:14px 16px;margin:14px 0 2px;font-size:13px;color:#7a4d10;line-height:1.55}
 .parkinfo b{color:#5c3a0c;font-weight:700}
@@ -2290,6 +2294,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 <h1>Send a waybill</h1>
 <p>Nationwide via our trusted parks — GUO · GIG · Rivers Joy. We pick up from your door 🛵, your receiver collects at the destination park.</p></div>
 <div class="body">
+<div class="steps"><div class="sd on" id="wd0"></div><div class="sd" id="wd1"></div><div class="sd" id="wd2"></div><div class="sd" id="wd3"></div></div>
 <div class="routestrip" id="wstrip"><span class="rsflag">&#128757;</span><span>Door pickup</span><span class="rsarrow">&mdash;&nbsp;&#128666;&nbsp;&mdash;</span><span id="wsname"></span></div>
 <div class="chap on" id="ch1">
 <div class="sec" style="margin-top:6px">Where is it going?</div>
@@ -2329,7 +2334,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 <div class="fld"><input id="item" placeholder="Or type what you're sending&hellip;"></div>
 <div class="fld"><input id="dinstr" placeholder="Note for our rider — optional" maxlength="200"></div>
 </div>
-<button id="go" disabled>Confirm &amp; book</button>
+<div class="wbar"><button type="button" class="back" id="wback" style="display:none">Back</button><button id="go" disabled>Continue</button></div>
 <p class="muted">Powered by Lasalu Drop Logistics</p>
 </div></div>
 <script>
@@ -2426,19 +2431,38 @@ else{
   el('wkg').innerHTML=[1,2,3,5].map(function(k){return '<button type="button" data-kg="'+k+'">'+k+' kg</button>';}).join('');
   Array.prototype.forEach.call(document.querySelectorAll('#wkg button'),function(b){b.onclick=function(){el('weight').value=b.getAttribute('data-kg');Array.prototype.forEach.call(document.querySelectorAll('#wkg button'),function(x){x.className=(x===b)?'on':'';});recalc();};});
   el('weight').addEventListener('input',function(){var w=el('weight').value;Array.prototype.forEach.call(document.querySelectorAll('#wkg button'),function(x){x.className=(x.getAttribute('data-kg')===w)?'on':'';});});
-  // Chapters are EARNED: destination opens weight, a price (or park promise) opens pickup,
-  // an address opens the people. validate() already runs on every meaningful event — wrap it
-  // once so the reveal engine rides every existing listener for free.
-  function syncChap(){
-    var on2=!!state, on3=!!(lastPrice||isPark), on4=on3&&!!val('paddr');
-    var c2=el('ch2'),c3=el('ch3'),c4=el('ch4'),g=el('go');
-    if(c2)c2.className='chap'+(on2?' on':'');
-    if(c3)c3.className='chap'+(on3?' on':'');
-    if(c4)c4.className='chap'+(on4?' on':'');
-    if(g)g.className=(on4?'on':'');
+  // ── Paged wizard engine ── each question is its own SCREEN (quote-page model): ch1..ch4
+  // become pages, dots track progress, the floating bar is Continue until the last page,
+  // then the real Confirm & book. validate() stays untouched inside; its full-form disabled
+  // verdict only rules the FINAL page — earlier pages gate on just their own question.
+  var WSTEP=0, WLAST=3;
+  function wStepOk(n){
+    if(n===0)return !!state;
+    if(n===1)return !!(lastPrice||isPark);
+    if(n===2)return !!val('paddr')&&(!val('sphone')||phoneOk(val('sphone')));
+    return true;
   }
-  var _wv=validate; validate=function(){_wv(); syncChap();};
-  syncChap();
+  function wSyncGo(){
+    var g=el('go');
+    if(WSTEP<WLAST){ g.disabled=!wStepOk(WSTEP); }
+    // at WLAST validate() has already set g.disabled from the full form — leave it be
+  }
+  function wShow(n){
+    WSTEP=n;
+    for(var i=0;i<=WLAST;i++){
+      var st=el('ch'+(i+1)); if(st)st.className='chap'+(i===n?' on':'');
+      var d=el('wd'+i); if(d)d.className='sd'+(i<=n?' on':'');
+    }
+    el('wback').style.display=n===0?'none':'block';
+    el('go').textContent=(n===WLAST)?'Confirm & book':'Continue';
+    window.scrollTo({top:0,behavior:'smooth'});
+    if(n===WLAST)validate(); else wSyncGo();
+  }
+  var _wv=validate; validate=function(){_wv(); wSyncGo();};
+  // The tap IS the answer on page one — picking a destination turns the page itself.
+  var _ss=selectState; selectState=function(s,f){_ss(s,f); if(WSTEP===0&&state)setTimeout(function(){if(WSTEP===0)wShow(1);},260);};
+  el('wback').onclick=function(){if(WSTEP>0)wShow(WSTEP-1);};
+  wShow(0);
   Array.prototype.forEach.call(document.querySelectorAll('#witems button'),function(b){
     b.onclick=function(){var on=b.className==='on';Array.prototype.forEach.call(document.querySelectorAll('#witems button'),function(x){x.className='';});if(!on){b.className='on';el('item').value=b.getAttribute('data-i');}else el('item').value='';validate();};
   });
@@ -2447,7 +2471,7 @@ else{
   ['sname','sphone','paddr','rname','rphone','item'].forEach(function(id){el(id).addEventListener('input',validate);});
   flagPhone('sphone');flagPhone('rphone');
   wireAuto('paddr','psug');useLoc();
-  el('go').onclick=book;
+  el('go').onclick=function(){ if(WSTEP<WLAST){ if(wStepOk(WSTEP))wShow(WSTEP+1); } else { book(); } };
 }
 </script></body></html>`;
 app.get('/waybill', (req, res) => { res.type('html').send(withWa(WAYBILL_PAGE)); });
