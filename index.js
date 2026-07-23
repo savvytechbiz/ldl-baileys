@@ -1418,18 +1418,85 @@ function validate(){
 // Decode a Google-encoded polyline into [lat,lng] points (so we can draw the route, Bolt-style).
 function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,sh=0,res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lat+=((res&1)?~(res>>1):(res>>1)); sh=0;res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lng+=((res&1)?~(res>>1):(res>>1)); c.push([lat/1e5,lng/1e5]); } return c; }
 var routeLine=null, mapFee=null, mapMin=null, mapKm=null, POD_SURCHARGE=0;
+// Price negotiation (app-only, Phase 1). NEGO from prefill; OFFER = the customer's accepted lower price
+// (null = paying the recommended fee). A new route price invalidates any prior offer.
+var NEGO={enabled:false,max:10}, OFFER=null;
 // Render the fee box (and top badge). Pay-on-delivery adds the surcharge, so the number shown here matches
 // what the rider actually collects (base + POD surcharge) — not the base-only price. COD (buyer-hasn't-paid)
 // is a separate model whose delivery fee is netted from the goods, so it stays on the base price.
 function podPicked(){ var cb=document.getElementById('codbox'); if(cb&&cb.checked) return false; var r=document.querySelector('input[name=pay]:checked'); return !!(r&&r.value==='pod'); }
 function renderFee(){
   var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
-  if(mapFee==null){ if(f)f.style.display='none'; if(pt)pt.style.display='none'; return; }
-  var sc=podPicked()?(Number(POD_SURCHARGE)||0):0, tot=Number(mapFee)+sc;
+  if(mapFee==null){ if(f)f.style.display='none'; if(pt)pt.style.display='none'; var ow0=document.getElementById('offerwrap'); if(ow0)ow0.style.display='none'; return; }
+  var base=Number(mapFee), neg=(OFFER!=null);
+  var sc=(!neg&&podPicked())?(Number(POD_SURCHARGE)||0):0, tot=(neg?Number(OFFER):base)+sc;
   var sub=[]; if(mapMin)sub.push('~'+mapMin+' min trip'); if(mapKm)sub.push('~'+mapKm+' km');
   if(sc>0)sub.push('incl. ₦'+sc.toLocaleString()+' pay-on-delivery');
+  if(neg)sub.push('your offer · was ₦'+base.toLocaleString());
   if(f){ f.style.display='flex'; f.innerHTML='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+tot.toLocaleString()+'</div>'; }
   if(pt){ var pw=(pt.style.display==='none'||!pt.style.display); pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+tot.toLocaleString()+'</span>'; if(pw){pt.classList.remove('popin');void pt.offsetWidth;pt.classList.add('popin');} }
+  renderOffer(base);
+}
+// ── Price negotiation UI (app-only) ── The offer control lives right under the fee box. The floor shown
+// here mirrors the server's floor (recommended − max%); the server re-checks on booking, so the page can't
+// undercut it. An accepted offer forces pay-now (renderOffer note + syncPayForOffer hide the pay choices).
+function offerFloor(base){ return Math.max(1,Math.round(Number(base)*(1-(Number(NEGO.max)||10)/100))); }
+function renderOffer(base){
+  var host=document.getElementById('fee'); if(!host)return;
+  var w=document.getElementById('offerwrap');
+  if(!NEGO.enabled||mapFee==null){ if(w)w.style.display='none'; return; }
+  if(!w){ w=document.createElement('div'); w.id='offerwrap'; w.className='offerwrap'; host.parentNode.insertBefore(w,host.nextSibling); }
+  w.style.display='block';
+  if(OFFER!=null){
+    w.innerHTML='<div class="offon"><div><span class="offlbl">Your price</span> <b>₦'+Number(OFFER).toLocaleString()+'</b> <span class="offwas">₦'+Number(base).toLocaleString()+'</span></div><button type="button" id="offreset" class="offlink">Reset</button></div><p class="offnote">Negotiated price — you pay now to lock it in.</p>';
+    document.getElementById('offreset').onclick=function(){ OFFER=null; renderFee(); syncPayForOffer(); if(typeof validate==='function')validate(); };
+    return;
+  }
+  w.innerHTML='<button type="button" id="offopen" class="offcta">Make an offer</button>';
+  document.getElementById('offopen').onclick=function(){ openOfferPanel(base); };
+}
+function openOfferPanel(base){
+  var w=document.getElementById('offerwrap'); if(!w)return;
+  var floor=offerFloor(base);
+  w.innerHTML='<div class="offpanel"><div class="offh">Name your price</div>'
+    +'<div class="offin"><span>&#8358;</span><input id="offval" inputmode="numeric" value="'+Math.round(base)+'"></div>'
+    +'<div class="offhint" id="offhint">Anywhere from <b>&#8358;'+floor.toLocaleString()+'</b> up to &#8358;'+Math.round(base).toLocaleString()+'.</div>'
+    +'<div class="offrow"><button type="button" class="offcancel" id="offcancel">Cancel</button><button type="button" class="offuse" id="offuse">Use this price</button></div></div>';
+  var inp=document.getElementById('offval'); try{ inp.focus(); inp.select(); }catch(e){}
+  document.getElementById('offcancel').onclick=function(){ renderFee(); };
+  document.getElementById('offuse').onclick=function(){
+    var v=Math.round(Number((inp.value||'').replace(/[^0-9.]/g,''))||0);
+    if(!(v>0)) return;
+    if(v>=Math.round(base)){ OFFER=null; renderFee(); syncPayForOffer(); if(typeof validate==='function')validate(); return; }
+    var fl=offerFloor(base);
+    if(v<fl){ var h=document.getElementById('offhint'); h.className='offhint low'; h.innerHTML='The lowest we can do on this route is <b>&#8358;'+fl.toLocaleString()+'</b>.'; inp.value=fl; try{inp.select();}catch(e){} return; }
+    OFFER=v; renderFee(); syncPayForOffer(); if(typeof validate==='function')validate();
+  };
+}
+// A negotiated order is always paid now (that's what captures the fee) — hide the pay-on-delivery / COD
+// choices and select pay-now while an offer is active; restore them if the offer is reset.
+function syncPayForOffer(){
+  var neg=(OFFER!=null);
+  var cb=document.getElementById('codbox');
+  if(neg&&cb&&cb.checked){ cb.checked=false; try{ cb.dispatchEvent(new Event('change')); }catch(e){} }
+  var pr=document.getElementById('payradios'); if(pr)pr.style.display=neg?'none':'block';
+  var now=document.querySelector('input[name=pay][value=now]'); if(now&&neg)now.checked=true;
+}
+function injectNegCss(){
+  if(document.getElementById('negcss'))return;
+  var s=document.createElement('style'); s.id='negcss'; s.textContent=
+    '.offerwrap{margin:10px 0 2px}'
+   +'.offcta{width:100%;padding:12px;border:1.5px dashed var(--line-2,#ddd0e2);background:none;border-radius:12px;color:var(--plum,#4F074C);font-size:13.5px;font-weight:800;cursor:pointer}.offcta:active{transform:scale(.99)}'
+   +'.offon{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--lilac,#FBE9F1);border-radius:12px;padding:11px 13px}'
+   +'.offlbl{font-size:12px;color:#7a5b83;font-weight:700}.offon b{color:var(--plum,#4F074C);font-size:15px}.offwas{font-size:11.5px;color:#a8a0ae;text-decoration:line-through;margin-left:4px}'
+   +'.offlink{background:none;border:none;color:#b3261e;font-size:12.5px;font-weight:800;cursor:pointer}'
+   +'.offnote{font-size:11.5px;color:#7a5b83;margin:6px 2px 0}'
+   +'.offpanel{background:#fff;border:1px solid var(--line,#ece3ef);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(58,5,55,.08)}'
+   +'.offh{font-size:14px;font-weight:800;color:#241826;margin-bottom:9px}'
+   +'.offin{display:flex;align-items:center;gap:6px;background:var(--bg,#FBF3F7);border-radius:10px;padding:10px 12px;border:1.5px solid var(--line-2,#ddd0e2)}.offin span{font-size:16px;color:#6a626f;font-weight:700}.offin input{flex:1;border:none;background:none;outline:none;font-size:17px;font-weight:700;color:#241826;width:100%}'
+   +'.offhint{font-size:12px;color:#7a5b83;margin-top:8px}.offhint.low{color:#b3261e;font-weight:600}'
+   +'.offrow{display:flex;gap:8px;margin-top:12px}.offcancel{flex:1;padding:11px;border:1px solid var(--line,#ece3ef);background:#fff;border-radius:10px;font-weight:700;color:#6a626f;cursor:pointer}.offuse{flex:2;padding:11px;border:none;background:var(--plum,#4F074C);color:#fff;border-radius:10px;font-weight:800;cursor:pointer}';
+  document.head.appendChild(s);
 }
 // COD payout bank: BANK_SAVED means we already have this vendor's account on file (no re-entry).
 var BANK_SAVED=false, BANKS_LOADED=false, ACCT_OK=false;
@@ -1477,7 +1544,7 @@ function quote(){
    .then(r=>r.json()).then(j=>{
      var e=document.getElementById('eta');
      if(j.price){
-       mapFee=j.price; mapMin=j.min||null; mapKm=j.km||null;
+       mapFee=j.price; mapMin=j.min||null; mapKm=j.km||null; OFFER=null;  // new price → any prior offer is stale
        renderFee();   // fee box + top badge (adds the POD surcharge when pay-on-delivery is selected)
        if(j.min){ var ew=(e.style.display==='none'||!e.style.display); e.style.display='flex'; e.innerHTML='<svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="6" cy="17" r="2.6"/><circle cx="18.5" cy="17" r="2.6"/><path d="M8.6 17h7.3l1.9-7h2.7M6 17l2.8-8.4h4.4"/></svg>'+j.min+' min <span class="d">trip</span>'; if(ew){e.classList.remove('popin');void e.offsetWidth;e.classList.add('popin');} } else { e.style.display='none'; }
      } else { mapFee=null; renderFee(); if(e)e.style.display='none'; }
@@ -1614,6 +1681,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
     if(p.pod_allowed){ var po=document.getElementById('opt-pod'); po.style.display='flex'; POD_SURCHARGE=Math.max(0,Number(p.pod_surcharge)||0); if(POD_SURCHARGE>0){ var ps=document.createElement('span'); ps.className='sur'; ps.textContent='+₦'+POD_SURCHARGE.toLocaleString(); po.appendChild(ps); } renderFee(); }
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
+    if(p.negotiation&&p.negotiation.enabled){ NEGO.enabled=true; NEGO.max=Number(p.negotiation.max_discount_pct)||10; injectNegCss(); renderFee(); }
     if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
     // PICKUP DEFAULT = where the booker is standing. Unless the chat already named a pickup, we drop
@@ -1729,10 +1797,11 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       if(i<doneN)cls='tk-done'; else if(i===doneN&&st!=='failed'&&st!=='cancelled')cls='tk-cur';
       rows+='<div class="tkrow '+cls+'"><span class="tkd">'+(i<doneN?'✓':'')+'</span><span class="tkl">'+TRK[i]+'</span></div>';
     }
-    // Cancel / edit are offered ONLY while it is money-safe: pay-on-delivery, nothing paid,
-    // and the parcel not yet picked up (searching or just-assigned). They vanish on their own
-    // the moment the status moves on — the server re-checks everything anyway.
-    var act=(MODE==='pod'&&ORDNUM&&(st==='searching'||st==='settle'||st==='assigned'));
+    // CANCEL is offered for ANY order while the parcel isn't picked up yet (searching or just-assigned) —
+    // keke/prepaid included (owner: "I can't cancel keke drop"); the server re-checks & handles refunds.
+    // EDIT (= cancel + rebook) stays POD-only, since editing a prepaid order would mean a refund + re-pay.
+    var canCancel=(ORDNUM&&(st==='searching'||st==='settle'||st==='assigned'));
+    var canEdit=(MODE==='pod'&&canCancel);
     var ended=(st==='delivered'||st==='failed'||st==='cancelled');
     // Rider card: once a real person has the job, show who they are — avatar initial, name,
     // one-tap Call. The same trust move Bolt makes the moment a driver accepts.
@@ -1749,7 +1818,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       +'<div class="trk">'+rows+'</div>'
       +riderRow
       +(feeLine&&!ended?('<p class="feenote">'+feeLine+'</p>'):'')
-      +(act?'<div class="trkact"><button type="button" id="trkedit">Edit location</button><button type="button" id="trkcancel" class="tkx">Cancel order</button></div>':'')
+      +((canEdit||canCancel)?('<div class="trkact">'+(canEdit?'<button type="button" id="trkedit">Edit location</button>':'')+(canCancel?'<button type="button" id="trkcancel" class="tkx">Cancel order</button>':'')+'</div>'):'')
       +(ended?'<div class="trkact"><button type="button" id="trknew">Book another delivery</button></div>'
              :(RESUMED?'<button type="button" id="trknew" class="tknew">＋ Book another delivery</button>':''))
       +((st==='delivered'||st==='cancelled')?'':'<p class="ssub">You can close this page — every update also lands in your WhatsApp chat.</p>')
@@ -1797,6 +1866,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   }
   function applyStatus(raw){
     if(trkState==='cancelled')return;   // a poll already in flight must never repaint a cancelled order
+    // A cancelled order (cancelled here, in chat, or by the team) must LEAVE the radar — not sit on
+    // "Finding your rider" forever. orderstatus now reports 'cancelled'; show it and stop polling.
+    if(raw==='cancelled'){ trkState='cancelled'; if(radarM){try{map.removeLayer(radarM);}catch(e){}radarM=null;} clearRider(); trackUI('cancelled'); stopPoll(); return; }
     var st=(raw==='assigned'||raw==='ontheway'||raw==='delivered'||raw==='failed')?raw:'';
     if(!st||st===trkState)return;
     trkState=st;
@@ -1858,7 +1930,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   }
   document.getElementById('go').onclick=function(){
     var codOn=document.getElementById('codbox').checked;
-    var payVal=codOn?'cod':(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })();
+    // A negotiated order is always pay-now — the server enforces this too, but keep the client consistent.
+    var payVal=(OFFER!=null)?'now':(codOn?'cod':(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })());
+    if(OFFER!=null)codOn=false;
     var goodsVal=codOn?Number((document.getElementById('goods').value||'').replace(/[^0-9.]/g,'')):0;
     if(codOn&&!(goodsVal>0)){ alert('Please enter how much we should collect from the buyer.'); return; }
     if(codOn&&mapFee&&(goodsVal-Math.min(3000,Math.round(goodsVal*COD_PCT/100))-Number(mapFee))<=0){ alert('That amount is too low to cover our fee and the delivery — please enter a higher amount.'); return; }
@@ -1868,9 +1942,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       session:SESSION,pickup:picked.pickup,dropoff:picked.dropoff,
       sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),item:val('item'),delivery_instruction:val('dinstr'),
-      pay_method:payVal,cod:codOn,goods_value:goodsVal,account_number:acctNo,bank_code:bankCode,bank_name:bankName
+      pay_method:payVal,cod:codOn,goods_value:goodsVal,account_number:acctNo,bank_code:bankCode,bank_name:bankName,
+      offered_price:(OFFER!=null?OFFER:0)
     })})
      .then(r=>r.json()).then(j=>{
+       // Server counter: the offer was below the floor (e.g. settings changed mid-session) — show the floor.
+       if(j&&j.error==='below-floor'){ b.disabled=false; b.textContent='Confirm & book'; OFFER=Number(j.floor)||OFFER; renderFee(); syncPayForOffer(); alert('The lowest we can do on this route is ₦'+(Number(j.floor)||0).toLocaleString()+'. We\\'ve set your offer there — tap book again to confirm.'); return; }
        // App (pay now): the server returns a payment link — go straight to secure checkout, no WhatsApp.
        if(j&&j.pay_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment</p></div>'; window.location.href=j.pay_url; return; }
        // Rider dispatched now (pay-on-delivery or COD): keep the map alive and search Bolt-style —
@@ -2163,6 +2240,10 @@ function ldlTracker(opts){
   }
   function stop(){if(timer){clearInterval(timer);timer=null;}}
   function apply(raw){
+    if(st==='cancelled')return;
+    // A cancelled order must LEAVE the radar, not sit on "Finding your rider" forever. Self-contained
+    // render (no dependency on the per-page labels) so every flow shows a clean cancelled state.
+    if(raw==='cancelled'){ st='cancelled'; stop(); var mc=document.getElementById(opts.mount); if(mc)mc.innerHTML='<div class="search"><h2>Order cancelled</h2><p class="smut">This delivery was cancelled. You can book again anytime.</p>'+(opts.doneHtml||'')+'</div>'; return; }
     var s=(raw==='assigned'||raw==='ontheway'||raw==='delivered'||raw==='failed')?raw:'';
     if(!s||s===st)return;
     st=s; if(s!=='failed')done=stageN(s);
