@@ -797,7 +797,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
 <div class="recentlist" id="recentlist"></div>
-<button id="continue" style="display:none;margin-top:16px" onclick="showStep(2)">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+<button id="continue" style="display:none;margin-top:16px" onclick="routeNext()">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
 </div>
 <div id="step-pickup" style="display:none">
 <a onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 8px">&lsaquo; Back to route</a>
@@ -897,6 +897,7 @@ var BATCH = location.pathname.indexOf('/bulk') > -1;
 var DROPS = [];   // completed drops: {pickup,dropoff,receiver_name,receiver_phone,item,note}
 var BULK_API = "https://wbsczuwofdrliloueskw.supabase.co/functions/v1/bulkOrders";
 var SENDER_NAME='', SENDER_PHONE='';   // captured once (bulk = one sender, many drops)
+var BATCH_PICKUP=null;                  // the single pickup, set once and reused for every drop
 var BT={list:[],timer:null,pn:0};      // batch tracker state
 var map,mP,mD;
 function initMap(){
@@ -1059,28 +1060,46 @@ function showStep(n){
 function step(){var c=document.getElementById('continue');if(!c)return;var show=!!(picked.pickup&&picked.dropoff);if(show){if(c.style.display==='none'||!c.style.display){c.style.display='block';anim(c,'risein');}}else c.style.display='none';}
 // ── BATCH module ── /map ends the details step by going to Pay; /bulk ADDS the drop to a batch and
 // resets the map for the next one, then books them all together via bulkOrders. All gated on BATCH.
+// Batch skips the pickup-confirm step (pickup is set ONCE and reused) — route Continue goes
+// straight to the lightweight drop details (item + receiver only). /map keeps its full flow.
+function routeNext(){ if(BATCH){ showStep(3); } else { showStep(2); } }
 function detailsNext(){ if(BATCH){ addDrop(); } else { showStep(4); } }
+var dropMarkers=[];
 function addDrop(){
   if(!(picked.pickup&&picked.dropoff))return;
-  // The sender is the booker/vendor — captured ONCE (bulk = one sender, many drops).
+  // The sender/pickup is the booker's — captured ONCE (bulk = one pickup, many drop-offs).
   if(!SENDER_PHONE){ SENDER_NAME=val('sname')||MYNAME||''; SENDER_PHONE=val('sphone')||MYPHONE||''; }
+  if(!BATCH_PICKUP){ BATCH_PICKUP={address:picked.pickup.address,lat:picked.pickup.lat,lng:picked.pickup.lng}; }
   DROPS.push({
-    pickup:{address:picked.pickup.address,lat:picked.pickup.lat,lng:picked.pickup.lng},
+    pickup:{address:BATCH_PICKUP.address,lat:BATCH_PICKUP.lat,lng:BATCH_PICKUP.lng},
     dropoff:{address:picked.dropoff.address,lat:picked.dropoff.lat,lng:picked.dropoff.lng},
     receiver_name:val('rname'), receiver_phone:val('rphone'), item:val('item'), note:val('dinstr')
   });
+  // Leave a NUMBERED pin on the map so the client watches their route build, stop by stop.
+  try{ var n=DROPS.length; var mk=L.marker([picked.dropoff.lat,picked.dropoff.lng],{interactive:false,zIndexOffset:400,icon:L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],html:'<div class="dropnum">'+n+'</div>'})}).addTo(map); dropMarkers.push(mk); }catch(e){}
   batchBar();
-  // Reset for the NEXT drop — keep the pickup pin (bulk usually ships from one spot), clear the rest.
-  var keepP=picked.pickup;
+  // Reset for the NEXT drop — keep the pickup fixed, clear only the drop-off + this drop's details.
   try{ clearLoc('dropoff'); }catch(e){}
   ['rname','rphone','item','dinstr'].forEach(function(id){ var e=document.getElementById(id); if(e)e.value=''; });
   Array.prototype.forEach.call(document.querySelectorAll('#itemchips .ichip'),function(c){c.classList.remove('on');});
   var _it=document.getElementById('item'); if(_it)_it.style.display='none';
   var nb=document.getElementById('notebox'); if(nb)nb.style.display='none';
-  MESIDE=''; MEFILL_S=false; MEFILL_R=false; try{ updateMeChips(); }catch(e){}
-  picked.pickup=keepP;
+  picked.pickup=BATCH_PICKUP;
+  batchPrompt();
   try{ validate(); }catch(e){}
   showStep(1);
+}
+// Renumber the drop pins on the map after a removal, so the pins always match the list.
+function rebuildDropMarkers(){
+  dropMarkers.forEach(function(m){ try{ map.removeLayer(m); }catch(e){} }); dropMarkers=[];
+  DROPS.forEach(function(d,i){ try{ var mk=L.marker([d.dropoff.lat,d.dropoff.lng],{interactive:false,zIndexOffset:400,icon:L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],html:'<div class="dropnum">'+(i+1)+'</div>'})}).addTo(map); dropMarkers.push(mk); }catch(e){} });
+}
+// Guide the client on the route step: set pickup first, then each drop-off in turn.
+function batchPrompt(){
+  var s=document.querySelector('#step-route .sec.first'); if(!s)return;
+  s.textContent = !BATCH_PICKUP ? 'Where are we picking up from?'
+    : 'Drop-off #'+(DROPS.length+1)+' — where to?';
+  var din=document.getElementById('din'); if(din)din.placeholder = BATCH_PICKUP ? ('Drop-off #'+(DROPS.length+1)) : 'Drop-off';
 }
 // The floating "N drops · Review & book" bar (only in batch mode, only once a drop exists).
 function batchBar(){
@@ -1107,9 +1126,9 @@ function showBatch(){
     +'<button type="button" id="bbook" class="bprimary">Book '+DROPS.length+' deliver'+(DROPS.length>1?'ies':'y')+'</button></div>';
   ov.style.display='flex';
   document.getElementById('bclose').onclick=function(){ ov.style.display='none'; };
-  document.getElementById('badd').onclick=function(){ ov.style.display='none'; showStep(1); };
+  document.getElementById('badd').onclick=function(){ ov.style.display='none'; try{ batchPrompt(); }catch(e){} showStep(1); };
   document.getElementById('bbook').onclick=function(){ var pm=(document.querySelector('input[name=bpay]:checked')||{}).value||'now'; bookBatch(pm); };
-  Array.prototype.forEach.call(ov.querySelectorAll('.bx'),function(b){ b.onclick=function(){ DROPS.splice(Number(b.getAttribute('data-i')),1); batchBar(); if(DROPS.length)showBatch(); else ov.style.display='none'; }; });
+  Array.prototype.forEach.call(ov.querySelectorAll('.bx'),function(b){ b.onclick=function(){ DROPS.splice(Number(b.getAttribute('data-i')),1); rebuildDropMarkers(); batchBar(); if(DROPS.length)showBatch(); else { ov.style.display='none'; try{ batchPrompt(); }catch(e){} } }; });
   // Live total (backend prices by distance) — best-effort; the book re-prices authoritatively.
   fetch(BULK_API+'?session='+encodeURIComponent(SESSION)+'&action=quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deliveries:dropsPayload()})})
     .then(function(r){return r.json();}).then(function(j){ if(j&&j.total){ var t=document.getElementById('btot'); if(t)t.textContent='Total ₦'+Number(j.total).toLocaleString(); } }).catch(function(){});
@@ -1152,6 +1171,12 @@ function openBatchTracker(orders){
 // Batch-mode chrome: relabel the details CTA + inject the batch CSS. Called once from init when BATCH.
 function initBatch(){
   var tn=document.getElementById('tonext'); if(tn)tn.innerHTML='Add this delivery <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+  // Bulk = one pickup, many drops: the details step per drop needs only the RECEIVER + item, not
+  // the sender (that's the booker, once). Hide the sender card + retitle the section.
+  var stops=document.querySelectorAll('#step-details .stopc'); if(stops[0])stops[0].style.display='none';
+  var secs=document.querySelectorAll('#step-details .sec'); Array.prototype.forEach.call(secs,function(s){ if(s.textContent.indexOf("Who's on this trip")>-1){ s.firstChild.textContent="Who's receiving this drop?"; } });
+  var hint=document.querySelector('#step-details .hint'); if(hint&&hint.textContent.indexOf('Tick who you are')>-1)hint.style.display='none';
+  try{ batchPrompt(); }catch(e){}
   var g=document.getElementById('go'); // the single-order Confirm button is never used in batch
   var css='.batchbar{position:fixed;left:14px;right:14px;bottom:16px;z-index:1400;display:none;align-items:center;justify-content:space-between;gap:10px;background:var(--plum);color:#fff;border-radius:16px;padding:14px 18px;box-shadow:0 12px 30px rgba(58,5,55,.34);font-size:14px;font-weight:700;cursor:pointer}'
    +'.batchbar b{font-size:16px}.batchbar .bbgo{font-size:13px;opacity:.92}'
@@ -1170,7 +1195,8 @@ function initBatch(){
    +'.bpayw{margin:8px 0 4px}.bpayopt{display:flex;align-items:center;gap:9px;padding:12px 13px;border:1.5px solid var(--line-2);border-radius:13px;margin-top:8px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer}.bpayopt input{width:18px;height:18px;accent-color:var(--plum)}'
    +'.bsecondary{width:100%;margin:4px 0 10px;padding:12px 0;background:none;border:1.5px dashed var(--line-2);border-radius:13px;color:var(--plum);font-size:13.5px;font-weight:700;cursor:pointer}'
    +'.bprimary{width:100%;margin-top:6px;padding:15px 0;background:var(--plum);color:#fff;border:none;border-radius:14px;font-size:15.5px;font-weight:800;cursor:pointer;box-shadow:0 10px 26px rgba(79,7,76,.3)}'
-   +'.bnote{font-size:12px;color:var(--ink-3);text-align:center;margin-top:10px}';
+   +'.bnote{font-size:12px;color:var(--ink-3);text-align:center;margin-top:10px}'
+   +'.dropnum{width:26px;height:26px;border-radius:50%;background:var(--pink);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(226,58,124,.45);border:2px solid #fff}';
   var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
 }
 function setPin(which,d){
