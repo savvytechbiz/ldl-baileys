@@ -1812,6 +1812,39 @@ function countUp(elm,target,prefix){
   }catch(e){ elm.textContent=fin; }
 }
 `;
+// ── FLOW_CSS: the silhouette killer (quote / waybill / bulk) ── a form is a silhouette:
+// letterhead hero → white sheet → labeled boxes → submit. This const deletes the silhouette by
+// cascade (embedded AFTER BASE_CSS, same selectors win later): inputs become borderless
+// underline ANSWERS, caps labels become big conversational questions, the hero becomes a
+// whisper, the white paper becomes the blush canvas (white survives only on tappable objects),
+// and the price becomes a full-plum moment. Zero markup or logic required by this const alone.
+const FLOW_CSS = `
+@keyframes chapin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+input:not([type=radio]):not([type=checkbox]),textarea{border:0;border-bottom:1.5px solid var(--line-2);border-radius:0;background:transparent;padding:13px 2px;font-size:17px;font-weight:600;transition:border-color .18s var(--ease);box-shadow:none}
+input:not([type=radio]):not([type=checkbox]):focus,textarea:focus{border-color:var(--plum);box-shadow:none}
+input::placeholder,textarea::placeholder{font-weight:500}
+.sec{font-size:19px;font-weight:800;color:var(--ink);text-transform:none;letter-spacing:-.02em;margin:28px 2px 4px}
+.sec:first-child{margin-top:8px}
+.lbl{font-size:15px;font-weight:700;color:var(--ink);margin:20px 2px 2px}
+.hero{padding:14px 20px 26px}
+.hero h1{font-size:17px}
+.hero p{display:none}
+.hero .glow{font-size:72px;opacity:.08}
+.hero .chips{display:none}
+.sheet,.body{background:transparent;box-shadow:none;border-radius:0}
+.chap{display:none}
+.chap.on{display:block;animation:chapin .26s var(--ease)}
+.qh{font-size:26px}
+.step.on>*{animation:chapin .26s var(--ease) both}
+.step.on>*:nth-child(2){animation-delay:.04s}
+.step.on>*:nth-child(3){animation-delay:.08s}
+.step.on>*:nth-child(4){animation-delay:.12s}
+.step.on>*:nth-child(n+5){animation-delay:.14s}
+.estcard,.feebig{background:var(--plum);border:0;border-radius:16px}
+.estcard .l,.feebig .l{color:#fff}
+.estcard .sub,.feebig .sub{color:#ecd6e7}
+.estcard .amt,.feebig .amt{color:#fff;font-size:30px;font-weight:800}
+`;
 // ── Shared pickup tracker (quote + waybill pages) ── the map page's tracker, panel-only (these
 // pages have no map): live stages rail, rider card with Call, resume via check.active. Same class
 // names/motion as the map tracker so the whole product feels like one system.
@@ -1909,14 +1942,14 @@ const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Ship internationally &mdash; Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
-${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}
+${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 .wrap{padding-bottom:96px}
 /* The sheet reaches the action bar, so a short step never leaves a dead pale band. */
 .sheet{display:flex;flex-direction:column;min-height:calc(100vh - 232px)}
 .steps{display:flex;gap:6px;padding:0 4px 16px}
 .sd{flex:1;height:4px;border-radius:2px;background:var(--line-2);transition:background .3s var(--ease)}
 .sd.on{background:var(--pink)}
-.qh{font-size:23px;font-weight:800;letter-spacing:-.4px;color:var(--ink);margin:2px 0 6px;line-height:1.25}
+.qh{font-size:26px;font-weight:800;letter-spacing:-.4px;color:var(--ink);margin:2px 0 6px;line-height:1.22}
 .qs{font-size:14px;color:var(--ink-2);margin:0 0 18px;line-height:1.5}
 .step{display:none}
 .step.on{display:block;animation:qin .28s var(--ease)}
@@ -1934,10 +1967,10 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}
 /* estcard is NOT in BASE_CSS - it was an undefined class on the old page, which is
    why the amount crammed into the label. Defined properly here. JS flips it to flex.
    NOTE: never put a backtick in this file - it terminates the page template literal. */
-.estcard{display:none;align-items:center;justify-content:space-between;gap:14px;background:var(--lilac);border:1px solid #F3D9E5;border-radius:var(--r);padding:14px 16px;margin:6px 0 2px}
-.estcard .l{font-size:13.5px;font-weight:700;color:var(--ink)}
-.estcard .sub{font-size:12px;color:var(--ink-2);line-height:1.45;margin-top:3px}
-.estcard .amt{font-size:21px;font-weight:800;color:var(--plum);white-space:nowrap;flex:none}
+.estcard{display:none;align-items:center;justify-content:space-between;gap:14px;background:var(--plum);border:0;border-radius:16px;padding:16px 18px;margin:8px 0 2px}
+.estcard .l{font-size:13.5px;font-weight:700;color:#fff}
+.estcard .sub{font-size:12px;color:#ecd6e7;line-height:1.45;margin-top:3px}
+.estcard .amt{font-size:30px;font-weight:800;color:#fff;white-space:nowrap;flex:none}
 .wq{display:flex;gap:8px;margin:2px 0 14px;flex-wrap:wrap}
 .wq button{flex:0 0 auto;width:auto;padding:9px 15px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:14px;font-weight:700;color:var(--ink-2);box-shadow:none}
 .wq button.on{border-color:var(--plum);background:var(--plum);color:#fff}
@@ -2221,7 +2254,9 @@ else{
   var WQ=[1,2,5,10,20];
   el('wq').innerHTML=WQ.map(function(k){return '<button type="button" data-kg="'+k+'">'+k+'kg</button>';}).join('');
   Array.prototype.forEach.call(document.querySelectorAll('#wq button'),function(b){b.onclick=function(){el('weight').value=b.getAttribute('data-kg');markWq();recalc();};});
-  Array.prototype.forEach.call(document.querySelectorAll('.scard'),function(p){p.onclick=function(){SVC=p.getAttribute('data-svc');Array.prototype.forEach.call(document.querySelectorAll('.scard'),function(x){x.className='scard';});p.className='scard on';recalc();};});
+  Array.prototype.forEach.call(document.querySelectorAll('.scard'),function(p){p.onclick=function(){SVC=p.getAttribute('data-svc');Array.prototype.forEach.call(document.querySelectorAll('.scard'),function(x){x.className='scard';});p.className='scard on';recalc();
+    // The tap IS the answer — page turns itself (260ms lets the selection state register visually).
+    if(STEP===0)setTimeout(function(){if(STEP===0)showStep(1);},260);};});
   el('weight').addEventListener('input',function(){markWq();recalc();});
   el('weight').addEventListener('blur',function(){snapWeight();markWq();recalc();});
   el('country').addEventListener('change',function(){markDest();syncStrip();recalc();});
@@ -2241,7 +2276,12 @@ const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Send a waybill — Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
-${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}
+${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
+/* This page's asks are EARNED one chapter at a time; the CTA floats app-style once the last chapter opens. */
+#weight{font-size:26px;font-weight:800}
+#go{display:none;position:fixed;left:16px;right:16px;bottom:14px;max-width:448px;margin:0 auto;z-index:80;box-shadow:0 10px 26px rgba(79,7,76,.35)}
+#go.on{display:block}
+.body{padding-bottom:130px}
 .parkinfo{display:none;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:var(--r-lg);padding:14px 16px;margin:14px 0 2px;font-size:13px;color:#7a4d10;line-height:1.55}
 .parkinfo b{color:#5c3a0c;font-weight:700}
 .orsplit{display:flex;align-items:center;gap:12px;color:var(--ink-3);font-size:11px;font-weight:700;margin:16px 2px 12px;text-transform:uppercase;letter-spacing:.08em}
@@ -2251,6 +2291,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}
 <p>Nationwide via our trusted parks — GUO · GIG · Rivers Joy. We pick up from your door 🛵, your receiver collects at the destination park.</p></div>
 <div class="body">
 <div class="routestrip" id="wstrip"><span class="rsflag">&#128757;</span><span>Door pickup</span><span class="rsarrow">&mdash;&nbsp;&#128666;&nbsp;&mdash;</span><span id="wsname"></span></div>
+<div class="chap on" id="ch1">
 <div class="sec" style="margin-top:6px">Where is it going?</div>
 <div class="states" id="states">
 <div class="st" data-s="LAGOS"><b>Lagos</b><span>₦10,000</span></div>
@@ -2260,16 +2301,23 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}
 </div>
 <div class="orsplit">or tap any other state</div>
 <div class="stategrid" id="stategrid"></div>
-<div class="lbl">Weight (kg) <span class="req">*</span></div>
-<div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="e.g. 2"></div>
+</div>
+<div class="chap" id="ch2">
+<div class="sec">About how heavy? <span class="req">*</span></div>
+<div class="echips" id="wkg"></div>
+<div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="Or type the kg"></div>
 <div class="feebig" id="fee"></div>
 <div class="parkinfo" id="parkinfo"></div>
 <div class="err" id="err"></div>
-<div class="sec">Pickup — where our rider collects <span class="req">*</span></div>
+</div>
+<div class="chap" id="ch3">
+<div class="sec">Where does our rider collect it? <span class="req">*</span></div>
 <div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">📍</button><div class="sugbox" id="psug" style="display:none"></div></div>
-<div class="sec">Sender</div>
+<div class="sec">Who is sending?</div>
 <div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div></div>
-<div class="sec">Receiver <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-3)">— collects at the park</span></div>
+</div>
+<div class="chap" id="ch4">
+<div class="sec">Who collects it at the park?</div>
 <div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone *"></div></div>
 <div class="echips" id="witems">
 <button type="button" data-i="Documents">&#128196; Documents</button>
@@ -2280,6 +2328,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}
 </div>
 <div class="fld"><input id="item" placeholder="Or type what you're sending&hellip;"></div>
 <div class="fld"><input id="dinstr" placeholder="Note for our rider — optional" maxlength="200"></div>
+</div>
 <button id="go" disabled>Confirm &amp; book</button>
 <p class="muted">Powered by Lasalu Drop Logistics</p>
 </div></div>
@@ -2373,6 +2422,23 @@ else{
   var OTHERS=['ADAMAWA','AKWA IBOM','ANAMBRA','BAUCHI','BAYELSA','BENUE','BORNO','CROSS RIVER','DELTA','EBONYI','EDO','EKITI','ENUGU','GOMBE','JIGAWA','KADUNA','KANO','KATSINA','KEBBI','KOGI','KWARA','NASARAWA','NIGER','OGUN','ONDO','OSUN','OYO','PLATEAU','SOKOTO','TARABA','YOBE','ZAMFARA'];
   el('stategrid').innerHTML=OTHERS.map(function(s){return '<button type="button" data-s="'+s+'">'+nameOf(s)+'</button>';}).join('');
   Array.prototype.forEach.call(document.querySelectorAll('#stategrid button'),function(b){b.onclick=function(){selectState(b.getAttribute('data-s'),false);};});
+  // Weight = a tap, not a keyboard: destination-tap → weight-tap → the price lands. Typing stays possible.
+  el('wkg').innerHTML=[1,2,3,5].map(function(k){return '<button type="button" data-kg="'+k+'">'+k+' kg</button>';}).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('#wkg button'),function(b){b.onclick=function(){el('weight').value=b.getAttribute('data-kg');Array.prototype.forEach.call(document.querySelectorAll('#wkg button'),function(x){x.className=(x===b)?'on':'';});recalc();};});
+  el('weight').addEventListener('input',function(){var w=el('weight').value;Array.prototype.forEach.call(document.querySelectorAll('#wkg button'),function(x){x.className=(x.getAttribute('data-kg')===w)?'on':'';});});
+  // Chapters are EARNED: destination opens weight, a price (or park promise) opens pickup,
+  // an address opens the people. validate() already runs on every meaningful event — wrap it
+  // once so the reveal engine rides every existing listener for free.
+  function syncChap(){
+    var on2=!!state, on3=!!(lastPrice||isPark), on4=on3&&!!val('paddr');
+    var c2=el('ch2'),c3=el('ch3'),c4=el('ch4'),g=el('go');
+    if(c2)c2.className='chap'+(on2?' on':'');
+    if(c3)c3.className='chap'+(on3?' on':'');
+    if(c4)c4.className='chap'+(on4?' on':'');
+    if(g)g.className=(on4?'on':'');
+  }
+  var _wv=validate; validate=function(){_wv(); syncChap();};
+  syncChap();
   Array.prototype.forEach.call(document.querySelectorAll('#witems button'),function(b){
     b.onclick=function(){var on=b.className==='on';Array.prototype.forEach.call(document.querySelectorAll('#witems button'),function(x){x.className='';});if(!on){b.className='on';el('item').value=b.getAttribute('data-i');}else el('item').value='';validate();};
   });
@@ -2452,7 +2518,10 @@ app.get('/vendor', (req, res) => { res.type('html').send(withWa(VENDOR_PAGE)); }
 const BULK_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Multiple deliveries — Lasalu Drop</title>
-${FONT_LINK}<style>${BASE_CSS}
+${FONT_LINK}<style>${BASE_CSS}${FLOW_CSS}
+/* The CTA floats app-style; the review renders above it. */
+#go{position:fixed;left:16px;right:16px;bottom:14px;max-width:448px;margin:0 auto;z-index:80;box-shadow:0 10px 26px rgba(79,7,76,.35)}
+.body{padding-bottom:130px}
 /* Batch tracker: one row per delivery, live status chip per rider. */
 .btrk{margin-top:6px}
 .btrow{display:flex;align-items:center;gap:10px;padding:12px 13px;background:#fff;border:1px solid var(--line-2);border-radius:13px;margin-bottom:9px;animation:btin .22s cubic-bezier(.23,1,.32,1) both}
@@ -2488,7 +2557,7 @@ ${FONT_LINK}<style>${BASE_CSS}
     <div class="dropbar" id="dropbar">&#128230; <b id="dbN">0</b>&nbsp;<span id="dbW">drops</span> <span class="sep">&middot;</span> <span id="dbR">0 ready</span></div>
     <div id="deliveries"></div>
     <button class="add" id="add">+ Add another delivery</button>
-    <div class="lbl">Payment</div>
+    <div class="sec">How will you pay?</div>
     <label class="payopt"><input type="radio" name="pay" value="now" checked> 💳 Pay all now — one payment</label>
     <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod"> 🛵 Pay on delivery — cash to each rider</label>
     <button class="go" id="go" disabled>Review &amp; book</button>
