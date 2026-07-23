@@ -517,8 +517,8 @@ const MAP_PAGE = `<!doctype html><html><head><meta charset="utf-8">
      Check live with:  curl -s https://ldl-baileys-v2.onrender.com/map | grep ldl-build -->
 <meta name="ldl-build" content="2026-07-18-14 pink-surfaces">
 <meta name="description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds.">
-<meta property="og:title" content="📦 Set your delivery — Lasalu Drop">
-<meta property="og:description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds 🛵">
+<meta property="og:title" content="Set your delivery — Lasalu Drop">
+<meta property="og:description" content="Pin your pickup & drop-off, get an instant price, and book your rider in seconds">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#4F074C">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -845,7 +845,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
   <div class="row2"><input id="rname" placeholder="Name (optional)"><input id="rphone" type="tel" inputmode="tel" placeholder="Phone"></div>
   <div class="cover" id="dpcover" style="display:none">✓ If this stop is you, leave it blank — we already have your number</div>
 </div>
-<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:8px 2px 0">👆 For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
+<div id="codrphint" class="hint" style="display:none;color:#b45309;margin:8px 2px 0">For collect-on-delivery, add the <b>Receiver</b> (buyer) phone — they get the payment request.</div>
 <button id="tonext" disabled style="margin-top:18px" onclick="detailsNext()">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
 <div class="needhint" id="needhint"></div>
 </div>
@@ -866,7 +866,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
     <div id="codbreak" style="display:none;margin-top:8px;background:#fff8ec;border:1px solid #ffe0a6;border-radius:12px;padding:12px 14px"></div>
     <div style="font-size:11.5px;color:#9a7b3a;margin-top:7px">The buyer pays this on delivery, <b>Lasalu collects it</b> (comes to us — <b>not your account</b>), and the rider hands over the item only once it's paid.</div>
     <div id="bankbox" style="display:none;margin-top:14px;border-top:1px dashed #ffe0a6;padding-top:12px">
-      <div style="font-size:12.5px;color:#6a626f;font-weight:700;margin:0 2px 6px">💳 Where should we pay you? <span style="font-weight:500;color:#9a7b3a">(so we can settle you same-day)</span></div>
+      <div style="font-size:12.5px;color:#6a626f;font-weight:700;margin:0 2px 6px">Where should we pay you? <span style="font-weight:500;color:#9a7b3a">(so we can settle you same-day)</span></div>
       <input id="acctno" type="text" inputmode="numeric" maxlength="10" placeholder="Account number (10 digits)" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
       <div style="position:relative;margin-top:8px">
         <input id="bankcode" type="text" autocomplete="off" placeholder="Type your bank name…" style="width:100%;padding:12px 14px;border:1px solid #ffe0a6;background:#fff8ec;border-radius:11px;font-size:15px;outline:none">
@@ -874,7 +874,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
       </div>
       <div id="acctname" style="display:none;margin-top:8px;font-size:13px;font-weight:700"></div>
     </div>
-    <div id="banksaved" style="display:none;margin-top:14px;border-top:1px dashed #ffe0a6;padding-top:12px;font-size:13px;color:#166534">✅ We'll pay you to <b><span id="banklabel"></span></b>. <a href="#" id="bankchange" style="color:#E23A7C;text-decoration:underline;font-weight:600">change</a></div>
+    <div id="banksaved" style="display:none;margin-top:14px;border-top:1px dashed #ffe0a6;padding-top:12px;font-size:13px;color:#166534">We'll pay you to <b><span id="banklabel"></span></b>. <a href="#" id="bankchange" style="color:#E23A7C;text-decoration:underline;font-weight:600">change</a></div>
   </div>
 </div>
 <div class="feebig" id="fee"></div>
@@ -887,7 +887,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 // A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
-(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
+(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="This link has already been used or expired — go back to WhatsApp and ask me for a fresh link";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/mapPicker";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 var picked={pickup:null,dropoff:null};
@@ -896,6 +896,7 @@ var picked={pickup:null,dropoff:null};
 var BATCH = location.pathname.indexOf('/bulk') > -1;
 var DROPS = [];   // completed drops: {pickup,dropoff,receiver_name,receiver_phone,item,note}
 var BULK_API = "https://wbsczuwofdrliloueskw.supabase.co/functions/v1/bulkOrders";
+var VENDOR_API = "https://wbsczuwofdrliloueskw.supabase.co/functions/v1/vendorOrders"; // COD (collect the buyer's payment)
 var SENDER_NAME='', SENDER_PHONE='';   // captured once (bulk = one sender, many drops)
 var BATCH_PICKUP=null;                  // the single pickup, set once and reused for every drop
 var BT={list:[],timer:null,pn:0};      // batch tracker state
@@ -1066,14 +1067,14 @@ function step(){var c=document.getElementById('continue');if(!c)return;var show=
 function routeNext(){ if(BATCH){ addLocation(); } else { showStep(2); } }
 function detailsNext(){ if(!BATCH){ showStep(4); } }
 var dropMarkers=[];
-var ITEMS=[['Documents','📄'],['Food','🍲'],['Clothes','👕'],['Parcel','📦'],['Gadget','📱'],['Medicine','💊'],['Gift','🎁']];
+var ITEMS=[['Documents',''],['Food',''],['Clothes',''],['Parcel',''],['Gadget',''],['Medicine',''],['Gift','']];
 // PHASE 1 — add a drop-off LOCATION only (no details yet); keep the one pickup fixed.
 function addLocation(){
   if(!(picked.pickup&&picked.dropoff))return;
   if(!SENDER_PHONE){ SENDER_NAME=val('sname')||MYNAME||''; SENDER_PHONE=val('sphone')||MYPHONE||''; }
   if(!BATCH_PICKUP){ BATCH_PICKUP={address:picked.pickup.address,lat:picked.pickup.lat,lng:picked.pickup.lng}; }
   DROPS.push({ dropoff:{address:picked.dropoff.address,lat:picked.dropoff.lat,lng:picked.dropoff.lng},
-    receiver_name:'', receiver_phone:'', item:'', note:'' });
+    receiver_name:'', receiver_phone:'', item:'', note:'', goods:'' });
   try{ var n=DROPS.length; var mk=L.marker([picked.dropoff.lat,picked.dropoff.lng],{interactive:false,zIndexOffset:400,icon:L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],html:'<div class="dropnum">'+n+'</div>'})}).addTo(map); dropMarkers.push(mk); }catch(e){}
   try{ clearLoc('dropoff'); }catch(e){}
   picked.pickup=BATCH_PICKUP;
@@ -1085,18 +1086,29 @@ function rebuildDropMarkers(){
   DROPS.forEach(function(d,i){ try{ var mk=L.marker([d.dropoff.lat,d.dropoff.lng],{interactive:false,zIndexOffset:400,icon:L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],html:'<div class="dropnum">'+(i+1)+'</div>'})}).addTo(map); dropMarkers.push(mk); }catch(e){} });
 }
 // Route-step guidance: pickup first, then each numbered drop-off.
+var ORDS=['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth'];
+function ord(n){ return ORDS[n-1] || (n+'th'); }
 function batchPrompt(){
-  var s=document.querySelector('#step-route .sec.first'); if(!s)return;
-  s.textContent = !BATCH_PICKUP ? 'Where are we picking up from?' : 'Add drop-off #'+(DROPS.length+1);
-  var din=document.getElementById('din'); if(din)din.placeholder = BATCH_PICKUP ? ('Drop-off #'+(DROPS.length+1)) : 'Drop-off';
+  var s=document.querySelector('#step-route .sec.first');
+  var n=DROPS.length+1;   // the drop-off they're adding now
+  if(s) s.textContent = !BATCH_PICKUP ? 'First, where are we picking up from?' : ('Where is your '+ord(n)+' drop-off?');
+  var din=document.getElementById('din'); if(din)din.placeholder = BATCH_PICKUP ? ('Your '+ord(n)+' drop-off') : 'Drop-off';
   var pin=document.getElementById('pin'); if(pin&&BATCH_PICKUP&&!pin.value)pin.value=BATCH_PICKUP.address;
+  // The Continue button on the route step COUNTS the drop-off, so it's obvious you're adding more.
+  var cn=document.getElementById('continue'); if(cn)cn.innerHTML='Add '+ord(n)+' drop-off <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+  // Little guide under the route once the pickup is set — non-tech-clear "how to finish".
+  var hint=document.getElementById('bhint');
+  if(hint) hint.textContent = BATCH_PICKUP
+    ? (DROPS.length ? ('Add another drop-off, or tap “Continue” below when you’ve added them all.') : ('Pin your first drop-off, then tap “Add first drop-off”.'))
+    : 'Set your pickup first, then add each drop-off.';
 }
-// The floating bar: "N locations · Add details →" (phase 1 → phase 2).
+// The floating bar is the clear WAY FORWARD once drop-offs exist — worded as a plain "Continue".
 function batchBar(){
   var bar=document.getElementById('batchbar');
   if(!bar){ bar=document.createElement('div'); bar.id='batchbar'; bar.className='batchbar'; document.getElementById('app').appendChild(bar); bar.onclick=showDetails; }
-  bar.innerHTML='<span>📍 <b>'+DROPS.length+'</b> '+(DROPS.length===1?'location':'locations')+'</span><span class="bbgo">Add details &rarr;</span>';
-  bar.style.display=DROPS.length?'flex':'none';
+  var n=DROPS.length;
+  bar.innerHTML='<span><b>'+n+'</b> drop-off'+(n===1?'':'s')+' added</span><span class="bbgo">Continue &rarr;</span>';
+  bar.style.display=n?'flex':'none';
 }
 // PHASE 2 — a scrollable card per numbered stop: item + receiver, plus pay + book. Over the live map.
 function showDetails(){
@@ -1109,14 +1121,18 @@ function showDetails(){
     return '<div class="loccard" data-card="'+i+'"><div class="lchd"><span class="lcn">'+(i+1)+'</span><span class="lca">'+esc(String(d.dropoff.address).split(',').slice(0,2).map(function(x){return x.trim();}).join(', '))+'</span><button type="button" class="lcx" data-i="'+i+'" aria-label="Remove">&times;</button></div>'
       +'<div class="lchips">'+chips+'</div>'
       +'<input class="litem" data-i="'+i+'" placeholder="…or type what&rsquo;s going here" value="'+esc(d.item)+'">'
-      +'<div class="lrow2"><input class="lrn" data-i="'+i+'" placeholder="Receiver name" value="'+esc(d.receiver_name)+'"><input class="lrp" data-i="'+i+'" type="tel" inputmode="tel" placeholder="Receiver phone *" value="'+esc(d.receiver_phone)+'"></div></div>'; }).join('');
+      +'<div class="lrow2"><input class="lrn" data-i="'+i+'" placeholder="Receiver name" value="'+esc(d.receiver_name)+'"><input class="lrp" data-i="'+i+'" type="tel" inputmode="tel" placeholder="Receiver phone *" value="'+esc(d.receiver_phone)+'"></div>'
+      +'<input class="lgoods" data-i="'+i+'" type="number" inputmode="numeric" placeholder="How much should the buyer pay for this? (₦)" value="'+esc(d.goods||'')+'" style="display:none;margin-top:8px"></div>'; }).join('');
   var podRow = (POD_SURCHARGE>=0 && document.getElementById('opt-pod') && document.getElementById('opt-pod').style.display!=='none')
-    ? '<label class="bpayopt"><input type="radio" name="bpay" value="pod"> 🛵 Pay on delivery — cash to each rider</label>' : '';
+    ? '<label class="bpayopt"><input type="radio" name="bpay" value="pod"> Pay on delivery — cash to each rider</label>' : '';
+  // COD = we collect the buyer's payment for the goods and pay you out (only if enabled for this customer).
+  var codRow = (document.getElementById('opt-cod') && document.getElementById('opt-cod').style.display!=='none')
+    ? '<label class="bpayopt"><input type="radio" name="bpay" value="cod"> COD — the buyer pays for the goods, we collect it for you</label>' : '';
   ov.innerHTML='<div class="bpanel"><div class="bph"><b>What&rsquo;s going to each stop?</b><button type="button" class="bclose" id="bclose">&times;</button></div>'
     +'<p class="bsub">Pickup: '+esc(String(BATCH_PICKUP?BATCH_PICKUP.address:'').split(',')[0])+' &middot; '+DROPS.length+' stop'+(DROPS.length>1?'s':'')+' <span id="btot"></span></p>'
     +'<div class="loclist">'+cards+'</div>'
     +'<button type="button" id="badd" class="bsecondary">＋ Add another location</button>'
-    +'<div class="bpayw"><label class="bpayopt"><input type="radio" name="bpay" value="now" checked> 💳 Pay all now (card or transfer)</label>'+podRow+'</div>'
+    +'<div class="bpayw"><label class="bpayopt"><input type="radio" name="bpay" value="now" checked> Pay all now (card or transfer)</label>'+podRow+codRow+'</div>'
     +'<button type="button" id="bbook" class="bprimary">Book '+DROPS.length+' deliver'+(DROPS.length>1?'ies':'y')+'</button></div>';
   ov.style.display='flex';
   document.getElementById('bclose').onclick=function(){ ov.style.display='none'; batchBar(); };
@@ -1131,6 +1147,12 @@ function showDetails(){
     Array.prototype.forEach.call(ov.querySelectorAll('.lchip[data-i="'+i+'"]'),function(x){x.classList.toggle('on',x.getAttribute('data-it')===f.value.trim());}); }; });
   Array.prototype.forEach.call(ov.querySelectorAll('.lrn'),function(f){ f.oninput=function(){ DROPS[Number(f.getAttribute('data-i'))].receiver_name=f.value.trim(); }; });
   Array.prototype.forEach.call(ov.querySelectorAll('.lrp'),function(f){ f.oninput=function(){ DROPS[Number(f.getAttribute('data-i'))].receiver_phone=f.value.trim(); }; });
+  Array.prototype.forEach.call(ov.querySelectorAll('.lgoods'),function(f){ f.oninput=function(){ DROPS[Number(f.getAttribute('data-i'))].goods=f.value.replace(/[^0-9.]/g,''); }; });
+  // COD reveals a "buyer pays" amount on every stop; the book button names the action.
+  function syncPay(){ var pm=(ov.querySelector('input[name=bpay]:checked')||{}).value||'now'; var cod=pm==='cod';
+    Array.prototype.forEach.call(ov.querySelectorAll('.lgoods'),function(g){ g.style.display=cod?'block':'none'; });
+    var bb=document.getElementById('bbook'); if(bb)bb.textContent=cod?'Book & send buyers their payment request':('Book '+DROPS.length+' deliver'+(DROPS.length>1?'ies':'y')); }
+  Array.prototype.forEach.call(ov.querySelectorAll('input[name=bpay]'),function(r){ r.onchange=syncPay; }); syncPay();
   Array.prototype.forEach.call(ov.querySelectorAll('.lcx'),function(b){ b.onclick=function(){ DROPS.splice(Number(b.getAttribute('data-i')),1); rebuildDropMarkers(); if(DROPS.length)showDetails(); else { ov.style.display='none'; batchBar(); try{ batchPrompt(); }catch(e){} } }; });
   // Live total (best-effort; the book re-prices authoritatively).
   fetch(BULK_API+'?session='+encodeURIComponent(SESSION)+'&action=quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deliveries:dropsPayload()})})
@@ -1142,27 +1164,47 @@ function dropsPayload(){ return DROPS.map(function(d){ return {
   delivery_address:d.dropoff.address, delivery_coords:d.dropoff.lat+','+d.dropoff.lng,
   receiver_name:d.receiver_name, receiver_phone:d.receiver_phone, item:d.item, delivery_instruction:d.note }; }); }
 function bookBatch(pm){
-  // Every stop needs an item + a valid receiver phone — point the client at the first that doesn't.
-  for(var i=0;i<DROPS.length;i++){ var d=DROPS[i], ph=String(d.receiver_phone||'').replace(/\\D/g,'');
-    if(!d.item||ph.length<10){ alert('Stop '+(i+1)+' still needs '+(!d.item?'an item':'')+(!d.item&&ph.length<10?' and ':'')+(ph.length<10?'a valid receiver phone':'')+'.');
+  var cod=pm==='cod';
+  // Every stop needs an item + a valid receiver phone (+ a "buyer pays" amount for COD).
+  for(var i=0;i<DROPS.length;i++){ var d=DROPS[i], ph=String(d.receiver_phone||'').replace(/\\D/g,''), g=Number(String(d.goods||'').replace(/[^0-9.]/g,''));
+    var miss=[]; if(!d.item)miss.push('an item'); if(ph.length<10)miss.push('a valid receiver phone'); if(cod&&!(g>0))miss.push('how much the buyer pays');
+    if(miss.length){ alert('Stop '+(i+1)+' still needs '+miss.join(' and ')+'.');
       var card=document.querySelector('.loccard[data-card="'+i+'"]'); if(card)card.scrollIntoView({behavior:'smooth',block:'center'}); return; } }
-  var btn=document.getElementById('bbook'); if(btn){ btn.disabled=true; btn.textContent='Booking…'; }
+  var btn=document.getElementById('bbook'); var lbl=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='Booking…'; }
+  function fail(msg){ if(btn){ btn.disabled=false; btn.textContent=lbl; } alert(msg); }
+  // ── COD path → the proven vendorOrders money flow: it books each delivery, collects the buyer's
+  // payment, deducts our fee + delivery, and pays you out. We just hand it the shop + each buyer.
+  if(cod){
+    var orders=DROPS.map(function(d){ return { buyer_name:d.receiver_name, buyer_phone:d.receiver_phone,
+      address:d.dropoff.address, delivery_coords:d.dropoff.lat+','+d.dropoff.lng, item:d.item,
+      goods_value:String(d.goods||'').replace(/[^0-9.]/g,'') }; });
+    fetch(VENDOR_API+'?session='+encodeURIComponent(SESSION),{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({session:SESSION,shop_address:BATCH_PICKUP.address,pickup_coords:BATCH_PICKUP.lat+','+BATCH_PICKUP.lng,orders:orders})})
+     .then(function(r){return r.json();}).then(function(j){
+       if(j&&j.ok&&j.results){ var okd=j.results.filter(function(r){return r.ok;}); var bad=j.results.filter(function(r){return !r.ok;});
+         if(okd.length){ openBatchTracker(okd.map(function(r){return {n:r.order_number,receiver:r.buyer};})); return; }
+         fail(bad.length?('Couldn\\'t book: '+(bad[0].error||'check the amounts/addresses')):'Couldn\\'t book just now — please try again.'); return; }
+       fail((j&&j.error)?('Couldn\\'t book: '+j.error):'Couldn\\'t book just now — please try again.');
+     }).catch(function(){ fail('Network hiccup — try again.'); });
+    return;
+  }
+  // ── Pay-now / pay-on-delivery → bulkOrders.
   fetch(BULK_API+'?session='+encodeURIComponent(SESSION),{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({session:SESSION,sender_name:SENDER_NAME,sender_phone:SENDER_PHONE,pay_method:pm,deliveries:dropsPayload()})})
    .then(function(r){return r.json();}).then(function(j){
-     if(j&&j.mode==='now'&&j.payment_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment 🔒</p></div>'; window.location.href=j.payment_url; return; }
+     if(j&&j.mode==='now'&&j.payment_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment</p></div>'; window.location.href=j.payment_url; return; }
      if(j&&j.orders&&j.orders.length){ openBatchTracker(j.orders); return; }
-     if(j&&j.ok){ document.getElementById('app').innerHTML='<div class="done"><h2>All set! 🙌</h2><p class="muted">'+(j.booked||DROPS.length)+' deliveries created — a rider is being assigned to each.</p></div>'; return; }
-     if(btn){ btn.disabled=false; btn.textContent='Book '+DROPS.length+' deliveries'; } alert((j&&j.error)?('Couldn\\'t book: '+j.error):'Couldn\\'t book just now — please try again.');
-   }).catch(function(){ if(btn){ btn.disabled=false; btn.textContent='Book '+DROPS.length+' deliveries'; } alert('Network hiccup — try again.'); });
+     if(j&&j.ok){ document.getElementById('app').innerHTML='<div class="done"><h2>All set!</h2><p class="muted">'+(j.booked||DROPS.length)+' deliveries created — a rider is being assigned to each.</p></div>'; return; }
+     fail((j&&j.error)?('Couldn\\'t book: '+j.error):'Couldn\\'t book just now — please try again.');
+   }).catch(function(){ fail('Network hiccup — try again.'); });
 }
 // Live batch tracker — one status chip per delivery (same pipeline as the standalone /bulk tracker).
 function bChip(st){ if(st==='delivered')return '<span class="bchip bc-del">Delivered ✓</span>'; if(st==='failed'||st==='cancelled')return '<span class="bchip bc-fail">'+(st==='failed'?'Failed':'Cancelled')+'</span>'; if(st==='ontheway')return '<span class="bchip bc-otw">On the way</span>'; if(st==='assigned')return '<span class="bchip bc-asg">Rider assigned</span>'; return '<span class="bchip bc-wait">Finding rider…</span>'; }
 function btRender(){
-  var rows=BT.list.map(function(o){ return '<div class="btrow"><div class="nm">'+esc(o.receiver||'Delivery')+(o.rider?('<span class="rd">🛵 '+esc(o.rider)+'</span>'):'')+'</div>'+bChip(o.status)+'</div>'; }).join('');
+  var rows=BT.list.map(function(o){ return '<div class="btrow"><div class="nm">'+esc(o.receiver||'Delivery')+(o.rider?('<span class="rd">'+esc(o.rider)+'</span>'):'')+'</div>'+bChip(o.status)+'</div>'; }).join('');
   var doneAll=BT.list.length&&BT.list.every(function(o){return o.status==='delivered'||o.status==='failed'||o.status==='cancelled';});
-  document.getElementById('app').innerHTML='<div class="brevfull"><h2>Your deliveries 📦</h2><p class="bsub">Live status of each rider — updated as they move.</p><div class="btrk">'+rows+'</div>'
-    +(doneAll?(BATCH?'<p class="bnote">All delivered 🎉 — thanks for shipping with us 💜</p>':'<a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a>')
+  document.getElementById('app').innerHTML='<div class="brevfull"><h2>Your deliveries</h2><p class="bsub">Live status of each rider — updated as they move.</p><div class="btrk">'+rows+'</div>'
+    +(doneAll?(BATCH?'<p class="bnote">All delivered — thanks for shipping with us</p>':'<a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a>')
              :'<p class="bnote">Updates land here'+(BATCH?'':' and in your WhatsApp chat')+' — you can close this page.</p>')+'</div>';
   if(doneAll&&BT.timer){clearInterval(BT.timer);BT.timer=null;}
 }
@@ -1179,10 +1221,16 @@ function openBatchTracker(orders){
 // Batch-mode chrome: relabel the route CTA to "Add location", inject the batch CSS. Batch NEVER
 // uses the single-delivery details/pay steps — phase 2 is the card overlay (showDetails).
 function initBatch(){
-  var cn=document.getElementById('continue'); if(cn)cn.innerHTML='Add location <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+  // A plain-language guide sits under the route inputs, before the Continue button, so a
+  // non-tech customer always knows what to do next (pin a drop-off, or continue when done).
+  var cn=document.getElementById('continue');
+  if(cn&&!document.getElementById('bhint')){ var hn=document.createElement('div'); hn.id='bhint'; hn.className='bhint'; cn.parentNode.insertBefore(hn,cn); }
   try{ batchPrompt(); }catch(e){}
-  var css='.batchbar{position:fixed;left:14px;right:14px;bottom:16px;z-index:1400;display:none;align-items:center;justify-content:space-between;gap:10px;background:var(--plum);color:#fff;border-radius:16px;padding:14px 18px;box-shadow:0 12px 30px rgba(58,5,55,.34);font-size:14px;font-weight:700;cursor:pointer}'
-   +'.batchbar b{font-size:16px}.batchbar .bbgo{font-size:13px;opacity:.92}'
+  var css='.bhint{font-size:12.5px;color:var(--ink-2);line-height:1.5;margin:14px 2px 2px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:12px}'
+   +'.batchbar{position:fixed;left:14px;right:14px;bottom:16px;z-index:1400;display:none;align-items:center;justify-content:space-between;gap:10px;background:var(--plum);color:#fff;border-radius:16px;padding:15px 18px;box-shadow:0 14px 34px rgba(58,5,55,.4);font-size:14.5px;font-weight:700;cursor:pointer;animation:barpop .3s var(--ease)}'
+   +'@keyframes barpop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}'
+   +'.batchbar .bbgo{font-size:14px;font-weight:800;background:rgba(255,255,255,.18);padding:7px 13px;border-radius:99px}'
+   +'.batchbar b{font-size:16px}'
    +'.batchsheet{position:fixed;inset:0;z-index:1500;display:none;align-items:flex-end;background:rgba(30,4,28,.42)}'
    +'.bpanel{width:100%;max-width:480px;margin:0 auto;background:var(--surface);border-radius:22px 22px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));max-height:86vh;overflow-y:auto;animation:rise .35s var(--ease)}'
    +'.bph{display:flex;align-items:center;justify-content:space-between}.bph b{font-size:19px;font-weight:800;color:var(--ink)}'
@@ -1239,9 +1287,9 @@ function reverseSet(which,lat,lng){
     try{ buildPickConf(); }catch(e){}             // keep the confirm-pickup panel in step with a dragged pin
   }).catch(function(){ fld.value=picked[which].address; });
 }
-// Show/hide the little ✕ clear button when a field has text.
+// Show/hide the little clear button when a field has text.
 function showClr(which,on){ var b=document.querySelector('.clr[data-clr="'+which+'"]'); if(b)b.style.display=on?'block':'none'; }
-// Wipe one end so the customer can re-enter it cleanly (the ✕ button + when they retype).
+// Wipe one end so the customer can re-enter it cleanly (the button + when they retype).
 function clearLoc(which){
   var inp=document.getElementById(which==='pickup'?'pin':'din'); inp.value='';
   var old=which==='pickup'?mP:mD; if(old)map.removeLayer(old); if(which==='pickup')mP=null;else mD=null;
@@ -1264,7 +1312,7 @@ function lockOtherLoc(){ Array.prototype.forEach.call(document.querySelectorAll(
 // Use the customer's GPS for EITHER the pickup or the drop-off. Pickup = they're sending (their
 // details go to Sender); drop-off = they're receiving (their details go to Receiver).
 // silent = the automatic pickup default on page open. It must NEVER pop an alert (a denied permission
-// is a normal outcome there); the manual 📍 tap still explains itself.
+// is a normal outcome there); the manual tap still explains itself.
 function useLoc(which,silent){
   which = which==='dropoff' ? 'dropoff' : 'pickup';
   var btns=document.querySelectorAll('.locp');
@@ -1280,7 +1328,7 @@ function useLoc(which,silent){
     // Just set the pin — we no longer auto-fill names/phones by side (the booker's own end is filled
     // server-side from their WhatsApp number, so tapping a pin never mis-assigns who's the sender/receiver).
     validate();
-    liveSide=which; lockOtherLoc();   // your live location is one spot — lock the other end's 📍
+    liveSide=which; lockOtherLoc();   // your live location is one spot — lock the other end's
   }, function(){
     btns.forEach(function(b){b.classList.remove('busy');b.disabled=false;});
     lockOtherLoc();
@@ -1289,7 +1337,7 @@ function useLoc(which,silent){
 }
 function val(id){return (document.getElementById(id).value||'').trim();}
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var ok=v&&phoneOk(v);var bad=v&&!ok;e.style.borderColor=bad?'#dc2626':(ok?'#16a34a':'');e.style.borderWidth=ok?'1.5px':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
+function flagPhone(id){var e=document.getElementById(id);if(!e)return;function u(){var v=(e.value||'').trim();var ok=v&&phoneOk(v);var bad=v&&!ok;e.style.borderColor=bad?'#dc2626':(ok?'#16a34a':'');e.style.borderWidth=ok?'1.5px':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
 function validate(){
   // Step 2 (details) completeness gates the Continue-to-payment button: one good phone + an item.
   // Never leave a dead grey button — say exactly what is still missing.
@@ -1371,7 +1419,7 @@ function resolveAcct(){
   nm.style.display='block'; nm.style.color='#7a5b1a'; nm.textContent='Checking account…';
   fetch(api('action=resolve_account&account_number='+encodeURIComponent(acct)+'&bank_code='+encodeURIComponent(code)))
    .then(function(r){return r.json();}).then(function(j){
-     if(j&&j.name){ ACCT_OK=true; nm.style.color='#166534'; nm.textContent='✅ '+j.name; }
+     if(j&&j.name){ ACCT_OK=true; nm.style.color='#166534'; nm.textContent=''+j.name; }
      else { ACCT_OK=false; nm.style.color='#c0392b'; nm.textContent='Couldn\\'t verify that account — check the number and bank.'; }
    }).catch(function(){ nm.style.display='none'; });
 }
@@ -1525,7 +1573,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
     // PICKUP DEFAULT = where the booker is standing. Unless the chat already named a pickup, we drop
     // their current-location pin automatically so the common case needs zero typing. They can clear it
-    // with the ✕ (clearLoc) or tap a saved place if we guessed wrong. A denied/failed fix just leaves
+    // with the (clearLoc) or tap a saved place if we guessed wrong. A denied/failed fix just leaves
     // the field empty — never blocks them. Small delay so the map + sheet paint before the permission ask.
     if(!picked.pickup){ setTimeout(function(){ if(!picked.pickup) useLoc('pickup',true); }, 400); }
     validate(); step();
@@ -1604,7 +1652,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(!(isFinite(lat)&&isFinite(lng)))return;
     try{
       if(!riderM){
-        riderM=L.marker([lat,lng],{interactive:false,zIndexOffset:600,icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="ridericon">🛵</div>'})}).addTo(map);
+        riderM=L.marker([lat,lng],{interactive:false,zIndexOffset:600,icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="ridericon"></div>'})}).addTo(map);
         var el=riderM._icon; if(el)el.classList.add('rglide');
         var tgt=(trkState==='ontheway')?picked.dropoff:picked.pickup;
         if(tgt)try{map.fitBounds(L.latLngBounds([[lat,lng],[tgt.lat,tgt.lng]]),{padding:[46,46],maxZoom:16});}catch(e){}
@@ -1620,12 +1668,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   var TRK=['Order placed','Rider assigned','Picked up','Delivered'];
   function trkHead(st){
     if(st==='searching')return ['Finding your rider…','Your order is out to riders nearby.'];
-    if(st==='assigned')return ['Rider assigned 🎉','Your rider is heading to the pickup now.'];
-    if(st==='ontheway')return ['Picked up — on the way 🛵','Your parcel is moving — we message you at every step too.'];
-    if(st==='delivered')return ['Delivered 🎉','Thank you for sending with Lasalu Drop 💜'];
-    if(st==='failed')return ['Delivery issue 🙏','Something interrupted this delivery — our team is on it and will message you.'];
-    if(st==='cancelled')return ['Order cancelled ✅','Nothing was charged — book again anytime 💜'];
-    return ['Still matching you 🛵','Riders are confirming — the moment one accepts, we update here and on WhatsApp.'];
+    if(st==='assigned')return ['Rider assigned','Your rider is heading to the pickup now.'];
+    if(st==='ontheway')return ['Picked up — on the way','Your parcel is moving — we message you at every step too.'];
+    if(st==='delivered')return ['Delivered','Thank you for sending with Lasalu Drop'];
+    if(st==='failed')return ['Delivery issue','Something interrupted this delivery — our team is on it and will message you.'];
+    if(st==='cancelled')return ['Order cancelled','Nothing was charged — book again anytime'];
+    return ['Still matching you','Riders are confirming — the moment one accepts, we update here and on WhatsApp.'];
   }
   function stageN(st){ if(st==='assigned')return 2; if(st==='ontheway')return 3; if(st==='delivered')return 4; return 1; }
   function trackUI(st){
@@ -1645,10 +1693,10 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // one-tap Call. The same trust move Bolt makes the moment a driver accepts.
     var riderRow='';
     if(RIDER&&(RIDER.name||RIDER.phone)&&(st==='assigned'||st==='ontheway')){
-      var _init=(RIDER.name||'').trim().charAt(0).toUpperCase()||'🛵';
+      var _init=(RIDER.name||'').trim().charAt(0).toUpperCase()||'';
       riderRow='<div class="riderrow"><div class="rdrav">'+esc(_init)+'</div>'
         +'<div class="rdrmeta"><span class="rdrcap">Your rider</span><span class="rdrnm">'+esc(RIDER.name||'On the job')+'</span></div>'
-        +(RIDER.phone?('<a class="rdrcall" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'">📞 Call</a>'):'')+'</div>';
+        +(RIDER.phone?('<a class="rdrcall" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'">Call</a>'):'')+'</div>';
     }
     var live=(st==='searching'||st==='settle')?'<span class="livedot"></span>':'';
     box.innerHTML='<div class="search"><h2>'+live+h[0]+'</h2><p class="smut">'+h[1]+'</p>'
@@ -1656,7 +1704,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       +'<div class="trk">'+rows+'</div>'
       +riderRow
       +(feeLine&&!ended?('<p class="feenote">'+feeLine+'</p>'):'')
-      +(act?'<div class="trkact"><button type="button" id="trkedit">✎ Edit location</button><button type="button" id="trkcancel" class="tkx">Cancel order</button></div>':'')
+      +(act?'<div class="trkact"><button type="button" id="trkedit">Edit location</button><button type="button" id="trkcancel" class="tkx">Cancel order</button></div>':'')
       +(ended?'<div class="trkact"><button type="button" id="trknew">Book another delivery</button></div>'
              :(RESUMED?'<button type="button" id="trknew" class="tknew">＋ Book another delivery</button>':''))
       +((st==='delivered'||st==='cancelled')?'':'<p class="ssub">You can close this page — every update also lands in your WhatsApp chat.</p>')
@@ -1697,7 +1745,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         if(s&&(trkState==='assigned'||trkState==='ontheway')){
           updateRider(Number(s.rider_lat),Number(s.rider_lng));
           var eb=document.getElementById('eta');
-          if(eb&&s.eta_mins){ eb.textContent='🛵 ~'+s.eta_mins+' min'; eb.style.display='block'; }
+          if(eb&&s.eta_mins){ eb.textContent='~'+s.eta_mins+' min'; eb.style.display='block'; }
         }
       }).catch(function(){});
     },ms);
@@ -1721,7 +1769,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var _to={}; try{ if(window.AbortSignal&&AbortSignal.timeout)_to={signal:AbortSignal.timeout(25000)}; }catch(e){}
     fetch(api('action=cancelorder&order='+encodeURIComponent(ORDNUM)),_to).then(function(r){return r.json();}).then(function(s){
       if(s&&(s.cancelled||s.already)){ onOk(); return; }
-      if(s&&s.error==='too-late'){ alert('The rider already has your parcel — message us on WhatsApp and we will sort it out 🙏'); trackUI(trkState); return; }
+      if(s&&s.error==='too-late'){ alert('The rider already has your parcel — message us on WhatsApp and we will sort it out'); trackUI(trkState); return; }
       alert('Could not cancel just now — please try again, or message us on WhatsApp.'); trackUI(trkState);
     }).catch(function(){ alert('Network hiccup — please try again.'); trackUI(trkState); });
   }
@@ -1750,7 +1798,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     ['step-route','step-pickup','step-details','step-pay'].forEach(function(id){ var e=document.getElementById(id); if(e)e.style.display='none'; });
     var sh=document.querySelector('.sheet');
     if(sh&&!document.getElementById('searchbox')){ var bx=document.createElement('div'); bx.id='searchbox'; sh.appendChild(bx); }
-    feeLine=j.fee?('The receiver pays <b>₦'+Number(j.fee).toLocaleString()+'</b> in cash on delivery.'):(j.cod_booked?'Your full breakdown is in your WhatsApp chat 🧾':'');
+    feeLine=j.fee?('The receiver pays <b>₦'+Number(j.fee).toLocaleString()+'</b> in cash on delivery.'):(j.cod_booked?'Your full breakdown is in your WhatsApp chat':'');
     // MODE and ORDNUM must be set BEFORE the first render — the cancel/edit buttons key off them,
     // and the searching phase is exactly when those buttons matter most.
     MODE=j.cod_booked?'cod':'pod'; pollN=0; ORDNUM=j.order_number||'';
@@ -1779,12 +1827,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     })})
      .then(r=>r.json()).then(j=>{
        // App (pay now): the server returns a payment link — go straight to secure checkout, no WhatsApp.
-       if(j&&j.pay_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment 🔒</p></div>'; window.location.href=j.pay_url; return; }
+       if(j&&j.pay_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment</p></div>'; window.location.href=j.pay_url; return; }
        // Rider dispatched now (pay-on-delivery or COD): keep the map alive and search Bolt-style —
        // radar pulse on the pickup, creeping bar, real "Rider assigned" the moment Shipday confirms.
        if(j&&(j.booked||j.cod_booked)){ showSearching(j); return; }
        // Chat sessions: the order + price are waiting in WhatsApp (reply YES to pay).
-       document.getElementById('app').innerHTML='<div class="done"><h2>✅ All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
+       document.getElementById('app').innerHTML='<div class="done"><h2>All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
      }).catch(function(){ b.disabled=false; b.textContent='Confirm & book'; alert('Network hiccup — try again.'); });
   };
 }
@@ -2148,12 +2196,12 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 /* No estimate yet = no estimate readout. A bare dash reads as broken. */
 #estwrap{display:none}
 #estwrap.on{display:block}</style></head><body><div class="wrap" id="app">
-<div class="hero"><div class="glow">&#9992;&#65039;</div>
+<div class="hero"><div class="glow"></div>
 <h1>Ship internationally</h1>
 <p>Door pickup in Port Harcourt, delivered worldwide. You only pay after our rider weighs it.</p></div>
 <div class="sheet">
 <div class="steps"><div class="sd on" id="sd0"></div><div class="sd" id="sd1"></div><div class="sd" id="sd2"></div><div class="sd" id="sd3"></div><div class="sd" id="sd4"></div></div>
-<div class="routestrip" id="rstrip"><span class="rsflag">&#127475;&#127468;</span><span>Port Harcourt</span><span class="rsarrow">&mdash;&nbsp;&#9992;&#65039;&nbsp;&mdash;</span><span class="rsflag" id="rsflag">&#127758;</span><span id="rsname"></span></div>
+<div class="routestrip" id="rstrip"><span class="rsflag"></span><span>Port Harcourt</span><span class="rsarrow">&mdash;&nbsp;&nbsp;&mdash;</span><span class="rsflag" id="rsflag"></span><span id="rsname"></span></div>
 
 <div class="step on" id="s0">
 <div class="qh">How should it fly?</div>
@@ -2168,16 +2216,16 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 <div class="qh">Where is it going?</div>
 <div class="qs">Tap the country, then tell us roughly how heavy it is.</div>
 <div class="destgrid" id="destgrid">
-<button type="button" class="dchip" data-c="UNITED KINGDOM (Z1)"><span class="fl">&#127468;&#127463;</span><span class="dn">United Kingdom</span></button>
-<button type="button" class="dchip" data-c="USA (Z3)"><span class="fl">&#127482;&#127480;</span><span class="dn">United States</span></button>
-<button type="button" class="dchip" data-c="CANADA (Z3)"><span class="fl">&#127464;&#127462;</span><span class="dn">Canada</span></button>
-<button type="button" class="dchip" data-c="GHANA (Z2)"><span class="fl">&#127468;&#127469;</span><span class="dn">Ghana</span></button>
-<button type="button" class="dchip" data-c="UNITED ARAB EMIRATES (Z6)"><span class="fl">&#127462;&#127466;</span><span class="dn">UAE &middot; Dubai</span></button>
-<button type="button" class="dchip" data-c="GERMANY (Z4)"><span class="fl">&#127465;&#127466;</span><span class="dn">Germany</span></button>
-<button type="button" class="dchip" data-c="ITALY (Z4)"><span class="fl">&#127470;&#127481;</span><span class="dn">Italy</span></button>
-<button type="button" class="dchip" data-c="CHINA (Z7)"><span class="fl">&#127464;&#127475;</span><span class="dn">China</span></button>
+<button type="button" class="dchip" data-c="UNITED KINGDOM (Z1)"><span class="fl"></span><span class="dn">United Kingdom</span></button>
+<button type="button" class="dchip" data-c="USA (Z3)"><span class="fl"></span><span class="dn">United States</span></button>
+<button type="button" class="dchip" data-c="CANADA (Z3)"><span class="fl"></span><span class="dn">Canada</span></button>
+<button type="button" class="dchip" data-c="GHANA (Z2)"><span class="fl"></span><span class="dn">Ghana</span></button>
+<button type="button" class="dchip" data-c="UNITED ARAB EMIRATES (Z6)"><span class="fl"></span><span class="dn">UAE &middot; Dubai</span></button>
+<button type="button" class="dchip" data-c="GERMANY (Z4)"><span class="fl"></span><span class="dn">Germany</span></button>
+<button type="button" class="dchip" data-c="ITALY (Z4)"><span class="fl"></span><span class="dn">Italy</span></button>
+<button type="button" class="dchip" data-c="CHINA (Z7)"><span class="fl"></span><span class="dn">China</span></button>
 </div>
-<button type="button" class="morec" id="morec">&#127758; More countries &#9662;</button>
+<button type="button" class="morec" id="morec">More countries &#9662;</button>
 <div class="morewrap" id="morewrap">
 <div class="lbl">Destination country</div>
 <div class="fld"><select id="country">
@@ -2206,7 +2254,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 <div class="qs">Our rider comes to this address, weighs the item in front of you, and packs it there.</div>
 <div class="two"><div class="fld"><input id="sname" placeholder="Your name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Your phone *"></div></div>
 <div class="lbl">Pickup address <span class="req">*</span></div>
-<div class="fld"><input id="paddr" placeholder="Start typing your address&hellip;" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">&#128205;</button><div class="sugbox" id="psug" style="display:none"></div></div>
+<div class="fld"><input id="paddr" placeholder="Start typing your address&hellip;" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location"></button><div class="sugbox" id="psug" style="display:none"></div></div>
 </div>
 
 <div class="step" id="s3">
@@ -2217,12 +2265,12 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 <div class="fld"><input id="daddr" placeholder="Street, city, postcode&hellip;" autocomplete="off"><div class="sugbox" id="dsug" style="display:none"></div></div>
 <div class="lbl">What are you sending?</div>
 <div class="echips" id="qitems">
-<button type="button" data-i="Documents">&#128196; Documents</button>
-<button type="button" data-i="Clothes">&#128087; Clothes</button>
-<button type="button" data-i="Foodstuff">&#127859; Foodstuff</button>
-<button type="button" data-i="Phone / electronics">&#128241; Electronics</button>
-<button type="button" data-i="Cosmetics">&#128132; Cosmetics</button>
-<button type="button" data-i="Medication">&#128138; Medication</button>
+<button type="button" data-i="Documents">Documents</button>
+<button type="button" data-i="Clothes">Clothes</button>
+<button type="button" data-i="Foodstuff">Foodstuff</button>
+<button type="button" data-i="Phone / electronics">Electronics</button>
+<button type="button" data-i="Cosmetics">Cosmetics</button>
+<button type="button" data-i="Medication">Medication</button>
 </div>
 <div class="fld"><input id="item" placeholder="Or type it &mdash; e.g. documents, clothes, a phone"></div>
 <div class="lbl">Anything we should know? <span style="font-weight:600;text-transform:none;letter-spacing:0;color:#aab0b8">&mdash; optional</span></div>
@@ -2237,7 +2285,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 <div class="err" id="err2"></div>
 </div>
 
-<p class="muted pw">&#128274; Powered by Lasalu Drop Logistics</p>
+<p class="muted pw">Powered by Lasalu Drop Logistics</p>
 </div>
 <div class="bar"><div class="bamt" id="estwrap"><div class="s">Estimate</div><div class="v" id="baramt">&mdash;</div></div><div class="nav"><button type="button" class="back" id="back" style="display:none">Back</button><button id="go">Continue</button></div></div>
 </div>
@@ -2321,10 +2369,10 @@ function wireAuto(inId,sugId,region){
 function snapWeight(){var w=parseFloat(el('weight').value);if(!isNaN(w)&&w>0)el('weight').value=(Math.ceil(w*2)/2).toFixed(1);}
 function markWq(){var w=el('weight').value;Array.prototype.forEach.call(document.querySelectorAll('#wq button'),function(b){b.className=(b.getAttribute('data-kg')===w)?'on':'';});}
 ${EXP_JS}
-// Flags for the route strip (fallback 🌍 for the long tail). Keys = the select's country token.
+// Flags for the route strip (fallback for the long tail). Keys = the select's country token.
 var FLAGS={'UNITED KINGDOM':'\\u{1F1EC}\\u{1F1E7}','IRELAND REP OF':'\\u{1F1EE}\\u{1F1EA}','USA':'\\u{1F1FA}\\u{1F1F8}','CANADA':'\\u{1F1E8}\\u{1F1E6}','GHANA':'\\u{1F1EC}\\u{1F1ED}','UNITED ARAB EMIRATES':'\\u{1F1E6}\\u{1F1EA}','GERMANY':'\\u{1F1E9}\\u{1F1EA}','FRANCE':'\\u{1F1EB}\\u{1F1F7}','ITALY':'\\u{1F1EE}\\u{1F1F9}','SPAIN':'\\u{1F1EA}\\u{1F1F8}','NETHERLANDS':'\\u{1F1F3}\\u{1F1F1}','CHINA':'\\u{1F1E8}\\u{1F1F3}','INDIA':'\\u{1F1EE}\\u{1F1F3}','SOUTH AFRICA':'\\u{1F1FF}\\u{1F1E6}','AUSTRALIA':'\\u{1F1E6}\\u{1F1FA}','SAUDI ARABIA':'\\u{1F1F8}\\u{1F1E6}','TURKEY':'\\u{1F1F9}\\u{1F1F7}','BRAZIL':'\\u{1F1E7}\\u{1F1F7}','KENYA':'\\u{1F1F0}\\u{1F1EA}','EGYPT':'\\u{1F1EA}\\u{1F1EC}','BELGIUM':'\\u{1F1E7}\\u{1F1EA}','SWEDEN':'\\u{1F1F8}\\u{1F1EA}','QATAR':'\\u{1F1F6}\\u{1F1E6}','KUWAIT':'\\u{1F1F0}\\u{1F1FC}','JAPAN':'\\u{1F1EF}\\u{1F1F5}','MALAYSIA':'\\u{1F1F2}\\u{1F1FE}'};
 function stripCty(v){return String(v||'').replace(/\\s*\\(Z\\d\\)\\s*$/,'');}
-// The living route strip: 🇳🇬 PH ✈ <flag> <country>, alive from the moment a country is chosen.
+// The living route strip:PH <flag> <country>, alive from the moment a country is chosen.
 function syncStrip(){
   var c=val('country'), rs=el('rstrip');
   if(!c){ if(rs)rs.className='routestrip'; return; }
@@ -2478,12 +2526,12 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 .parkinfo b{color:#5c3a0c;font-weight:700}
 .orsplit{display:flex;align-items:center;gap:12px;color:var(--ink-3);font-size:11px;font-weight:700;margin:16px 2px 12px;text-transform:uppercase;letter-spacing:.08em}
 .orsplit::before,.orsplit::after{content:"";flex:1;height:1px;background:var(--line)}</style></head><body><div class="wrap" id="app">
-<div class="hero"><div class="glow">🚚</div>
+<div class="hero"><div class="glow"></div>
 <h1>Send a waybill</h1>
-<p>Nationwide via our trusted parks — GUO · GIG · Rivers Joy. We pick up from your door 🛵, your receiver collects at the destination park.</p></div>
+<p>Nationwide via our trusted parks — GUO · GIG · Rivers Joy. We pick up from your door, your receiver collects at the destination park.</p></div>
 <div class="body">
 <div class="steps"><div class="sd on" id="wd0"></div><div class="sd" id="wd1"></div><div class="sd" id="wd2"></div><div class="sd" id="wd3"></div></div>
-<div class="routestrip" id="wstrip"><span class="rsflag">&#128757;</span><span>Door pickup</span><span class="rsarrow">&mdash;&nbsp;&#128666;&nbsp;&mdash;</span><span id="wsname"></span></div>
+<div class="routestrip" id="wstrip"><span class="rsflag"></span><span>Door pickup</span><span class="rsarrow">&mdash;&nbsp;&nbsp;&mdash;</span><span id="wsname"></span></div>
 <div class="chap on" id="ch1">
 <div class="sec" style="margin-top:6px">Where is it going?</div>
 <div class="states" id="states">
@@ -2505,7 +2553,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 </div>
 <div class="chap" id="ch3">
 <div class="sec">Where does our rider collect it? <span class="req">*</span></div>
-<div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">📍</button><div class="sugbox" id="psug" style="display:none"></div></div>
+<div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location"></button><div class="sugbox" id="psug" style="display:none"></div></div>
 <div class="sec secme">Who is sending?<label class="melab" id="wme_s_w" style="display:none"><input type="checkbox" id="wme_s">I&rsquo;m the sender</label></div>
 <div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div></div>
 </div>
@@ -2513,11 +2561,11 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 <div class="sec secme"><span id="wrecvq">Who collects it at the park?</span><label class="melab" id="wme_r_w" style="display:none"><input type="checkbox" id="wme_r">I&rsquo;m the receiver</label></div>
 <div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone *"></div></div>
 <div class="echips" id="witems">
-<button type="button" data-i="Documents">&#128196; Documents</button>
-<button type="button" data-i="Clothes">&#128087; Clothes</button>
-<button type="button" data-i="Foodstuff">&#127859; Foodstuff</button>
-<button type="button" data-i="Phone / electronics">&#128241; Electronics</button>
-<button type="button" data-i="Provisions">&#128722; Provisions</button>
+<button type="button" data-i="Documents">Documents</button>
+<button type="button" data-i="Clothes">Clothes</button>
+<button type="button" data-i="Foodstuff">Foodstuff</button>
+<button type="button" data-i="Phone / electronics">Electronics</button>
+<button type="button" data-i="Provisions">Provisions</button>
 </div>
 <div class="fld"><input id="item" placeholder="Or type what you're sending&hellip;"></div>
 <div class="fld"><input id="dinstr" placeholder="Note for our rider — optional" maxlength="200"></div>
@@ -2529,7 +2577,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 // A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
-(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;if(j&&j.rider_cities&&typeof DOORCSV!=="undefined"){DOORCSV=String(j.rider_cities);if(typeof syncMode==="function")syncMode();if(typeof state!=="undefined"&&state&&typeof recalc==="function")recalc();}if(j&&(j.me_name||j.me_phone)){WBNAME=String(j.me_name||'');WBPHONE=String(j.me_phone||'');if(typeof wInitMe==="function")wInitMe();}if(j&&j.active&&j.active.order_number&&typeof openTracker==="function"){openTracker(j.active.order_number,j.active.status||"");}}).catch(function(){});}catch(e){}},0);})();
+(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="This link has already been used or expired — go back to WhatsApp and ask me for a fresh link";document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;if(j&&j.rider_cities&&typeof DOORCSV!=="undefined"){DOORCSV=String(j.rider_cities);if(typeof syncMode==="function")syncMode();if(typeof state!=="undefined"&&state&&typeof recalc==="function")recalc();}if(j&&(j.me_name||j.me_phone)){WBNAME=String(j.me_name||'');WBPHONE=String(j.me_phone||'');if(typeof wInitMe==="function")wInitMe();}if(j&&j.active&&j.active.order_number&&typeof openTracker==="function"){openTracker(j.active.order_number,j.active.status||"");}}).catch(function(){});}catch(e){}},0);})();
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
 // Booker identity for the one-tap "I'm the sender / receiver" ticks (from the check response).
 var WBNAME='', WBPHONE='', WMESIDE='', WMEFILL_S=false, WMEFILL_R=false;
@@ -2545,11 +2593,11 @@ ${TRACK_JS}
 // hub-bound pickup drops straight into its tracker.
 var WLBL={stages:['Pickup booked','Rider assigned','Item picked up','At our hub'],heads:{
   searching:['Sending a rider your way…','A rider comes to collect your parcel for the trip.'],
-  settle:['Still matching a rider 🛵','Hold tight — the moment one accepts, this page updates.'],
-  assigned:['Rider assigned 🎉','Your rider is heading to you now to collect your parcel.'],
-  ontheway:['Parcel picked up 🛵','Heading to our hub — next stop, the park/carrier for its trip.'],
-  delivered:['At our hub ✅','We hand it to the park/carrier next and send your waybill details on WhatsApp.'],
-  failed:['Pickup hit a snag 😕','No stress — our team is on it and will message you on WhatsApp.']}};
+  settle:['Still matching a rider','Hold tight — the moment one accepts, this page updates.'],
+  assigned:['Rider assigned','Your rider is heading to you now to collect your parcel.'],
+  ontheway:['Parcel picked up','Heading to our hub — next stop, the park/carrier for its trip.'],
+  delivered:['At our hub','We hand it to the park/carrier next and send your waybill details on WhatsApp.'],
+  failed:['Pickup hit a snag','No stress — our team is on it and will message you on WhatsApp.']}};
 function openTracker(ord,stat){
   el('app').innerHTML='<div class="body"><div id="ldltrk"></div></div>';
   ldlTracker({api:API,session:SESSION,mount:'ldltrk',labels:WLBL,
@@ -2577,23 +2625,23 @@ function doorFor(s){
       if(L&&L===c)return cands[a];}}
   return null;
 }
-// The three-leg journey, told honestly: ① our rider brings it to Waterlines park (paid now-side),
-// ② the park's waybill fee — confirmed LIVE at the park and told to you before it's paid,
-// ③ door states only: our connecting rider delivers to the receiver's door (charged on arrival).
+// The three-leg journey, told honestly: 1) our rider brings it to Waterlines park (paid now-side),
+// 2) the park's waybill fee — confirmed LIVE at the park and told to you before it's paid,
+// 3) door states only: our connecting rider delivers to the receiver's door (charged on arrival).
 function legsHTML(dest,doorName){
   return '<div style="margin-top:10px;line-height:1.7">'
     +'<b>How you pay, as it moves:</b><br>'
-    +'&#9312; &#128757; Now — our rider, your door &rarr; <b>Waterlines park</b><br>'
-    +'&#9313; &#127970; At the park — the park&rsquo;s waybill fee, <b>confirmed live</b> and told to you before it&rsquo;s paid'
-    +(doorName?('<br>&#9314; &#127968; On arrival — our rider in <b>'+doorName+'</b> delivers to the receiver&rsquo;s door (<b>charged separately</b> when it lands)'):'')
+    +'1) Now — our rider, your door &rarr; <b>Waterlines park</b><br>'
+    +'2) At the park — the park&rsquo;s waybill fee, <b>confirmed live</b> and told to you before it&rsquo;s paid'
+    +(doorName?('<br>3) On arrival — our rider in <b>'+doorName+'</b> delivers to the receiver&rsquo;s door (<b>charged separately</b> when it lands)'):'')
     +'</div>';
 }
 function parkHTML(dest,over5,doorName){
   var last=doorName
-    ?('&#127968; <b>Door delivery:</b> our own rider in <b>'+doorName+'</b> picks it up at the park and delivers it <b>to your receiver&rsquo;s door</b>.')
+    ?('<b>Door delivery:</b> our own rider in <b>'+doorName+'</b> picks it up at the park and delivers it <b>to your receiver&rsquo;s door</b>.')
     :('Your receiver collects it at the <b>'+dest+' park</b>.');
-  if(over5)return '📦 For a heavier item (over 5kg), our team works out the best price and confirms it in your chat 🙏 '+last;
-  return '🚚 We waybill to <b>'+dest+'</b> through our partner parks. Our rider takes your item to the park and <b>confirms we can waybill it there</b>. '+last+legsHTML(dest,doorName);
+  if(over5)return 'For a heavier item (over 5kg), our team works out the best price and confirms it in your chat '+last;
+  return 'We waybill to <b>'+dest+'</b> through our partner parks. Our rider takes your item to the park and <b>confirms we can waybill it there</b>. '+last+legsHTML(dest,doorName);
 }
 ${EXP_JS}
 function selectState(s,fromCard){state=s;lastPrice=null;isPark=false;
@@ -2629,10 +2677,10 @@ function recalc(){
   el('fee').style.display='flex';el('fee').innerHTML='<div class="l">Calculating…</div>';
   fetch(API+'?action=price&session='+encodeURIComponent(SESSION)+'&mode=waybill&destination='+encodeURIComponent(state)+'&weight='+w).then(function(r){return r.json();}).then(function(j){
     if(j&&j.price){lastPrice=j.price;var _dn=doorFor(state);
-      // Owner-confirmed money semantics (2026-07-24): the flat price covers leg ① (pickup →
-      // Waterlines) + leg ② (the park's waybill) ONLY. The door leg ③ is charged on arrival.
+      // Owner-confirmed money semantics (2026-07-24): the flat price covers leg 1) (pickup →
+      // Waterlines) + leg 2) (the park's waybill) ONLY. The door leg 3) is charged on arrival.
       el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Waybill to '+nameOf(state)+'</div><div class="sub">up to 5kg • covers pickup + the park waybill</div>'
-        +(_dn?('<div class="sub">🏠 our rider in '+_dn+' then delivers to the door — that delivery fee is <b>charged on arrival</b>, not in this price</div>')
+        +(_dn?('<div class="sub">our rider in '+_dn+' then delivers to the door — that delivery fee is <b>charged on arrival</b>, not in this price</div>')
              :('<div class="sub">receiver collects at the '+nameOf(state)+' park — nothing more to pay</div>'))
         +'</div><div class="amt"></div>';
       countUp(el('fee').querySelector('.amt'),Number(j.price),'');}
@@ -2642,7 +2690,7 @@ function recalc(){
   }).catch(function(){el('fee').style.display='none';validate();});
 }
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
+function flagPhone(id){var e=el(id);if(!e)return;function u(){var v=(e.value||'').trim();var bad=v&&!phoneOk(v);e.style.borderColor=bad?'#dc2626':'';var box=e.closest('.row2,.two,.fld')||e.parentNode;var w=document.getElementById(id+'_pe');if(bad){if(!w){w=document.createElement('div');w.id=id+'_pe';w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}e.addEventListener('input',u);e.addEventListener('blur',function(){var s=(e.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)e.value='0'+d;e.dispatchEvent(new Event('input'));});}
 function validate(){var w=parseFloat(el('weight').value);var ok=state&&!isNaN(w)&&w>0&&(isPark||lastPrice)&&val('paddr')&&val('rname')&&phoneOk(val('rphone'))&&(!val('sphone')||phoneOk(val('sphone')))&&val('item');el('go').disabled=!ok;}
 function book(){
   var b=el('go');b.disabled=true;b.textContent='Booking…';
@@ -2653,9 +2701,9 @@ function book(){
     if(j&&j.ok){
       // App users get an in-app confirmation (no WhatsApp); chat-link users get the WhatsApp copy + button.
       var line=APPMODE
-        ?(j.park?'Your waybill request is in 🚚 — our team confirms the park &amp; exact price shortly, right here in the app.':'Your pickup is set 🚚 — we&rsquo;ll keep you posted in the app.')
+        ?(j.park?'Your waybill request is in — our team confirms the park &amp; exact price shortly, right here in the app.':'Your pickup is set — we&rsquo;ll keep you posted in the app.')
         :(j.park?'Your waybill request is in — our team confirms the park &amp; exact price in your WhatsApp chat.':'Your order &amp; price are waiting in your WhatsApp chat.');
-      el('app').innerHTML='<div class="body"><div class="done"><h2>✅ All set!</h2><p class="muted">'+line+'</p>'+waCta()+'</div></div>';
+      el('app').innerHTML='<div class="body"><div class="done"><h2>All set!</h2><p class="muted">'+line+'</p>'+waCta()+'</div></div>';
     }
     else{b.disabled=false;b.textContent='Confirm & book';el('err').textContent=(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
   }).catch(function(){b.disabled=false;b.textContent='Confirm & book';alert('Network hiccup — try again.');});
@@ -2781,7 +2829,7 @@ const VENDOR_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <title>Send orders — Lasalu Drop</title>
 ${FONT_LINK}<style>${BASE_CSS}</style></head><body>
 <div class="wrap" id="app">
-  <div class="hero"><h1>Send your orders 🛵</h1><p>Add each customer's order — we pick up from your shop, deliver, and collect their payment. You get paid out daily.</p></div>
+  <div class="hero"><h1>Send your orders</h1><p>Add each customer's order — we pick up from your shop, deliver, and collect their payment. You get paid out daily.</p></div>
   <div class="body">
     <div class="lbl">Your shop address (we pick up here)</div>
     <input id="shop" placeholder="e.g. 12 Aggrey Road, Port Harcourt">
@@ -2795,14 +2843,14 @@ ${FONT_LINK}<style>${BASE_CSS}</style></head><body>
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 // A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
-(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
+(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="This link has already been used or expired — go back to WhatsApp and ask me for a fresh link";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/vendorOrders";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 function el(id){return document.getElementById(id)}
 var n=0;
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
-function flagPhoneEl(bp){if(!bp)return;function u(){var v=(bp.value||'').trim();var bad=v&&!phoneOk(v);bp.style.borderColor=bad?'#dc2626':'';var box=bp.closest('.row2')||bp.parentNode;var w=box.parentNode.querySelector('.bpe-'+(box.dataset.pe||''));if(bad){if(!w){var tag=String(n);box.dataset.pe=tag;w=document.createElement('div');w.className='bpe-'+tag;w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='📵 That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}bp.addEventListener('input',u);bp.addEventListener('blur',function(){var s=(bp.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)bp.value='0'+d;bp.dispatchEvent(new Event('input'));});}
-function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim().replace(/^📍\\s*/,'');});var pk=d.querySelector('input[data-f=pickup_address]'),dr=d.querySelector('input[data-f=delivery_address]');if(pk&&pk.dataset.coords)o.pickup_coords=pk.dataset.coords;if(dr&&dr.dataset.coords)o.delivery_coords=dr.dataset.coords;out.push(o);});return out;}
+function flagPhoneEl(bp){if(!bp)return;function u(){var v=(bp.value||'').trim();var bad=v&&!phoneOk(v);bp.style.borderColor=bad?'#dc2626':'';var box=bp.closest('.row2')||bp.parentNode;var w=box.parentNode.querySelector('.bpe-'+(box.dataset.pe||''));if(bad){if(!w){var tag=String(n);box.dataset.pe=tag;w=document.createElement('div');w.className='bpe-'+tag;w.style.cssText='color:#dc2626;font-size:12px;margin:4px 2px 0';w.textContent='That number looks off — Nigerian numbers are 11 digits (e.g. 08012345678).';box.parentNode.insertBefore(w,box.nextSibling);}}else if(w){w.parentNode.removeChild(w);}}bp.addEventListener('input',u);bp.addEventListener('blur',function(){var s=(bp.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)bp.value='0'+d;bp.dispatchEvent(new Event('input'));});}
+function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim().replace(/^\\s*/,'');});var pk=d.querySelector('input[data-f=pickup_address]'),dr=d.querySelector('input[data-f=delivery_address]');if(pk&&pk.dataset.coords)o.pickup_coords=pk.dataset.coords;if(dr&&dr.dataset.coords)o.delivery_coords=dr.dataset.coords;out.push(o);});return out;}
 function validate(){var os=collect();var ok=el('shop').value.trim()&&os.length>0&&os.every(function(o){return o.buyer_name&&phoneOk(o.buyer_phone)&&o.address&&o.item&&Number((o.goods_value||'').replace(/[^0-9.]/g,''))>0;});el('go').disabled=!ok;}
 function addOrder(){
   n++;var d=document.createElement('div');d.className='ord';
@@ -2828,8 +2876,8 @@ else{
     fetch(API+'?session='+encodeURIComponent(SESSION),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:SESSION,shop_address:el('shop').value.trim(),orders:collect()})})
      .then(function(r){return r.json()}).then(function(j){
        if(j.error){b.disabled=false;b.textContent='Book all orders';el('out').innerHTML='<p style="color:#c0392b">'+j.error+'</p>';return;}
-       var lines=(j.results||[]).map(function(r){return r.ok?('✅ '+r.buyer+' — booked, buyer pays ₦'+r.total.toLocaleString()):('⚠️ '+(r.buyer||'an order')+' — '+r.error);}).join('<br>');
-       el('app').innerHTML='<div class="done"><h2>Done! 🙌</h2><p class="muted">'+j.booked+' order(s) booked. We\\'ve sent each buyer their payment link.</p><div style="text-align:left;font-size:14px;margin:14px 0">'+lines+'</div><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
+       var lines=(j.results||[]).map(function(r){return r.ok?(''+r.buyer+' — booked, buyer pays ₦'+r.total.toLocaleString()):(''+(r.buyer||'an order')+' — '+r.error);}).join('<br>');
+       el('app').innerHTML='<div class="done"><h2>Done!</h2><p class="muted">'+j.booked+' order(s) booked. We\\'ve sent each buyer their payment link.</p><div style="text-align:left;font-size:14px;margin:14px 0">'+lines+'</div><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
      }).catch(function(){b.disabled=false;b.textContent='Book all orders';alert('Network hiccup — try again.');});
   };
 }
@@ -2874,15 +2922,15 @@ ${FONT_LINK}<style>${BASE_CSS}${FLOW_CSS}
 .same,.rm,.locp{transition:transform .16s cubic-bezier(.23,1,.32,1)}
 </style></head><body>
 <div class="wrap" id="app">
-  <div class="hero"><h1>Multiple deliveries 🛵</h1><p>Add each delivery — pickup, drop-off, who's receiving and what you're sending. We price them all and send a rider to each.</p></div>
+  <div class="hero"><h1>Multiple deliveries</h1><p>Add each delivery — pickup, drop-off, who's receiving and what you're sending. We price them all and send a rider to each.</p></div>
   <div class="body">
     <div class="row2"><input id="sname" placeholder="Your name"><input id="sphone" placeholder="Your phone" inputmode="tel"></div>
-    <div class="dropbar" id="dropbar">&#128230; <b id="dbN">0</b>&nbsp;<span id="dbW">drops</span> <span class="sep">&middot;</span> <span id="dbR">0 ready</span></div>
+    <div class="dropbar" id="dropbar"><b id="dbN">0</b>&nbsp;<span id="dbW">drops</span> <span class="sep">&middot;</span> <span id="dbR">0 ready</span></div>
     <div id="deliveries"></div>
     <button class="add" id="add">+ Add another delivery</button>
     <div class="sec">How will you pay?</div>
-    <label class="payopt"><input type="radio" name="pay" value="now" checked> 💳 Pay all now — one payment</label>
-    <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod"> 🛵 Pay on delivery — cash to each rider</label>
+    <label class="payopt"><input type="radio" name="pay" value="now" checked> Pay all now — one payment</label>
+    <label class="payopt" id="opt-pod" style="display:none"><input type="radio" name="pay" value="pod"> Pay on delivery — cash to each rider</label>
     <button class="go" id="go" disabled>Review &amp; book</button>
     <div id="out"></div>
   </div>
@@ -2909,7 +2957,7 @@ function bChip(st){
   return '<span class="bchip bc-wait"><span class="bdot"></span>Finding rider…</span>';
 }
 function btRender(){
-  var rows=BT.list.map(function(o){return '<div class="btrow"><div class="nm">'+bEsc(o.receiver||'Delivery')+(o.rider?'<span class="rd">🛵 '+bEsc(o.rider)+'</span>':'')+'</div>'+bChip(o.status)+'</div>';}).join('');
+  var rows=BT.list.map(function(o){return '<div class="btrow"><div class="nm">'+bEsc(o.receiver||'Delivery')+(o.rider?'<span class="rd">'+bEsc(o.rider)+'</span>':'')+'</div>'+bChip(o.status)+'</div>';}).join('');
   var doneAll=BT.list.length&&BT.list.every(function(o){return o.status==='delivered'||o.status==='failed'||o.status==='cancelled';});
   el('app').innerHTML='<div class="hero"><h1>'+BT.head+'</h1><p>'+BT.sub+'</p></div><div class="body"><div class="btrk">'+rows+'</div>'
     +(doneAll?waCta():('<p style="font-size:12px;color:#a8a0ae;text-align:center;margin-top:10px">Updates land here'+(APPMODE?'':' and in your WhatsApp chat')+' — you can close this page.</p>'))
@@ -2932,13 +2980,13 @@ function btPoll(){
   },10000);
 }
 function openBatch(list,head,sub){ BT.list=list; BT.head=head; BT.sub=sub; BT.pn=0; btRender(); btPoll(); }
-(function(){if(!SESSION)return;setTimeout(function(){fetch(api("action=check")).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;}).catch(function(){});},0);})();
+(function(){if(!SESSION)return;setTimeout(function(){fetch(api("action=check")).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999";b.textContent="This link has already been used or expired — go back to WhatsApp and ask me for a fresh link";document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;}).catch(function(){});},0);})();
 var n=0, PODOK=false, quoted=null, POD_SUR=0;
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
 function flagPhone(inp){if(!inp)return;function u(){var v=(inp.value||'').trim();var bad=v&&!phoneOk(v);inp.style.borderColor=bad?'#dc2626':'';}inp.addEventListener('input',u);inp.addEventListener('blur',function(){var s=(inp.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)inp.value='0'+d;inp.dispatchEvent(new Event('input'));});}
 function wireAuto(inp,sug){var t;inp.addEventListener('input',function(){inp.dataset.coords='';clearTimeout(t);var q=inp.value.trim();quoted=null;syncGo();if(q.length<2){sug.style.display='none';return;}t=setTimeout(function(){fetch(api('action=autocomplete&q='+encodeURIComponent(q))).then(function(r){return r.json()}).then(function(j){sug.innerHTML='';(j.predictions||[]).forEach(function(p){var x=document.createElement('div');x.textContent=p.label;x.onclick=function(){inp.value=p.label;inp.dataset.coords='';sug.style.display='none';syncGo();};sug.appendChild(x);});sug.style.display=(j.predictions&&j.predictions.length)?'block':'none';});},300);});}
-function useLoc(inp){if(!inp)return;if(!navigator.geolocation){alert('Location not available on this device — please type the address.');return;}var old=inp.value;inp.value='📍 Locating…';navigator.geolocation.getCurrentPosition(function(pos){var la=pos.coords.latitude,ln=pos.coords.longitude;inp.dataset.coords=la+','+ln;inp.value='📍 My current location';fetch(api('action=reverse&lat='+la+'&lng='+ln)).then(function(r){return r.json()}).then(function(j){if(j&&j.label)inp.value='📍 '+j.label;syncGo();}).catch(function(){syncGo();});},function(){inp.value=old;alert('Couldn\\'t get your location — please allow location access, or type the address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});}
-function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim().replace(/^📍\\s*/,'');});var pk=d.querySelector('input[data-f=pickup_address]'),dr=d.querySelector('input[data-f=delivery_address]');if(pk&&pk.dataset.coords)o.pickup_coords=pk.dataset.coords;if(dr&&dr.dataset.coords)o.delivery_coords=dr.dataset.coords;out.push(o);});return out;}
+function useLoc(inp){if(!inp)return;if(!navigator.geolocation){alert('Location not available on this device — please type the address.');return;}var old=inp.value;inp.value='Locating…';navigator.geolocation.getCurrentPosition(function(pos){var la=pos.coords.latitude,ln=pos.coords.longitude;inp.dataset.coords=la+','+ln;inp.value='My current location';fetch(api('action=reverse&lat='+la+'&lng='+ln)).then(function(r){return r.json()}).then(function(j){if(j&&j.label)inp.value=''+j.label;syncGo();}).catch(function(){syncGo();});},function(){inp.value=old;alert('Couldn\\'t get your location — please allow location access, or type the address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});}
+function collect(){var out=[];document.querySelectorAll('.ord').forEach(function(d){var o={};d.querySelectorAll('input[data-f]').forEach(function(i){o[i.getAttribute('data-f')]=i.value.trim().replace(/^\\s*/,'');});var pk=d.querySelector('input[data-f=pickup_address]'),dr=d.querySelector('input[data-f=delivery_address]');if(pk&&pk.dataset.coords)o.pickup_coords=pk.dataset.coords;if(dr&&dr.dataset.coords)o.delivery_coords=dr.dataset.coords;out.push(o);});return out;}
 function rowsValid(){var os=collect();return os.length>0&&os.every(function(o){return o.pickup_address&&o.delivery_address&&o.receiver_name&&phoneOk(o.receiver_phone)&&o.item;});}
 function senderValid(){return el('sname').value.trim()&&phoneOk(el('sphone').value);}
 function syncGo(){quoted=null;el('go').textContent='Review \\u0026 book';var ok=senderValid()&&rowsValid();el('go').disabled=!ok;var r=el('review');if(r)r.remove();}
@@ -2965,9 +3013,9 @@ function addDelivery(){
   n++;var d=document.createElement('div');d.className='ord';
   d.innerHTML='<button class="rm" title="Remove">×</button>'
     +'<div class="cap">DELIVERY '+n+'</div>'
-    +'<div style="position:relative"><input class="locin" placeholder="Pickup address" data-f="pickup_address" autocomplete="off"><button type="button" class="locp" title="Use my location">📍</button><div class="sug" style="display:none"></div></div>'
+    +'<div style="position:relative"><input class="locin" placeholder="Pickup address" data-f="pickup_address" autocomplete="off"><button type="button" class="locp" title="Use my location"></button><div class="sug" style="display:none"></div></div>'
     +'<button class="same" type="button">↑ same pickup as above</button>'
-    +'<div style="position:relative" class="mt"><input class="locin" placeholder="Drop-off address" data-f="delivery_address" autocomplete="off"><button type="button" class="locp" title="Use my location">📍</button><div class="sug" style="display:none"></div></div>'
+    +'<div style="position:relative" class="mt"><input class="locin" placeholder="Drop-off address" data-f="delivery_address" autocomplete="off"><button type="button" class="locp" title="Use my location"></button><div class="sug" style="display:none"></div></div>'
     +'<div class="row2 mt"><input placeholder="Receiver name" data-f="receiver_name"><input placeholder="Receiver phone" data-f="receiver_phone" inputmode="tel"></div>'
     +'<input class="mt" placeholder="What are you sending? (e.g. food, documents)" data-f="item">';
   el('deliveries').appendChild(d);
@@ -2988,16 +3036,16 @@ function doBook(){
   fetch(api(''),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender_name:el('sname').value.trim(),sender_phone:el('sphone').value.trim(),pay_method:payMethod(),deliveries:collect()})})
    .then(function(r){return r.json()}).then(function(j){
      if(j.error){b.disabled=false;b.textContent='Confirm';el('out').innerHTML='<div class="err">Couldn\\'t book: '+j.error+'</div>';return;}
-     if(j.mode==='now'&&j.payment_url){el('app').innerHTML='<div class="done"><h2>Redirecting to payment… 💳</h2><p class="muted">Total ₦'+Number(j.total).toLocaleString()+' for '+j.count+' deliveries.</p></div>';location.href=j.payment_url;return;}
+     if(j.mode==='now'&&j.payment_url){el('app').innerHTML='<div class="done"><h2>Redirecting to payment…</h2><p class="muted">Total ₦'+Number(j.total).toLocaleString()+' for '+j.count+' deliveries.</p></div>';location.href=j.payment_url;return;}
      var skipped=(j.errors&&j.errors.length)?' <b>'+j.errors.length+' address(es) couldn\\'t be booked</b> — our team will follow up on those.':'';
      // Booked riders → LIVE batch tracker (a chip per delivery), not a static goodbye.
      if(j.orders&&j.orders.length){
        openBatch(j.orders.map(function(o){return {n:o.n,receiver:o.receiver,status:'',rider:''};}),
-         'All set! 🙌',
+         'All set!',
          j.booked+' deliveries created — each receiver pays cash to their rider (total ₦'+Number(j.total).toLocaleString()+').'+skipped);
        return;
      }
-     el('app').innerHTML='<div class="done"><h2>All set! 🙌</h2><p class="muted">'+j.booked+' deliveries created — a rider is being assigned to each. The receiver pays their delivery fee in cash when the rider arrives (total ₦'+Number(j.total).toLocaleString()+').'+skipped+'</p>'+waCta()+'</div>';
+     el('app').innerHTML='<div class="done"><h2>All set!</h2><p class="muted">'+j.booked+' deliveries created — a rider is being assigned to each. The receiver pays their delivery fee in cash when the rider arrives (total ₦'+Number(j.total).toLocaleString()+').'+skipped+'</p>'+waCta()+'</div>';
    }).catch(function(){b.disabled=false;b.textContent='Confirm';alert('Network hiccup — try again.');});
 }
 // Render the priced review from the quoted data + the selected pay method. Pay-on-delivery adds the surcharge
@@ -3037,7 +3085,7 @@ else{
    // the form and sets a one-shot flag so the reload doesn't bounce straight back here.
    if(p.active&&p.active.length){
      var skip=false; try{ skip=sessionStorage.getItem('ldl_skipresume')==='1'; if(skip)sessionStorage.removeItem('ldl_skipresume'); }catch(e){}
-     if(!skip){ openBatch(p.active.map(function(o){return {n:o.n,receiver:o.receiver,status:o.status||'',rider:''};}), 'Your deliveries 📦', 'Live status of each rider — updated as they move.'); return; }
+     if(!skip){ openBatch(p.active.map(function(o){return {n:o.n,receiver:o.receiver,status:o.status||'',rider:''};}), 'Your deliveries', 'Live status of each rider — updated as they move.'); return; }
    }
    if(p.name)el('sname').value=p.name;if(p.phone)el('sphone').value=p.phone;if(p.pod_allowed){PODOK=true;POD_SUR=Math.max(0,Number(p.pod_surcharge)||0);el('opt-pod').style.display='flex';if(POD_SUR>0){var ps=document.createElement('span');ps.style.cssText='color:#6a626f;font-size:12px;margin-left:6px';ps.textContent='(+₦'+POD_SUR.toLocaleString()+' each)';el('opt-pod').appendChild(ps);}}syncGo();});
   addDelivery();
