@@ -1074,7 +1074,7 @@ function addLocation(){
   if(!SENDER_PHONE){ SENDER_NAME=val('sname')||MYNAME||''; SENDER_PHONE=val('sphone')||MYPHONE||''; }
   if(!BATCH_PICKUP){ BATCH_PICKUP={address:picked.pickup.address,lat:picked.pickup.lat,lng:picked.pickup.lng}; }
   DROPS.push({ dropoff:{address:picked.dropoff.address,lat:picked.dropoff.lat,lng:picked.dropoff.lng},
-    receiver_name:'', receiver_phone:'', item:'', note:'', goods:'' });
+    receiver_name:'', receiver_phone:'', item:'', note:'', cod:false, goods:'' });
   try{ var n=DROPS.length; var mk=L.marker([picked.dropoff.lat,picked.dropoff.lng],{interactive:false,zIndexOffset:400,icon:L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],html:'<div class="dropnum">'+n+'</div>'})}).addTo(map); dropMarkers.push(mk); }catch(e){}
   try{ clearLoc('dropoff'); }catch(e){}
   picked.pickup=BATCH_PICKUP;
@@ -1116,23 +1116,28 @@ function showDetails(){
   var bar=document.getElementById('batchbar'); if(bar)bar.style.display='none';
   var ov=document.getElementById('batchsheet');
   if(!ov){ ov=document.createElement('div'); ov.id='batchsheet'; ov.className='batchsheet'; document.getElementById('app').appendChild(ov); }
+  // COD is a PER-STOP choice, not a batch switch — most buyers have already paid the vendor; the
+  // vendor ticks only the stops where WE should collect the buyer's payment on delivery.
+  var codAllowed = !!(document.getElementById('opt-cod') && document.getElementById('opt-cod').style.display!=='none');
   var cards=DROPS.map(function(d,i){
     var chips=ITEMS.map(function(it){ return '<button type="button" class="lchip'+(d.item===it[0]?' on':'')+'" data-i="'+i+'" data-it="'+it[0]+'">'+it[1]+' '+it[0]+'</button>'; }).join('');
+    var codBlock = codAllowed
+      ? '<label class="lcodtog"><input type="checkbox" class="lcod" data-i="'+i+'"'+(d.cod?' checked':'')+'> This buyer hasn&rsquo;t paid yet — collect it on delivery</label>'
+        +'<input class="lgoods" data-i="'+i+'" type="number" inputmode="numeric" placeholder="Collect ₦ from this buyer" value="'+esc(d.goods||'')+'" style="display:'+(d.cod?'block':'none')+';margin-top:8px">'
+      : '';
     return '<div class="loccard" data-card="'+i+'"><div class="lchd"><span class="lcn">'+(i+1)+'</span><span class="lca">'+esc(String(d.dropoff.address).split(',').slice(0,2).map(function(x){return x.trim();}).join(', '))+'</span><button type="button" class="lcx" data-i="'+i+'" aria-label="Remove">&times;</button></div>'
       +'<div class="lchips">'+chips+'</div>'
       +'<input class="litem" data-i="'+i+'" placeholder="…or type what&rsquo;s going here" value="'+esc(d.item)+'">'
       +'<div class="lrow2"><input class="lrn" data-i="'+i+'" placeholder="Receiver name" value="'+esc(d.receiver_name)+'"><input class="lrp" data-i="'+i+'" type="tel" inputmode="tel" placeholder="Receiver phone *" value="'+esc(d.receiver_phone)+'"></div>'
-      +'<input class="lgoods" data-i="'+i+'" type="number" inputmode="numeric" placeholder="How much should the buyer pay for this? (₦)" value="'+esc(d.goods||'')+'" style="display:none;margin-top:8px"></div>'; }).join('');
+      +codBlock+'</div>'; }).join('');
   var podRow = (POD_SURCHARGE>=0 && document.getElementById('opt-pod') && document.getElementById('opt-pod').style.display!=='none')
     ? '<label class="bpayopt"><input type="radio" name="bpay" value="pod"> Pay on delivery — cash to each rider</label>' : '';
-  // COD = we collect the buyer's payment for the goods and pay you out (only if enabled for this customer).
-  var codRow = (document.getElementById('opt-cod') && document.getElementById('opt-cod').style.display!=='none')
-    ? '<label class="bpayopt"><input type="radio" name="bpay" value="cod"> COD — the buyer pays for the goods, we collect it for you</label>' : '';
-  ov.innerHTML='<div class="bpanel"><div class="bph"><b>What&rsquo;s going to each stop?</b><button type="button" class="bclose" id="bclose">&times;</button></div>'
+  ov.innerHTML='<div class="bpanel"><div class="bgrab"></div><div class="bph"><b>What&rsquo;s going to each stop?</b><button type="button" class="bclose" id="bclose">&times;</button></div>'
     +'<p class="bsub">Pickup: '+esc(String(BATCH_PICKUP?BATCH_PICKUP.address:'').split(',')[0])+' &middot; '+DROPS.length+' stop'+(DROPS.length>1?'s':'')+' <span id="btot"></span></p>'
     +'<div class="loclist">'+cards+'</div>'
     +'<button type="button" id="badd" class="bsecondary">＋ Add another location</button>'
-    +'<div class="bpayw"><label class="bpayopt"><input type="radio" name="bpay" value="now" checked> Pay all now (card or transfer)</label>'+podRow+codRow+'</div>'
+    +'<div class="bpaylbl">How do you want to pay for delivery?</div>'
+    +'<div class="bpayw"><label class="bpayopt"><input type="radio" name="bpay" value="now" checked> Pay all now (card or transfer)</label>'+podRow+'</div>'
     +'<button type="button" id="bbook" class="bprimary">Book '+DROPS.length+' deliver'+(DROPS.length>1?'ies':'y')+'</button></div>';
   ov.style.display='flex';
   document.getElementById('bclose').onclick=function(){ ov.style.display='none'; batchBar(); };
@@ -1148,11 +1153,20 @@ function showDetails(){
   Array.prototype.forEach.call(ov.querySelectorAll('.lrn'),function(f){ f.oninput=function(){ DROPS[Number(f.getAttribute('data-i'))].receiver_name=f.value.trim(); }; });
   Array.prototype.forEach.call(ov.querySelectorAll('.lrp'),function(f){ f.oninput=function(){ DROPS[Number(f.getAttribute('data-i'))].receiver_phone=f.value.trim(); }; });
   Array.prototype.forEach.call(ov.querySelectorAll('.lgoods'),function(f){ f.oninput=function(){ DROPS[Number(f.getAttribute('data-i'))].goods=f.value.replace(/[^0-9.]/g,''); }; });
-  // COD reveals a "buyer pays" amount on every stop; the book button names the action.
-  function syncPay(){ var pm=(ov.querySelector('input[name=bpay]:checked')||{}).value||'now'; var cod=pm==='cod';
-    Array.prototype.forEach.call(ov.querySelectorAll('.lgoods'),function(g){ g.style.display=cod?'block':'none'; });
-    var bb=document.getElementById('bbook'); if(bb)bb.textContent=cod?'Book & send buyers their payment request':('Book '+DROPS.length+' deliver'+(DROPS.length>1?'ies':'y')); }
-  Array.prototype.forEach.call(ov.querySelectorAll('input[name=bpay]'),function(r){ r.onchange=syncPay; }); syncPay();
+  // Per-stop COD toggle — reveals the "collect ₦" amount for THAT stop only. Default off = already paid.
+  Array.prototype.forEach.call(ov.querySelectorAll('.lcod'),function(c){ c.onchange=function(){ var i=Number(c.getAttribute('data-i')); DROPS[i].cod=c.checked;
+    var g=ov.querySelector('.lgoods[data-i="'+i+'"]'); if(g){ g.style.display=c.checked?'block':'none'; if(!c.checked){ DROPS[i].goods=''; g.value=''; } if(c.checked)g.focus(); }
+    syncBookLabel(); }; });
+  function syncBookLabel(){ var anyCod=DROPS.some(function(d){return d.cod;});
+    // When any stop is unpaid, vendorOrders settles the delivery fees (from what we collect / on
+    // arrival), so the batch "pay for delivery" choice doesn't apply — swap it for a plain note.
+    var pw=ov.querySelector('.bpayw'), pl=ov.querySelector('.bpaylbl');
+    if(pw)pw.style.display=anyCod?'none':'block'; if(pl)pl.style.display=anyCod?'none':'block';
+    var note=ov.querySelector('.bcodnote');
+    if(!note&&pl){ note=document.createElement('div'); note.className='bnote bcodnote'; note.style.textAlign='left'; pl.parentNode.insertBefore(note,pl); }
+    if(note){ note.style.display=anyCod?'block':'none'; note.textContent='We collect payment from the buyers you marked and pay you out; the rest are delivered as already-paid.'; }
+    var bb=document.getElementById('bbook'); if(bb)bb.innerHTML=anyCod?'Book &mdash; collect where marked':('Book '+DROPS.length+' deliver'+(DROPS.length>1?'ies':'y')); }
+  syncBookLabel();
   Array.prototype.forEach.call(ov.querySelectorAll('.lcx'),function(b){ b.onclick=function(){ DROPS.splice(Number(b.getAttribute('data-i')),1); rebuildDropMarkers(); if(DROPS.length)showDetails(); else { ov.style.display='none'; batchBar(); try{ batchPrompt(); }catch(e){} } }; });
   // Live total (best-effort; the book re-prices authoritatively).
   fetch(BULK_API+'?session='+encodeURIComponent(SESSION)+'&action=quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deliveries:dropsPayload()})})
@@ -1164,37 +1178,37 @@ function dropsPayload(){ return DROPS.map(function(d){ return {
   delivery_address:d.dropoff.address, delivery_coords:d.dropoff.lat+','+d.dropoff.lng,
   receiver_name:d.receiver_name, receiver_phone:d.receiver_phone, item:d.item, delivery_instruction:d.note }; }); }
 function bookBatch(pm){
-  var cod=pm==='cod';
-  // Every stop needs an item + a valid receiver phone (+ a "buyer pays" amount for COD).
+  // Every stop needs an item + a valid receiver phone; the stops you MARKED as unpaid also need a collect amount.
   for(var i=0;i<DROPS.length;i++){ var d=DROPS[i], ph=String(d.receiver_phone||'').replace(/\\D/g,''), g=Number(String(d.goods||'').replace(/[^0-9.]/g,''));
-    var miss=[]; if(!d.item)miss.push('an item'); if(ph.length<10)miss.push('a valid receiver phone'); if(cod&&!(g>0))miss.push('how much the buyer pays');
+    var miss=[]; if(!d.item)miss.push('an item'); if(ph.length<10)miss.push('a valid receiver phone'); if(d.cod&&!(g>0))miss.push('how much to collect from the buyer');
     if(miss.length){ alert('Stop '+(i+1)+' still needs '+miss.join(' and ')+'.');
       var card=document.querySelector('.loccard[data-card="'+i+'"]'); if(card)card.scrollIntoView({behavior:'smooth',block:'center'}); return; } }
-  var btn=document.getElementById('bbook'); var lbl=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='Booking…'; }
-  function fail(msg){ if(btn){ btn.disabled=false; btn.textContent=lbl; } alert(msg); }
-  // ── COD path → the proven vendorOrders money flow: it books each delivery, collects the buyer's
-  // payment, deducts our fee + delivery, and pays you out. We just hand it the shop + each buyer.
-  if(cod){
-    var orders=DROPS.map(function(d){ return { buyer_name:d.receiver_name, buyer_phone:d.receiver_phone,
-      address:d.dropoff.address, delivery_coords:d.dropoff.lat+','+d.dropoff.lng, item:d.item,
-      goods_value:String(d.goods||'').replace(/[^0-9.]/g,'') }; });
-    fetch(VENDOR_API+'?session='+encodeURIComponent(SESSION),{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({session:SESSION,shop_address:BATCH_PICKUP.address,pickup_coords:BATCH_PICKUP.lat+','+BATCH_PICKUP.lng,orders:orders})})
+  var anyCod=DROPS.some(function(d){return d.cod;});
+  var btn=document.getElementById('bbook'); var lbl=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.textContent='Booking…'; }
+  function fail(msg){ if(btn){ btn.disabled=false; btn.innerHTML=lbl; } alert(msg); }
+  // ── No stop marked unpaid → every buyer already paid the vendor → plain deliveries via bulkOrders.
+  if(!anyCod){
+    fetch(BULK_API+'?session='+encodeURIComponent(SESSION),{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({session:SESSION,sender_name:SENDER_NAME,sender_phone:SENDER_PHONE,pay_method:pm,deliveries:dropsPayload()})})
      .then(function(r){return r.json();}).then(function(j){
-       if(j&&j.ok&&j.results){ var okd=j.results.filter(function(r){return r.ok;}); var bad=j.results.filter(function(r){return !r.ok;});
-         if(okd.length){ openBatchTracker(okd.map(function(r){return {n:r.order_number,receiver:r.buyer};})); return; }
-         fail(bad.length?('Couldn\\'t book: '+(bad[0].error||'check the amounts/addresses')):'Couldn\\'t book just now — please try again.'); return; }
+       if(j&&j.mode==='now'&&j.payment_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment</p></div>'; window.location.href=j.payment_url; return; }
+       if(j&&j.orders&&j.orders.length){ openBatchTracker(j.orders); return; }
+       if(j&&j.ok){ document.getElementById('app').innerHTML='<div class="done"><h2>All set!</h2><p class="muted">'+(j.booked||DROPS.length)+' deliveries created — a rider is being assigned to each.</p></div>'; return; }
        fail((j&&j.error)?('Couldn\\'t book: '+j.error):'Couldn\\'t book just now — please try again.');
      }).catch(function(){ fail('Network hiccup — try again.'); });
     return;
   }
-  // ── Pay-now / pay-on-delivery → bulkOrders.
-  fetch(BULK_API+'?session='+encodeURIComponent(SESSION),{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({session:SESSION,sender_name:SENDER_NAME,sender_phone:SENDER_PHONE,pay_method:pm,deliveries:dropsPayload()})})
+  // ── Some stops are unpaid → vendorOrders handles the WHOLE batch in one call (one session claim):
+  // it COLLECTS the buyer's payment on the marked stops and simply DELIVERS the already-paid ones.
+  var orders=DROPS.map(function(d){ var o={ buyer_name:d.receiver_name, buyer_phone:d.receiver_phone,
+    address:d.dropoff.address, delivery_coords:d.dropoff.lat+','+d.dropoff.lng, item:d.item };
+    if(d.cod){ o.goods_value=String(d.goods||'').replace(/[^0-9.]/g,''); } else { o.paid=true; } return o; });
+  fetch(VENDOR_API+'?session='+encodeURIComponent(SESSION),{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({session:SESSION,shop_address:BATCH_PICKUP.address,pickup_coords:BATCH_PICKUP.lat+','+BATCH_PICKUP.lng,orders:orders})})
    .then(function(r){return r.json();}).then(function(j){
-     if(j&&j.mode==='now'&&j.payment_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment</p></div>'; window.location.href=j.payment_url; return; }
-     if(j&&j.orders&&j.orders.length){ openBatchTracker(j.orders); return; }
-     if(j&&j.ok){ document.getElementById('app').innerHTML='<div class="done"><h2>All set!</h2><p class="muted">'+(j.booked||DROPS.length)+' deliveries created — a rider is being assigned to each.</p></div>'; return; }
+     if(j&&j.ok&&j.results){ var okd=j.results.filter(function(r){return r.ok;});
+       if(okd.length){ openBatchTracker(okd.map(function(r){return {n:r.order_number,receiver:r.buyer};})); return; }
+       fail('Couldn\\'t book: '+(((j.results.filter(function(r){return !r.ok;})[0])||{}).error||'check the amounts & addresses')); return; }
      fail((j&&j.error)?('Couldn\\'t book: '+j.error):'Couldn\\'t book just now — please try again.');
    }).catch(function(){ fail('Network hiccup — try again.'); });
 }
@@ -1226,35 +1240,42 @@ function initBatch(){
   var cn=document.getElementById('continue');
   if(cn&&!document.getElementById('bhint')){ var hn=document.createElement('div'); hn.id='bhint'; hn.className='bhint'; cn.parentNode.insertBefore(hn,cn); }
   try{ batchPrompt(); }catch(e){}
-  var css='.bhint{font-size:12.5px;color:var(--ink-2);line-height:1.5;margin:14px 2px 2px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:12px}'
+  var css='.bhint{font-size:12.5px;color:var(--ink-2);line-height:1.5;margin:14px 2px 2px;padding:11px 13px;background:var(--bg);border:1px solid var(--line);border-radius:12px}'
    +'.batchbar{position:fixed;left:14px;right:14px;bottom:16px;z-index:1400;display:none;align-items:center;justify-content:space-between;gap:10px;background:var(--plum);color:#fff;border-radius:16px;padding:15px 18px;box-shadow:0 14px 34px rgba(58,5,55,.4);font-size:14.5px;font-weight:700;cursor:pointer;animation:barpop .3s var(--ease)}'
    +'@keyframes barpop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}'
-   +'.batchbar .bbgo{font-size:14px;font-weight:800;background:rgba(255,255,255,.18);padding:7px 13px;border-radius:99px}'
-   +'.batchbar b{font-size:16px}'
-   +'.batchsheet{position:fixed;inset:0;z-index:1500;display:none;align-items:flex-end;background:rgba(30,4,28,.42)}'
-   +'.bpanel{width:100%;max-width:480px;margin:0 auto;background:var(--surface);border-radius:22px 22px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));max-height:86vh;overflow-y:auto;animation:rise .35s var(--ease)}'
-   +'.bph{display:flex;align-items:center;justify-content:space-between}.bph b{font-size:19px;font-weight:800;color:var(--ink)}'
-   +'.bclose{width:34px;height:34px;border:none;background:var(--bg);border-radius:50%;font-size:20px;color:var(--ink-2);cursor:pointer;line-height:1}'
-   +'.bsub{font-size:13px;color:var(--ink-2);margin:4px 0 12px}.bsub #btot,.bsub span{font-weight:700;color:var(--plum)}'
+   +'.batchbar .bbgo{font-size:14px;font-weight:800;background:rgba(255,255,255,.18);padding:7px 13px;border-radius:99px}.batchbar b{font-size:16px}'
+   +'.batchsheet{position:fixed;inset:0;z-index:1500;display:none;align-items:flex-end;background:rgba(30,4,28,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}'
+   +'.bpanel{width:100%;max-width:480px;margin:0 auto;background:var(--bg);border-radius:26px 26px 0 0;padding:8px 16px calc(18px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto;animation:rise .4s var(--ease)}'
+   +'.bgrab{width:40px;height:4px;border-radius:99px;background:var(--line-2);margin:6px auto 12px}'
+   +'.bph{display:flex;align-items:center;justify-content:space-between;padding:0 2px}.bph b{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.02em}'
+   +'.bclose{width:34px;height:34px;background:#fff;border:1px solid var(--line);border-radius:50%;font-size:19px;color:var(--ink-2);cursor:pointer;line-height:1}'
+   +'.bsub{font-size:13px;color:var(--ink-2);margin:5px 2px 14px;line-height:1.5}.bsub #btot{font-weight:800;color:var(--plum)}'
    +'.brev,.brevfull{padding:20px 18px}.brevfull h2,.brev h2{font-size:22px;font-weight:800;margin:6px 2px 4px}'
    +'.btrk{margin:2px 0 6px}.btrow{display:flex;align-items:center;gap:10px;padding:12px 13px;background:#fff;border:1px solid var(--line-2);border-radius:13px;margin-bottom:9px}'
-   +'.btrow .nm{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
-   +'.btrow .rd{display:block;font-size:11px;font-weight:600;color:var(--ink-3);margin-top:2px}'
+   +'.btrow .nm{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.btrow .rd{display:block;font-size:11px;font-weight:600;color:var(--ink-3);margin-top:2px}'
    +'.btrow .bx{flex:none;width:28px;height:28px;border:none;background:var(--bg);border-radius:50%;color:var(--ink-3);font-size:16px;cursor:pointer}'
    +'.bchip{flex:none;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:99px;font-size:11.5px;font-weight:800}'
    +'.bc-wait{background:var(--bg);color:var(--ink-2);border:1px solid var(--line-2)}.bc-asg{background:var(--lilac);color:var(--plum)}.bc-otw{background:var(--pink-soft);color:#a3255f}.bc-del{background:#e8f6ec;color:#166534}.bc-fail{background:#fdecec;color:#b3261e}'
-   +'.bpayw{margin:8px 0 4px}.bpayopt{display:flex;align-items:center;gap:9px;padding:12px 13px;border:1.5px solid var(--line-2);border-radius:13px;margin-top:8px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer}.bpayopt input{width:18px;height:18px;accent-color:var(--plum)}'
-   +'.bsecondary{width:100%;margin:4px 0 10px;padding:12px 0;background:none;border:1.5px dashed var(--line-2);border-radius:13px;color:var(--plum);font-size:13.5px;font-weight:700;cursor:pointer}'
-   +'.bprimary{width:100%;margin-top:6px;padding:15px 0;background:var(--plum);color:#fff;border:none;border-radius:14px;font-size:15.5px;font-weight:800;cursor:pointer;box-shadow:0 10px 26px rgba(79,7,76,.3)}'
+   +'.bpayw{margin:6px 0 4px}.bpayopt{display:flex;align-items:center;gap:10px;padding:14px;border:1.5px solid var(--line-2);border-radius:14px;margin-top:9px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;background:#fff;transition:border-color .15s var(--ease),background .15s var(--ease)}.bpayopt:has(input:checked){border-color:var(--plum);background:var(--lilac)}.bpayopt input{width:19px;height:19px;accent-color:var(--plum)}'
+   +'.bsecondary{width:100%;margin:2px 0 12px;padding:13px 0;background:none;border:1.5px dashed var(--line-2);border-radius:14px;color:var(--plum);font-size:13.5px;font-weight:800;cursor:pointer;transition:transform .16s var(--ease)}.bsecondary:active{transform:scale(.98)}'
+   +'.bprimary{width:100%;margin-top:8px;padding:16px 0;background:var(--plum);color:#fff;border:none;border-radius:16px;font-size:15.5px;font-weight:800;cursor:pointer;box-shadow:0 12px 28px rgba(79,7,76,.32);transition:transform .16s var(--ease)}.bprimary:active{transform:scale(.985)}'
    +'.bnote{font-size:12px;color:var(--ink-3);text-align:center;margin-top:10px}'
    +'.dropnum{width:26px;height:26px;border-radius:50%;background:var(--pink);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(226,58,124,.45);border:2px solid #fff}'
-   +'.loclist{margin:2px 0 4px}.loccard{background:#fff;border:1px solid var(--line-2);border-radius:15px;padding:13px 13px 14px;margin-bottom:11px}'
-   +'.lchd{display:flex;align-items:center;gap:9px;margin-bottom:10px}.lcn{flex:none;width:24px;height:24px;border-radius:50%;background:var(--pink);color:#fff;font-size:12.5px;font-weight:800;display:flex;align-items:center;justify-content:center}'
-   +'.lca{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
-   +'.lcx{flex:none;width:26px;height:26px;border:none;background:var(--bg);border-radius:50%;color:var(--ink-3);font-size:15px;cursor:pointer;line-height:1}'
-   +'.lchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.lchip{flex:0 0 auto;width:auto;padding:7px 11px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:transform .14s var(--ease)}.lchip:active{transform:scale(.95)}.lchip.on{border-color:var(--plum);background:var(--plum);color:#fff}'
-   +'.litem{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:11px;font-size:14.5px;outline:none}.litem:focus{border-color:var(--plum)}'
-   +'.lrow2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.lrow2 input{padding:11px 13px;border:1px solid var(--line);border-radius:11px;font-size:14.5px;outline:none}.lrow2 input:focus{border-color:var(--plum)}';
+   +'.loclist{margin:2px 0 6px}'
+   +'.loccard{background:#fff;border:1px solid var(--line);border-radius:20px;padding:15px 15px 16px;margin-bottom:13px;box-shadow:0 1px 2px rgba(58,5,55,.04),0 8px 20px rgba(58,5,55,.05);animation:locin .3s var(--ease) both}'
+   +'@keyframes locin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}'
+   +'.loccard:nth-child(2){animation-delay:.04s}.loccard:nth-child(3){animation-delay:.08s}.loccard:nth-child(4){animation-delay:.12s}.loccard:nth-child(n+5){animation-delay:.15s}'
+   +'.lchd{display:flex;align-items:center;gap:11px;margin-bottom:12px}'
+   +'.lcn{flex:none;width:30px;height:30px;border-radius:10px;background:var(--plum);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center}'
+   +'.lca{flex:1;min-width:0;font-size:14.5px;font-weight:800;color:var(--ink);letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+   +'.lcx{flex:none;width:28px;height:28px;border:none;background:var(--bg);border-radius:50%;color:var(--ink-3);font-size:16px;cursor:pointer;line-height:1}'
+   +'.lchips{display:flex;gap:7px;margin-bottom:9px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}.lchips::-webkit-scrollbar{display:none}'
+   +'.lchip{flex:0 0 auto;width:auto;padding:8px 13px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer;white-space:nowrap;transition:transform .14s var(--ease)}.lchip:active{transform:scale(.95)}.lchip.on{border-color:var(--plum);background:var(--plum);color:#fff}'
+   +'.litem,.lrow2 input,.lgoods{width:100%;padding:12px 14px;border:1.5px solid transparent;background:var(--bg);border-radius:12px;font-size:14.5px;color:var(--ink);outline:none;transition:border-color .15s var(--ease),background .15s var(--ease)}'
+   +'.litem::placeholder,.lrow2 input::placeholder,.lgoods::placeholder{color:var(--ink-3)}'
+   +'.litem:focus,.lrow2 input:focus,.lgoods:focus{border-color:var(--plum);background:#fff}'
+   +'.lrow2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}'
+   +'.lgoods{margin-top:8px;background:var(--amber-bg);border-color:var(--amber-line)}.lgoods:focus{border-color:var(--amber);background:#fff}'\n   +'.lcodtog{display:flex;align-items:flex-start;gap:9px;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line);font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.4;cursor:pointer}.lcodtog input{width:18px;height:18px;flex:none;accent-color:var(--amber);margin-top:1px}'\n   +'.bpaylbl{font-size:13px;font-weight:800;color:var(--ink);margin:10px 2px 2px}';
   var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
 }
 function setPin(which,d){
