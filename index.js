@@ -2101,8 +2101,9 @@ var QLBL={stages:['Pickup booked','Rider assigned','Item picked up','At our hub'
   failed:['Pickup hit a snag \ud83d\ude15','No stress \u2014 our team is on it and will message you on WhatsApp.']}};
 function openTracker(ord,stat){
   el('app').innerHTML='<div id="ldltrk"></div>';
+  // No "Back to WhatsApp" in the native app \u2014 the app owns its own navigation.
   ldlTracker({api:API,session:SESSION,mount:'ldltrk',labels:QLBL,
-    doneHtml:'<a class="wabtn" href="https://wa.me/2349110218825" style="margin-top:14px">Back to WhatsApp \u2192</a>'}).open(ord,stat);
+    doneHtml:(APPMODE?'':'<a class="wabtn" href="https://wa.me/2349110218825" style="margin-top:14px">Back to WhatsApp \u2192</a>')}).open(ord,stat);
 }
 (function(){if(!SESSION)return;setTimeout(function(){try{fetch(API+'?action=check&session='+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement('div');b.style.cssText='position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif';b.textContent='This link has already been used or expired \u2014 ask us for a fresh one.';document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;if(j&&j.active&&j.active.order_number){openTracker(j.active.order_number,j.active.status||'');}}).catch(function(){});}catch(e){}},0);})();
 
@@ -2366,10 +2367,16 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 // A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
-(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.rider_cities&&typeof DOORCSV!=="undefined"){DOORCSV=String(j.rider_cities);if(typeof syncMode==="function")syncMode();if(typeof state!=="undefined"&&state&&typeof recalc==="function")recalc();}if(j&&(j.me_name||j.me_phone)){WBNAME=String(j.me_name||'');WBPHONE=String(j.me_phone||'');if(typeof wInitMe==="function")wInitMe();}if(j&&j.active&&j.active.order_number&&typeof openTracker==="function"){openTracker(j.active.order_number,j.active.status||"");}}).catch(function(){});}catch(e){}},0);})();
+(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;if(j&&j.rider_cities&&typeof DOORCSV!=="undefined"){DOORCSV=String(j.rider_cities);if(typeof syncMode==="function")syncMode();if(typeof state!=="undefined"&&state&&typeof recalc==="function")recalc();}if(j&&(j.me_name||j.me_phone)){WBNAME=String(j.me_name||'');WBPHONE=String(j.me_phone||'');if(typeof wInitMe==="function")wInitMe();}if(j&&j.active&&j.active.order_number&&typeof openTracker==="function"){openTracker(j.active.order_number,j.active.status||"");}}).catch(function(){});}catch(e){}},0);})();
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
 // Booker identity for the one-tap "I'm the sender / receiver" ticks (from the check response).
 var WBNAME='', WBPHONE='', WMESIDE='', WMEFILL_S=false, WMEFILL_R=false;
+// app_origin: opened from the native app, NOT from a WhatsApp chat link. In the app there is no
+// "Back to WhatsApp" — that button/copy is nonsense there (mirrors the map page's app behaviour).
+var APPMODE=false;
+// The done-screen CTA: a WhatsApp return for chat-link users; nothing for app users (the app owns
+// its own navigation, and updates land in the app's own order list).
+function waCta(){ return APPMODE ? '' : '<a class="wabtn" href="https://wa.me/2349110218825" style="margin-top:14px">Back to WhatsApp \\u2192</a>'; }
 ${TRACK_JS}
 // Live pickup tracker (same system as local delivery). Waybill riders are booked by the team
 // after confirmation, so this mostly lights up via RESUME — reopening the page with a live
@@ -2384,7 +2391,7 @@ var WLBL={stages:['Pickup booked','Rider assigned','Item picked up','At our hub'
 function openTracker(ord,stat){
   el('app').innerHTML='<div class="body"><div id="ldltrk"></div></div>';
   ldlTracker({api:API,session:SESSION,mount:'ldltrk',labels:WLBL,
-    doneHtml:'<a class="wabtn" href="https://wa.me/2349110218825" style="margin-top:14px">Back to WhatsApp →</a>'}).open(ord,stat);
+    doneHtml:waCta()}).open(ord,stat);
 }
 var lastPrice=null, state="", isPark=false, t;
 var FLAT={LAGOS:1,ABUJA:1,ABA:1,OWERRI:1};
@@ -2481,7 +2488,13 @@ function book(){
     session:SESSION,mode:'waybill',destination:state,weight:parseFloat(el('weight').value)||1,
     sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:'',item:val('item'),delivery_instruction:val('dinstr')
   })}).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.ok){el('app').innerHTML='<div class="body"><div class="done"><h2>✅ All set!</h2><p class="muted">'+(j.park?'Your waybill request is in — our team confirms the park &amp; exact price in your WhatsApp chat.':'Your order &amp; price are waiting in your WhatsApp chat.')+'</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div></div>';}
+    if(j&&j.ok){
+      // App users get an in-app confirmation (no WhatsApp); chat-link users get the WhatsApp copy + button.
+      var line=APPMODE
+        ?(j.park?'Your waybill request is in 🚚 — our team confirms the park &amp; exact price shortly, right here in the app.':'Your pickup is set 🚚 — we&rsquo;ll keep you posted in the app.')
+        :(j.park?'Your waybill request is in — our team confirms the park &amp; exact price in your WhatsApp chat.':'Your order &amp; price are waiting in your WhatsApp chat.');
+      el('app').innerHTML='<div class="body"><div class="done"><h2>✅ All set!</h2><p class="muted">'+line+'</p>'+waCta()+'</div></div>';
+    }
     else{b.disabled=false;b.textContent='Confirm & book';el('err').textContent=(j&&j.error)?('Couldn\\'t book: '+j.error):'Something went wrong — try again.';}
   }).catch(function(){b.disabled=false;b.textContent='Confirm & book';alert('Network hiccup — try again.');});
 }
@@ -2717,6 +2730,9 @@ var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/bulkOrders";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
+// app_origin: opened from the native app — no "Back to WhatsApp" (there's no chat to return to).
+var APPMODE=false;
+function waCta(){ return APPMODE ? '' : '<a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp \\u2192</a>'; }
 function el(id){return document.getElementById(id)}
 // ── Live batch tracker ── one row per delivery, chip flips as each rider moves
 // (same status pipeline as the map page: webhook milestones + live Shipday fallback).
@@ -2734,7 +2750,7 @@ function btRender(){
   var rows=BT.list.map(function(o){return '<div class="btrow"><div class="nm">'+bEsc(o.receiver||'Delivery')+(o.rider?'<span class="rd">🛵 '+bEsc(o.rider)+'</span>':'')+'</div>'+bChip(o.status)+'</div>';}).join('');
   var doneAll=BT.list.length&&BT.list.every(function(o){return o.status==='delivered'||o.status==='failed'||o.status==='cancelled';});
   el('app').innerHTML='<div class="hero"><h1>'+BT.head+'</h1><p>'+BT.sub+'</p></div><div class="body"><div class="btrk">'+rows+'</div>'
-    +(doneAll?'<a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a>':'<p style="font-size:12px;color:#a8a0ae;text-align:center;margin-top:10px">Updates land here and in your WhatsApp chat — you can close this page.</p>')
+    +(doneAll?waCta():('<p style="font-size:12px;color:#a8a0ae;text-align:center;margin-top:10px">Updates land here'+(APPMODE?'':' and in your WhatsApp chat')+' — you can close this page.</p>'))
     +'<button type="button" id="btmore" class="btmore">＋ Book more deliveries</button></div>';
   var mb=el('btmore'); if(mb)mb.onclick=function(){ try{sessionStorage.setItem('ldl_skipresume','1');}catch(e){} location.reload(); };
   if(doneAll&&BT.timer){clearInterval(BT.timer);BT.timer=null;}
@@ -2754,7 +2770,7 @@ function btPoll(){
   },10000);
 }
 function openBatch(list,head,sub){ BT.list=list; BT.head=head; BT.sub=sub; BT.pn=0; btRender(); btPoll(); }
-(function(){if(!SESSION)return;setTimeout(function(){fetch(api("action=check")).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}}).catch(function(){});},0);})();
+(function(){if(!SESSION)return;setTimeout(function(){fetch(api("action=check")).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;}).catch(function(){});},0);})();
 var n=0, PODOK=false, quoted=null, POD_SUR=0;
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
 function flagPhone(inp){if(!inp)return;function u(){var v=(inp.value||'').trim();var bad=v&&!phoneOk(v);inp.style.borderColor=bad?'#dc2626':'';}inp.addEventListener('input',u);inp.addEventListener('blur',function(){var s=(inp.value||''),d='';for(var i=0;i<s.length;i++){var c=s.charAt(i);if(c>='0'&&c<='9')d+=c;}if(d.slice(0,3)==='234')d=d.slice(3);while(d.charAt(0)==='0')d=d.slice(1);if(d)inp.value='0'+d;inp.dispatchEvent(new Event('input'));});}
@@ -2819,7 +2835,7 @@ function doBook(){
          j.booked+' deliveries created — each receiver pays cash to their rider (total ₦'+Number(j.total).toLocaleString()+').'+skipped);
        return;
      }
-     el('app').innerHTML='<div class="done"><h2>All set! 🙌</h2><p class="muted">'+j.booked+' deliveries created — a rider is being assigned to each. The receiver pays their delivery fee in cash when the rider arrives (total ₦'+Number(j.total).toLocaleString()+').'+skipped+'</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
+     el('app').innerHTML='<div class="done"><h2>All set! 🙌</h2><p class="muted">'+j.booked+' deliveries created — a rider is being assigned to each. The receiver pays their delivery fee in cash when the rider arrives (total ₦'+Number(j.total).toLocaleString()+').'+skipped+'</p>'+waCta()+'</div>';
    }).catch(function(){b.disabled=false;b.textContent='Confirm';alert('Network hiccup — try again.');});
 }
 // Render the priced review from the quoted data + the selected pay method. Pay-on-delivery adds the surcharge
