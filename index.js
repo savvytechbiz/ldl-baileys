@@ -2289,7 +2289,9 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 .st.on::after{content:'✓';position:absolute;top:8px;right:10px;width:20px;height:20px;border-radius:50%;background:var(--plum);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .stategrid button{padding:11px 16px;font-size:13.5px}
 .chap>.sec:first-child{font-size:24px;margin-top:10px}
-.chap.on{animation:none}
+/* Bring the wizard content down into the thumb-reach zone — it used to cluster at the top with
+   dead space below the tap targets. The dots + route strip stay up; only the question + controls drop. */
+.chap.on{animation:none;margin-top:18vh}
 .chap.on>*{animation:chapin .26s var(--ease) both}
 .chap.on>*:nth-child(2){animation-delay:.05s}
 .chap.on>*:nth-child(3){animation-delay:.1s}
