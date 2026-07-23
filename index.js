@@ -2298,6 +2298,12 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 .feebig{box-shadow:0 10px 26px rgba(79,7,76,.22)}
 .wbar button{transition:transform .16s var(--ease)}
 .wbar button:active{transform:scale(.97)}
+/* One-tap "I'm the sender / receiver" — same mechanic as the map. The question header
+   becomes a flex row so the tick sits at its right edge; the question text keeps its size. */
+.secme{display:flex;align-items:center;gap:10px}
+.melab{flex:none;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--plum);cursor:pointer;-webkit-user-select:none;user-select:none;padding:10px 0 10px 12px;margin-left:auto;transition:transform .16s var(--ease)}
+.melab:active{transform:scale(.96)}
+.melab input{width:18px;height:18px;accent-color:var(--plum);margin:0;cursor:pointer;flex:none}
 .steps{display:flex;gap:6px;padding:14px 2px 2px}
 .sd{flex:1;height:4px;border-radius:2px;background:var(--line-2);transition:background .3s var(--ease)}
 .sd.on{background:var(--pink)}
@@ -2337,11 +2343,11 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 <div class="chap" id="ch3">
 <div class="sec">Where does our rider collect it? <span class="req">*</span></div>
 <div class="fld"><input id="paddr" placeholder="Start typing your address…" autocomplete="off" style="padding-right:44px"><button type="button" id="ploc" class="gpsbtn" aria-label="Use my current location">📍</button><div class="sugbox" id="psug" style="display:none"></div></div>
-<div class="sec">Who is sending?</div>
+<div class="sec secme">Who is sending?<label class="melab" id="wme_s_w" style="display:none"><input type="checkbox" id="wme_s">I&rsquo;m the sender</label></div>
 <div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div></div>
 </div>
 <div class="chap" id="ch4">
-<div class="sec" id="wrecvq">Who collects it at the park?</div>
+<div class="sec secme"><span id="wrecvq">Who collects it at the park?</span><label class="melab" id="wme_r_w" style="display:none"><input type="checkbox" id="wme_r">I&rsquo;m the receiver</label></div>
 <div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone *"></div></div>
 <div class="echips" id="witems">
 <button type="button" data-i="Documents">&#128196; Documents</button>
@@ -2360,8 +2366,10 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 // A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
-(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.rider_cities&&typeof DOORCSV!=="undefined"){DOORCSV=String(j.rider_cities);if(typeof syncMode==="function")syncMode();if(typeof state!=="undefined"&&state&&typeof recalc==="function")recalc();}if(j&&j.active&&j.active.order_number&&typeof openTracker==="function"){openTracker(j.active.order_number,j.active.status||"");}}).catch(function(){});}catch(e){}},0);})();
+(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.rider_cities&&typeof DOORCSV!=="undefined"){DOORCSV=String(j.rider_cities);if(typeof syncMode==="function")syncMode();if(typeof state!=="undefined"&&state&&typeof recalc==="function")recalc();}if(j&&(j.me_name||j.me_phone)){WBNAME=String(j.me_name||'');WBPHONE=String(j.me_phone||'');if(typeof wInitMe==="function")wInitMe();}if(j&&j.active&&j.active.order_number&&typeof openTracker==="function"){openTracker(j.active.order_number,j.active.status||"");}}).catch(function(){});}catch(e){}},0);})();
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
+// Booker identity for the one-tap "I'm the sender / receiver" ticks (from the check response).
+var WBNAME='', WBPHONE='', WMESIDE='', WMEFILL_S=false, WMEFILL_R=false;
 ${TRACK_JS}
 // Live pickup tracker (same system as local delivery). Waybill riders are booked by the team
 // after confirmation, so this mostly lights up via RESUME — reopening the page with a live
@@ -2524,6 +2532,44 @@ else{
     var w=parseFloat(el('weight').value);
     el('wsname').textContent=nameOf(state)+(FLAT[state]?'':' park')+((!isNaN(w)&&w>0)?(' · '+w+'kg'):'');
   }
+  // ── One-tap identity (same mechanic as the map's "I am the sender / receiver") ── ticking a
+  // side fills it with the booker's own name + number; you can only be one side, so the other
+  // tick hides. Untick to clear. Typing over it just works — nothing is a mode.
+  function wDigTail(v){ var s=String(v||''),d='',i,c; for(i=0;i<s.length;i++){ c=s.charAt(i); if(c>='0'&&c<='9')d+=c; } return d.slice(-10); }
+  function wIsMyNum(v){ return !!(WBPHONE&&v&&wDigTail(v)===wDigTail(WBPHONE)); }
+  function wInitMe(){ // reveal the ticks only once we actually know the booker (else they'd be dead)
+    var sw=el('wme_s_w'), rw=el('wme_r_w');
+    if(sw)sw.style.display=WBPHONE?'':'none';
+    if(rw)rw.style.display=WBPHONE?'':'none';
+    wUpdateMe();
+  }
+  function wUpdateMe(){
+    var a=el('wme_s'), b=el('wme_r'), aw=el('wme_s_w'), bw=el('wme_r_w');
+    if(a)a.checked=(WMESIDE==='send');
+    if(b)b.checked=(WMESIDE==='recv');
+    if(aw)aw.style.display=(WMESIDE==='recv'||!WBPHONE)?'none':'';
+    if(bw)bw.style.display=(WMESIDE==='send'||!WBPHONE)?'none':'';
+  }
+  function wClearMe(side){
+    var n,p;
+    if(side==='send'&&WMEFILL_S){ n=el('sname'); p=el('sphone');
+      if(n&&n.value===(WBNAME||''))n.value=''; if(p&&wIsMyNum(p.value)){ p.value=''; p.dispatchEvent(new Event('input')); } WMEFILL_S=false; }
+    if(side==='recv'&&WMEFILL_R){ n=el('rname'); p=el('rphone');
+      if(n&&n.value===(WBNAME||''))n.value=''; if(p&&wIsMyNum(p.value)){ p.value=''; p.dispatchEvent(new Event('input')); } WMEFILL_R=false; }
+  }
+  function wSetMe(side){
+    if(WMESIDE===side){ wClearMe(side); WMESIDE=''; wUpdateMe(); validate(); return; }
+    if(WMESIDE)wClearMe(WMESIDE);
+    WMESIDE=side;
+    if(WBPHONE){
+      var n,p;
+      if(side==='send'){ n=el('sname'); p=el('sphone');
+        if(n&&(!n.value||WMEFILL_S))n.value=WBNAME||''; if(p){ p.value=WBPHONE; p.dispatchEvent(new Event('blur')); } WMEFILL_S=true; }
+      else { n=el('rname'); p=el('rphone');
+        if(n&&(!n.value||WMEFILL_R))n.value=WBNAME||''; if(p){ p.value=WBPHONE; p.dispatchEvent(new Event('blur')); } WMEFILL_R=true; }
+    }
+    wUpdateMe(); validate();
+  }
   var _wv=validate; validate=function(){_wv(); wSyncGo(); updStrip();};
   // Door vs park changes what page four ASKS: door destinations need the receiver's address
   // (it rides in delivery_instruction — the payload stays identical), park destinations only
@@ -2546,6 +2592,9 @@ else{
   ['sname','sphone','paddr','rname','rphone','item'].forEach(function(id){el(id).addEventListener('input',validate);});
   flagPhone('sphone');flagPhone('rphone');
   wireAuto('paddr','psug');useLoc();
+  var _ms=el('wme_s'); if(_ms)_ms.onchange=function(){ wSetMe('send'); };
+  var _mr=el('wme_r'); if(_mr)_mr.onchange=function(){ wSetMe('recv'); };
+  wInitMe();  // if the check response already set WBPHONE before init ran, reveal now
   el('go').onclick=function(){ if(WSTEP<WLAST){ if(wStepOk(WSTEP))wShow(WSTEP+1); } else { book(); } };
 }
 </script></body></html>`;
