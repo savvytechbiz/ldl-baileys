@@ -2278,7 +2278,26 @@ const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="theme-color" content="#4F074C">
 ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}${FLOW_CSS}
 /* Paged wizard (quote-page model): one question per SCREEN, progress dots, floating Back/Continue. */
-#weight{font-size:26px;font-weight:800}
+/* ── App-feel layer ── fare-board destination cards, ✓ tap acknowledgment, cascading screen
+   entrances, centered announce-the-number weight, growing route strip, pressable bar. */
+.states{gap:10px}
+.st{position:relative;padding:18px 14px;border-radius:16px;transition:transform .16s var(--ease),border-color .2s ease,background .2s ease}
+.st:active{transform:scale(.97)}
+.st b{font-size:18px;letter-spacing:-.02em}
+.st span{font-size:14px;font-weight:800;color:var(--plum);margin-top:3px;display:block}
+.st.on::after{content:'✓';position:absolute;top:8px;right:10px;width:20px;height:20px;border-radius:50%;background:var(--plum);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.stategrid button{padding:11px 16px;font-size:13.5px}
+.chap>.sec:first-child{font-size:24px;margin-top:10px}
+.chap.on{animation:none}
+.chap.on>*{animation:chapin .26s var(--ease) both}
+.chap.on>*:nth-child(2){animation-delay:.05s}
+.chap.on>*:nth-child(3){animation-delay:.1s}
+.chap.on>*:nth-child(4){animation-delay:.15s}
+.chap.on>*:nth-child(n+5){animation-delay:.18s}
+#weight{text-align:center;font-size:30px;font-weight:800}
+.feebig{box-shadow:0 10px 26px rgba(79,7,76,.22)}
+.wbar button{transition:transform .16s var(--ease)}
+.wbar button:active{transform:scale(.97)}
 .steps{display:flex;gap:6px;padding:14px 2px 2px}
 .sd{flex:1;height:4px;border-radius:2px;background:var(--line-2);transition:background .3s var(--ease)}
 .sd.on{background:var(--pink)}
@@ -2498,7 +2517,14 @@ else{
     window.scrollTo({top:0,behavior:'smooth'});
     if(n===WLAST)validate(); else wSyncGo();
   }
-  var _wv=validate; validate=function(){_wv(); wSyncGo();};
+  // The route strip GROWS as answers land — destination, then "· 2kg" — a ticket assembling,
+  // not a header. Runs on every validate() so every existing listener feeds it for free.
+  function updStrip(){
+    if(!state)return;
+    var w=parseFloat(el('weight').value);
+    el('wsname').textContent=nameOf(state)+(FLAT[state]?'':' park')+((!isNaN(w)&&w>0)?(' · '+w+'kg'):'');
+  }
+  var _wv=validate; validate=function(){_wv(); wSyncGo(); updStrip();};
   // Door vs park changes what page four ASKS: door destinations need the receiver's address
   // (it rides in delivery_instruction — the payload stays identical), park destinations only
   // need who collects. Re-synced whenever the destination or the rider-cities list changes.
