@@ -1507,7 +1507,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   function doCancel(onOk){
     var eb=document.getElementById('trkedit'), cbb=document.getElementById('trkcancel');
     if(eb)eb.disabled=true; if(cbb){cbb.disabled=true;cbb.textContent='Cancelling…';}
-    fetch(api('action=cancelorder&order='+encodeURIComponent(ORDNUM))).then(function(r){return r.json();}).then(function(s){
+    // Belt-and-braces timeout: "Cancelling…" must NEVER hang forever, whatever the network does.
+    var _to={}; try{ if(window.AbortSignal&&AbortSignal.timeout)_to={signal:AbortSignal.timeout(25000)}; }catch(e){}
+    fetch(api('action=cancelorder&order='+encodeURIComponent(ORDNUM)),_to).then(function(r){return r.json();}).then(function(s){
       if(s&&(s.cancelled||s.already)){ onOk(); return; }
       if(s&&s.error==='too-late'){ alert('The rider already has your parcel — message us on WhatsApp and we will sort it out 🙏'); trackUI(trkState); return; }
       alert('Could not cancel just now — please try again, or message us on WhatsApp.'); trackUI(trkState);
