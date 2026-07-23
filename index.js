@@ -614,11 +614,14 @@ input,button,textarea,select{font-family:inherit}
 .pickbtn:active{transform:scale(.96)}
 .pickbtn .i{width:17px;height:17px}
 .cover{font-size:12.5px;font-weight:600;color:#166534;margin-top:9px;line-height:1.35}
-.search{text-align:center;padding:10px 6px 4px}
-.search h2{font-size:21px;font-weight:800;color:var(--plum-d);letter-spacing:-.02em;margin:0 0 6px}
+.search{text-align:center;padding:10px 6px 4px;animation:searchin .18s cubic-bezier(.23,1,.32,1)}
+@keyframes searchin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.search h2{font-size:20px;font-weight:800;color:var(--plum-d);letter-spacing:-.02em;margin:0 0 6px}
+.livedot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pink);margin:0 8px 2px 0;vertical-align:middle;animation:livep 1.6s cubic-bezier(.23,1,.32,1) infinite}
+@keyframes livep{0%,100%{box-shadow:0 0 0 0 rgba(226,58,124,.35)}50%{box-shadow:0 0 0 6px rgba(226,58,124,0)}}
 .search .smut{font-size:13.5px;color:var(--ink-2);line-height:1.45;margin:0 0 2px}
-.search .ssub{font-size:12px;color:var(--ink-3);margin:10px 0 0;line-height:1.4}
-.sbar{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin:16px 8px 12px}
+.search .ssub{font-size:12px;color:var(--ink-3);margin:12px 0 0;line-height:1.4}
+.sbar{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin:15px 10px 4px}
 .sfill{height:100%;width:6%;border-radius:99px;background:var(--plum);animation:screep 75s cubic-bezier(.25,.6,.3,1) forwards}
 @keyframes screep{0%{width:6%}15%{width:34%}45%{width:60%}100%{width:88%}}
 .radar{position:relative;width:18px;height:18px;pointer-events:none}
@@ -626,23 +629,38 @@ input,button,textarea,select{font-family:inherit}
 .radar span+span{animation-delay:1.2s}
 @keyframes radarp{0%{transform:scale(.5);opacity:.9}70%{opacity:.15}100%{transform:scale(8);opacity:0}}
 .trk{margin:14px 4px 2px;text-align:left}
-.tkrow{display:flex;align-items:center;gap:11px;padding:7px 0}
-.tkd{width:22px;height:22px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
-.tk-done .tkd{background:var(--plum);color:#fff}
+.tkrow{position:relative;display:flex;align-items:center;gap:12px;padding:8px 0;animation:tkrowin .22s cubic-bezier(.23,1,.32,1) both}
+@keyframes tkrowin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.tkrow:nth-child(2){animation-delay:.04s}.tkrow:nth-child(3){animation-delay:.08s}.tkrow:nth-child(4){animation-delay:.12s}
+/* the rail: each row draws its incoming segment; traversed segments fill plum */
+.tkrow+.tkrow::before{content:'';position:absolute;left:10px;top:-8px;width:2px;height:16px;border-radius:2px;background:var(--line-2)}
+.tkrow+.tkrow.tk-done::before,.tkrow+.tkrow.tk-cur::before{background:var(--plum)}
+.tkd{width:22px;height:22px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;position:relative;z-index:1}
+.tk-done .tkd{background:var(--plum);color:#fff;animation:tkin .22s cubic-bezier(.23,1,.32,1) both}
+.tkrow:nth-child(2).tk-done .tkd{animation-delay:.04s}.tkrow:nth-child(3).tk-done .tkd{animation-delay:.08s}.tkrow:nth-child(4).tk-done .tkd{animation-delay:.12s}
+@keyframes tkin{from{transform:scale(.6);opacity:.4}to{transform:scale(1);opacity:1}}
 .tk-cur .tkd{background:#fff;border:2px solid var(--pink);animation:tkpulse 1.6s ease-in-out infinite}
 .tk-todo .tkd{background:#fff;border:2px solid var(--line-2)}
 .tkl{font-size:14px;font-weight:600;color:var(--ink)}
 .tk-todo .tkl{color:var(--ink-3);font-weight:500}
 .tk-cur .tkl{color:var(--plum-d);font-weight:700}
 @keyframes tkpulse{0%,100%{box-shadow:0 0 0 3px rgba(226,58,124,.20)}50%{box-shadow:0 0 0 8px rgba(226,58,124,.06)}}
+.feenote{font-size:12.5px;color:var(--ink-2);line-height:1.45;margin:12px 2px 0;padding-top:11px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
 .trkact{display:flex;gap:10px;margin-top:14px}
-.trkact button{flex:1;width:auto;height:44px;margin:0;padding:0 10px;background:#fff;border:1.5px solid var(--line-2);border-radius:12px;box-shadow:none;color:var(--plum-d);font-size:13.5px;font-weight:700;letter-spacing:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.trkact button{flex:1;width:auto;height:44px;margin:0;padding:0 10px;background:#fff;border:1.5px solid var(--line-2);border-radius:12px;box-shadow:none;color:var(--plum-d);font-size:13.5px;font-weight:700;letter-spacing:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:transform .16s cubic-bezier(.23,1,.32,1)}
+.trkact button:active{transform:scale(.97)}
 .trkact button:disabled{opacity:.55}
 .trkact .tkx{border-color:#f2c6c6;color:#b3261e}
-.riderrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:12px}
-.riderrow .rdrnm{font-size:13.5px;font-weight:800;color:var(--plum-d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.riderrow .rdrcall{flex:none;display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 14px;border-radius:10px;background:var(--plum);color:#fff;font-size:12.5px;font-weight:800;text-decoration:none}
-.tknew{display:block;width:100%;margin:10px 0 0;padding:10px 0;background:none;border:none;box-shadow:none;color:var(--plum);font-size:13px;font-weight:700;letter-spacing:0;cursor:pointer;height:auto}
+.riderrow{display:flex;align-items:center;gap:11px;margin-top:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:13px;text-align:left;animation:riderin .22s cubic-bezier(.23,1,.32,1)}
+@keyframes riderin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.rdrav{flex:none;width:38px;height:38px;border-radius:50%;background:var(--plum);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.rdrmeta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.rdrcap{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:var(--ink-3);text-transform:uppercase}
+.riderrow .rdrnm{font-size:14px;font-weight:800;color:var(--plum-d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.riderrow .rdrcall{flex:none;display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 15px;border-radius:11px;background:var(--plum);color:#fff;font-size:12.5px;font-weight:800;text-decoration:none;transition:transform .16s cubic-bezier(.23,1,.32,1)}
+.riderrow .rdrcall:active{transform:scale(.96)}
+.tknew{display:block;width:100%;margin:10px 0 0;padding:10px 0;background:none;border:none;box-shadow:none;color:var(--plum);font-size:13px;font-weight:700;letter-spacing:0;cursor:pointer;height:auto;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s ease}
+.tknew:active{transform:scale(.98);opacity:.75}
 #pickok{display:flex;align-items:center;justify-content:center;gap:9px}
 /* The payment label used to be a bare text node, so the price had no room and broke onto two lines
    ("+" above "N200"). Give the text its own flex box and pin the price to a single line. */
@@ -1442,17 +1460,21 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // the moment the status moves on — the server re-checks everything anyway.
     var act=(MODE==='pod'&&ORDNUM&&(st==='searching'||st==='settle'||st==='assigned'));
     var ended=(st==='delivered'||st==='failed'||st==='cancelled');
-    // Rider row: once a real person has the job, show who they are with a one-tap Call button —
-    // the same trust move Bolt makes the moment a driver accepts.
-    var riderRow=(RIDER&&(RIDER.name||RIDER.phone)&&(st==='assigned'||st==='ontheway'))
-      ?('<div class="riderrow"><span class="rdrnm">🛵 '+esc(RIDER.name||'Your rider')+'</span>'
-        +(RIDER.phone?('<a class="rdrcall" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'">📞 Call</a>'):'')+'</div>')
-      :'';
-    box.innerHTML='<div class="search"><h2>'+h[0]+'</h2><p class="smut">'+h[1]+'</p>'
+    // Rider card: once a real person has the job, show who they are — avatar initial, name,
+    // one-tap Call. The same trust move Bolt makes the moment a driver accepts.
+    var riderRow='';
+    if(RIDER&&(RIDER.name||RIDER.phone)&&(st==='assigned'||st==='ontheway')){
+      var _init=(RIDER.name||'').trim().charAt(0).toUpperCase()||'🛵';
+      riderRow='<div class="riderrow"><div class="rdrav">'+esc(_init)+'</div>'
+        +'<div class="rdrmeta"><span class="rdrcap">Your rider</span><span class="rdrnm">'+esc(RIDER.name||'On the job')+'</span></div>'
+        +(RIDER.phone?('<a class="rdrcall" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'">📞 Call</a>'):'')+'</div>';
+    }
+    var live=(st==='searching'||st==='settle')?'<span class="livedot"></span>':'';
+    box.innerHTML='<div class="search"><h2>'+live+h[0]+'</h2><p class="smut">'+h[1]+'</p>'
       +((st==='searching'||st==='settle')?'<div class="sbar"><div class="sfill"></div></div>':'')
       +'<div class="trk">'+rows+'</div>'
       +riderRow
-      +(feeLine&&!ended?('<p class="smut">'+feeLine+'</p>'):'')
+      +(feeLine&&!ended?('<p class="feenote">'+feeLine+'</p>'):'')
       +(act?'<div class="trkact"><button type="button" id="trkedit">✎ Edit location</button><button type="button" id="trkcancel" class="tkx">Cancel order</button></div>':'')
       +(ended?'<div class="trkact"><button type="button" id="trknew">Book another delivery</button></div>'
              :(RESUMED?'<button type="button" id="trknew" class="tknew">＋ Book another delivery</button>':''))
