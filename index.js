@@ -1762,6 +1762,56 @@ button:disabled{background:#F0D9E8}
 .err{color:#c0392b;font-size:13px;min-height:16px;margin-top:6px}`;
 
 // ── INTERNATIONAL shipping page (rider-first estimate) — premium look, no waybill ──
+// ── Shared "experience" kit (quote / waybill / bulk) ── tap-first affordances that replace
+// form-feel: flag destination chips, a living route strip, item chips, count-up price moments,
+// state pills, press feedback. Presentation only — every field id and payload stays identical.
+const EXP_CSS = `
+.destgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:2px 0 6px}
+.dchip{display:flex;align-items:center;gap:10px;padding:13px 12px;border:1.5px solid var(--line-2);border-radius:14px;background:#fff;cursor:pointer;text-align:left;box-shadow:none;width:auto;transition:transform .16s cubic-bezier(.23,1,.32,1),border-color .2s ease,background .2s ease}
+.dchip:active{transform:scale(.97)}
+.dchip.on{border-color:var(--plum);background:var(--lilac)}
+.dchip .fl{font-size:22px;flex:none;line-height:1}
+.dchip .dn{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.2}
+.morec{display:block;width:100%;margin:8px 0 0;padding:11px 0;background:none;border:none;box-shadow:none;color:var(--plum);font-size:13px;font-weight:700;cursor:pointer;transition:opacity .16s ease}
+.morec:active{opacity:.7}
+.morewrap{display:none;margin-top:4px}
+.morewrap.on{display:block;animation:qexpin .2s cubic-bezier(.23,1,.32,1)}
+@keyframes qexpin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.routestrip{display:none;align-items:center;justify-content:center;gap:9px;background:var(--plum);color:#fff;border-radius:14px;padding:11px 14px;margin:0 0 16px;font-size:13.5px;font-weight:700;animation:qexpin .25s cubic-bezier(.23,1,.32,1)}
+.routestrip.on{display:flex}
+.routestrip .rsarrow{opacity:.65;font-size:12px;letter-spacing:.06em}
+.routestrip .rsflag{font-size:17px;line-height:1}
+.echips{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+.echips button{flex:0 0 auto;width:auto;padding:9px 14px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:13px;font-weight:700;color:var(--ink-2);box-shadow:none;transition:transform .16s cubic-bezier(.23,1,.32,1)}
+.echips button:active{transform:scale(.95)}
+.echips button.on{border-color:var(--plum);background:var(--plum);color:#fff}
+.amtpop{animation:amtin .3s cubic-bezier(.23,1,.32,1)}
+@keyframes amtin{from{transform:scale(.92);opacity:.5}to{transform:none;opacity:1}}
+.stategrid{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 2px}
+.stategrid button{flex:0 0 auto;width:auto;padding:9px 13px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:12.5px;font-weight:700;color:var(--ink-2);box-shadow:none;transition:transform .16s cubic-bezier(.23,1,.32,1)}
+.stategrid button:active{transform:scale(.95)}
+.stategrid button.on{border-color:var(--plum);background:var(--plum);color:#fff}
+`;
+// Count-up: a price that lands with weight instead of just appearing. Correctness first —
+// the FINAL value is written synchronously (rAF can be throttled to zero in backgrounded
+// WebViews), then the 500ms count runs purely as decoration when frames actually fire.
+const EXP_JS = `
+function countUp(elm,target,prefix){
+  if(!elm)return;
+  var fin=(prefix||'')+'\\u20A6'+Number(target).toLocaleString();
+  elm.textContent=fin;
+  try{ elm.classList.remove('amtpop'); void elm.offsetWidth; elm.classList.add('amtpop'); }catch(e){}
+  try{
+    var start=null,dur=500;
+    requestAnimationFrame(function frame(ts){
+      if(start===null)start=ts;
+      var p=Math.min(1,(ts-start)/dur); p=1-Math.pow(1-p,3);
+      elm.textContent=(prefix||'')+'\\u20A6'+Math.round(target*p).toLocaleString();
+      if(p<1)requestAnimationFrame(frame); else elm.textContent=fin;
+    });
+  }catch(e){ elm.textContent=fin; }
+}
+`;
 // ── Shared pickup tracker (quote + waybill pages) ── the map page's tracker, panel-only (these
 // pages have no map): live stages rail, rider card with Call, resume via check.active. Same class
 // names/motion as the map tracker so the whole product feels like one system.
@@ -1859,7 +1909,7 @@ const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Ship internationally &mdash; Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
-${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
+${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}
 .wrap{padding-bottom:96px}
 /* The sheet reaches the action bar, so a short step never leaves a dead pale band. */
 .sheet{display:flex;flex-direction:column;min-height:calc(100vh - 232px)}
@@ -1910,6 +1960,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
 <p>Door pickup in Port Harcourt, delivered worldwide. You only pay after our rider weighs it.</p></div>
 <div class="sheet">
 <div class="steps"><div class="sd on" id="sd0"></div><div class="sd" id="sd1"></div><div class="sd" id="sd2"></div><div class="sd" id="sd3"></div><div class="sd" id="sd4"></div></div>
+<div class="routestrip" id="rstrip"><span class="rsflag">&#127475;&#127468;</span><span>Port Harcourt</span><span class="rsarrow">&mdash;&nbsp;&#9992;&#65039;&nbsp;&mdash;</span><span class="rsflag" id="rsflag">&#127758;</span><span id="rsname"></span></div>
 
 <div class="step on" id="s0">
 <div class="qh">How should it fly?</div>
@@ -1922,7 +1973,19 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
 
 <div class="step" id="s1">
 <div class="qh">Where is it going?</div>
-<div class="qs">Pick the country, then tell us roughly how heavy it is.</div>
+<div class="qs">Tap the country, then tell us roughly how heavy it is.</div>
+<div class="destgrid" id="destgrid">
+<button type="button" class="dchip" data-c="UNITED KINGDOM (Z1)"><span class="fl">&#127468;&#127463;</span><span class="dn">United Kingdom</span></button>
+<button type="button" class="dchip" data-c="USA (Z3)"><span class="fl">&#127482;&#127480;</span><span class="dn">United States</span></button>
+<button type="button" class="dchip" data-c="CANADA (Z3)"><span class="fl">&#127464;&#127462;</span><span class="dn">Canada</span></button>
+<button type="button" class="dchip" data-c="GHANA (Z2)"><span class="fl">&#127468;&#127469;</span><span class="dn">Ghana</span></button>
+<button type="button" class="dchip" data-c="UNITED ARAB EMIRATES (Z6)"><span class="fl">&#127462;&#127466;</span><span class="dn">UAE &middot; Dubai</span></button>
+<button type="button" class="dchip" data-c="GERMANY (Z4)"><span class="fl">&#127465;&#127466;</span><span class="dn">Germany</span></button>
+<button type="button" class="dchip" data-c="ITALY (Z4)"><span class="fl">&#127470;&#127481;</span><span class="dn">Italy</span></button>
+<button type="button" class="dchip" data-c="CHINA (Z7)"><span class="fl">&#127464;&#127475;</span><span class="dn">China</span></button>
+</div>
+<button type="button" class="morec" id="morec">&#127758; More countries &#9662;</button>
+<div class="morewrap" id="morewrap">
 <div class="lbl">Destination country</div>
 <div class="fld"><select id="country">
 <option value="">Select destination…</option>
@@ -1935,6 +1998,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
 <optgroup label="Asia &amp; Oceania"><option value="CHINA (Z7)">China</option><option value="INDIA (Z7)">India</option><option value="JAPAN (Z7)">Japan</option><option value="SINGAPORE (Z7)">Singapore</option><option value="MALAYSIA (Z7)">Malaysia</option><option value="HONG KONG (Z7)">Hong Kong</option><option value="AUSTRALIA (Z7)">Australia</option><option value="PHILIPPINES (Z7)">Philippines</option><option value="THAILAND (Z7)">Thailand</option><option value="INDONESIA (Z7)">Indonesia</option><option value="VIETNAM (Z7)">Vietnam</option><option value="PAKISTAN (Z7)">Pakistan</option><option value="BANGLADESH (Z7)">Bangladesh</option><option value="TAIWAN (Z7)">Taiwan</option></optgroup>
 <optgroup label="Latin America &amp; Caribbean"><option value="BRAZIL (Z8)">Brazil</option><option value="ARGENTINA (Z8)">Argentina</option><option value="CHILE (Z8)">Chile</option><option value="COLOMBIA (Z8)">Colombia</option><option value="PERU (Z8)">Peru</option><option value="JAMAICA (Z8)">Jamaica</option><option value="NEW ZEALAND (Z8)">New Zealand</option><option value="PANAMA (Z8)">Panama</option><option value="VENEZUELA (Z8)">Venezuela</option></optgroup>
 </select></div>
+</div>
 <div class="lbl">About how heavy?</div>
 <div class="wq" id="wq"></div>
 <div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="Or type the weight in kg"></div>
@@ -1959,7 +2023,15 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
 <div class="lbl">Delivery address abroad</div>
 <div class="fld"><input id="daddr" placeholder="Street, city, postcode&hellip;" autocomplete="off"><div class="sugbox" id="dsug" style="display:none"></div></div>
 <div class="lbl">What are you sending?</div>
-<div class="fld"><input id="item" placeholder="e.g. documents, clothes, a phone"></div>
+<div class="echips" id="qitems">
+<button type="button" data-i="Documents">&#128196; Documents</button>
+<button type="button" data-i="Clothes">&#128087; Clothes</button>
+<button type="button" data-i="Foodstuff">&#127859; Foodstuff</button>
+<button type="button" data-i="Phone / electronics">&#128241; Electronics</button>
+<button type="button" data-i="Cosmetics">&#128132; Cosmetics</button>
+<button type="button" data-i="Medication">&#128138; Medication</button>
+</div>
+<div class="fld"><input id="item" placeholder="Or type it &mdash; e.g. documents, clothes, a phone"></div>
 <div class="lbl">Anything we should know? <span style="font-weight:600;text-transform:none;letter-spacing:0;color:#aab0b8">&mdash; optional</span></div>
 <div class="fld"><textarea id="dinstr" placeholder="e.g. call on arrival, fragile, leave at reception"></textarea></div>
 </div>
@@ -2054,6 +2126,32 @@ function wireAuto(inId,sugId,region){
 }
 function snapWeight(){var w=parseFloat(el('weight').value);if(!isNaN(w)&&w>0)el('weight').value=(Math.ceil(w*2)/2).toFixed(1);}
 function markWq(){var w=el('weight').value;Array.prototype.forEach.call(document.querySelectorAll('#wq button'),function(b){b.className=(b.getAttribute('data-kg')===w)?'on':'';});}
+${EXP_JS}
+// Flags for the route strip (fallback 🌍 for the long tail). Keys = the select's country token.
+var FLAGS={'UNITED KINGDOM':'\\u{1F1EC}\\u{1F1E7}','IRELAND REP OF':'\\u{1F1EE}\\u{1F1EA}','USA':'\\u{1F1FA}\\u{1F1F8}','CANADA':'\\u{1F1E8}\\u{1F1E6}','GHANA':'\\u{1F1EC}\\u{1F1ED}','UNITED ARAB EMIRATES':'\\u{1F1E6}\\u{1F1EA}','GERMANY':'\\u{1F1E9}\\u{1F1EA}','FRANCE':'\\u{1F1EB}\\u{1F1F7}','ITALY':'\\u{1F1EE}\\u{1F1F9}','SPAIN':'\\u{1F1EA}\\u{1F1F8}','NETHERLANDS':'\\u{1F1F3}\\u{1F1F1}','CHINA':'\\u{1F1E8}\\u{1F1F3}','INDIA':'\\u{1F1EE}\\u{1F1F3}','SOUTH AFRICA':'\\u{1F1FF}\\u{1F1E6}','AUSTRALIA':'\\u{1F1E6}\\u{1F1FA}','SAUDI ARABIA':'\\u{1F1F8}\\u{1F1E6}','TURKEY':'\\u{1F1F9}\\u{1F1F7}','BRAZIL':'\\u{1F1E7}\\u{1F1F7}','KENYA':'\\u{1F1F0}\\u{1F1EA}','EGYPT':'\\u{1F1EA}\\u{1F1EC}','BELGIUM':'\\u{1F1E7}\\u{1F1EA}','SWEDEN':'\\u{1F1F8}\\u{1F1EA}','QATAR':'\\u{1F1F6}\\u{1F1E6}','KUWAIT':'\\u{1F1F0}\\u{1F1FC}','JAPAN':'\\u{1F1EF}\\u{1F1F5}','MALAYSIA':'\\u{1F1F2}\\u{1F1FE}'};
+function stripCty(v){return String(v||'').replace(/\\s*\\(Z\\d\\)\\s*$/,'');}
+// The living route strip: 🇳🇬 PH ✈ <flag> <country>, alive from the moment a country is chosen.
+function syncStrip(){
+  var c=val('country'), rs=el('rstrip');
+  if(!c){ if(rs)rs.className='routestrip'; return; }
+  var name=stripCty(c);
+  el('rsflag').textContent=FLAGS[name]||'\\u{1F30D}';
+  // Title-case, but leave short acronyms alone (USA/UAE read wrong as 'Usa').
+  el('rsname').textContent=(name.length<=3)?name:name.toLowerCase().replace(/\\b[a-z]/g,function(m){return m.toUpperCase();});
+  if(rs)rs.className='routestrip on';
+}
+// Destination chips: tap = pick. They drive the SAME hidden select, so the payload
+// and every existing listener stay untouched. The full list lives behind "More countries".
+function markDest(){var c=val('country');Array.prototype.forEach.call(document.querySelectorAll('#destgrid .dchip'),function(b){b.className='dchip'+(b.getAttribute('data-c')===c?' on':'');});}
+Array.prototype.forEach.call(document.querySelectorAll('#destgrid .dchip'),function(b){
+  b.onclick=function(){ el('country').value=b.getAttribute('data-c'); markDest(); syncStrip(); recalc(); };
+});
+var _mc=el('morec'); if(_mc)_mc.onclick=function(){ var mw=el('morewrap'); var on=mw.className.indexOf('on')<0; mw.className='morewrap'+(on?' on':''); _mc.innerHTML=on?'Fewer countries \\u25B4':'\\u{1F30D} More countries \\u25BE'; };
+// Item chips → the same #item input (typing anything custom un-marks the chips).
+Array.prototype.forEach.call(document.querySelectorAll('#qitems button'),function(b){
+  b.onclick=function(){ var on=b.className==='on'; Array.prototype.forEach.call(document.querySelectorAll('#qitems button'),function(x){x.className='';}); if(!on){b.className='on';el('item').value=b.getAttribute('data-i');} else el('item').value=''; syncGo(); };
+});
+el('item').addEventListener('input',function(){ var v=val('item'); Array.prototype.forEach.call(document.querySelectorAll('#qitems button'),function(x){x.className=(x.getAttribute('data-i')===v)?'on':'';}); });
 function recalc(){
   lastPrice=null;el('fee').style.display='none';el('baramt').textContent='\u2014';syncEst();el('err').textContent='';
   var d=val('country'),w=parseFloat(el('weight').value),v=parseFloat(el('value').value);
@@ -2062,9 +2160,11 @@ function recalc(){
   el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Calculating\u2026</div></div><div class="amt">\u2026</div>';
   var qs='action=price&session='+encodeURIComponent(SESSION)+'&mode='+svc()+'&destination='+encodeURIComponent(d)+'&weight='+w+'&value='+v+'&pickup_city='+pickupCity();
   fetch(API+'?'+qs).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.price){lastPrice=j.price;lastEtd=j.etd||'';var amt='~\u20A6'+Number(j.price).toLocaleString();
-      el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Estimate \u00B7 '+(j.ship_mode==='cargo'?'Air Cargo':'Air Express')+'</div><div class="sub">confirmed after the rider weighs it'+(j.etd?(' \u2022 '+j.etd):'')+'</div></div><div class="amt">'+amt+'</div>';
-      el('baramt').textContent=amt;syncEst();}
+    if(j&&j.price){lastPrice=j.price;lastEtd=j.etd||'';
+      el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Estimate \u00B7 '+(j.ship_mode==='cargo'?'Air Cargo':'Air Express')+'</div><div class="sub">confirmed after the rider weighs it'+(j.etd?(' \u2022 '+j.etd):'')+'</div></div><div class="amt"></div>';
+      // The price LANDS (count-up + pop) instead of just appearing \u2014 the moment of the page.
+      countUp(el('fee').querySelector('.amt'),Number(j.price),'~');
+      countUp(el('baramt'),Number(j.price),'~');syncEst();}
     else{el('fee').style.display='none';el('baramt').textContent='\u2014';
       if(j&&j.error==='cargo_min_weight')el('err').textContent='Air Cargo needs 10kg or more \u2014 use Air Express for lighter parcels.';
       else if(j&&j.error==='cargo_unavailable')el('err').textContent='Air Cargo goes to the UK, USA, Canada and Ghana only \u2014 use Air Express here.';
@@ -2124,7 +2224,7 @@ else{
   Array.prototype.forEach.call(document.querySelectorAll('.scard'),function(p){p.onclick=function(){SVC=p.getAttribute('data-svc');Array.prototype.forEach.call(document.querySelectorAll('.scard'),function(x){x.className='scard';});p.className='scard on';recalc();};});
   el('weight').addEventListener('input',function(){markWq();recalc();});
   el('weight').addEventListener('blur',function(){snapWeight();markWq();recalc();});
-  el('country').addEventListener('change',recalc);
+  el('country').addEventListener('change',function(){markDest();syncStrip();recalc();});
   el('value').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,350);});
   ['sname','paddr','rname','daddr','item'].forEach(function(id){el(id).addEventListener('input',syncGo);});
   flagPhone('sphone');flagPhone('rphone');
@@ -2141,7 +2241,7 @@ const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Send a waybill — Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
-${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
+${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}${EXP_CSS}
 .parkinfo{display:none;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:var(--r-lg);padding:14px 16px;margin:14px 0 2px;font-size:13px;color:#7a4d10;line-height:1.55}
 .parkinfo b{color:#5c3a0c;font-weight:700}
 .orsplit{display:flex;align-items:center;gap:12px;color:var(--ink-3);font-size:11px;font-weight:700;margin:16px 2px 12px;text-transform:uppercase;letter-spacing:.08em}
@@ -2150,6 +2250,7 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
 <h1>Send a waybill</h1>
 <p>Nationwide via our trusted parks — GUO · GIG · Rivers Joy. We pick up from your door 🛵, your receiver collects at the destination park.</p></div>
 <div class="body">
+<div class="routestrip" id="wstrip"><span class="rsflag">&#128757;</span><span>Door pickup</span><span class="rsarrow">&mdash;&nbsp;&#128666;&nbsp;&mdash;</span><span id="wsname"></span></div>
 <div class="sec" style="margin-top:6px">Where is it going?</div>
 <div class="states" id="states">
 <div class="st" data-s="LAGOS"><b>Lagos</b><span>₦10,000</span></div>
@@ -2157,11 +2258,8 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
 <div class="st" data-s="ABA"><b>Aba</b><span>₦5,000</span></div>
 <div class="st" data-s="OWERRI"><b>Owerri</b><span>₦6,000</span></div>
 </div>
-<div class="orsplit">or any other state</div>
-<div class="fld"><select id="otherstate">
-<option value="">Choose another state — via partner park…</option>
-<option value="ADAMAWA">Adamawa</option><option value="AKWA IBOM">Akwa Ibom</option><option value="ANAMBRA">Anambra</option><option value="BAUCHI">Bauchi</option><option value="BAYELSA">Bayelsa</option><option value="BENUE">Benue</option><option value="BORNO">Borno</option><option value="CROSS RIVER">Cross River</option><option value="DELTA">Delta</option><option value="EBONYI">Ebonyi</option><option value="EDO">Edo</option><option value="EKITI">Ekiti</option><option value="ENUGU">Enugu</option><option value="GOMBE">Gombe</option><option value="JIGAWA">Jigawa</option><option value="KADUNA">Kaduna</option><option value="KANO">Kano</option><option value="KATSINA">Katsina</option><option value="KEBBI">Kebbi</option><option value="KOGI">Kogi</option><option value="KWARA">Kwara</option><option value="NASARAWA">Nasarawa</option><option value="NIGER">Niger</option><option value="OGUN">Ogun</option><option value="ONDO">Ondo</option><option value="OSUN">Osun</option><option value="OYO">Oyo</option><option value="PLATEAU">Plateau</option><option value="SOKOTO">Sokoto</option><option value="TARABA">Taraba</option><option value="YOBE">Yobe</option><option value="ZAMFARA">Zamfara</option>
-</select></div>
+<div class="orsplit">or tap any other state</div>
+<div class="stategrid" id="stategrid"></div>
 <div class="lbl">Weight (kg) <span class="req">*</span></div>
 <div class="fld"><input id="weight" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="e.g. 2"></div>
 <div class="feebig" id="fee"></div>
@@ -2173,7 +2271,14 @@ ${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
 <div class="two"><div class="fld"><input id="sname" placeholder="Sender's name"></div><div class="fld"><input id="sphone" type="tel" inputmode="tel" placeholder="Sender's phone"></div></div>
 <div class="sec">Receiver <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-3)">— collects at the park</span></div>
 <div class="two"><div class="fld"><input id="rname" placeholder="Receiver's name"></div><div class="fld"><input id="rphone" type="tel" inputmode="tel" placeholder="Receiver's phone *"></div></div>
-<div class="fld"><input id="item" placeholder="What are you sending?"></div>
+<div class="echips" id="witems">
+<button type="button" data-i="Documents">&#128196; Documents</button>
+<button type="button" data-i="Clothes">&#128087; Clothes</button>
+<button type="button" data-i="Foodstuff">&#127859; Foodstuff</button>
+<button type="button" data-i="Phone / electronics">&#128241; Electronics</button>
+<button type="button" data-i="Provisions">&#128722; Provisions</button>
+</div>
+<div class="fld"><input id="item" placeholder="Or type what you're sending&hellip;"></div>
 <div class="fld"><input id="dinstr" placeholder="Note for our rider — optional" maxlength="200"></div>
 <button id="go" disabled>Confirm &amp; book</button>
 <p class="muted">Powered by Lasalu Drop Logistics</p>
@@ -2208,7 +2313,12 @@ function val(id){return (el(id).value||'').trim();}
 function useLoc(){var b=el('ploc');if(!b)return;b.onclick=function(){if(!navigator.geolocation){alert('Location is not available here — please type your address.');return;}var prev=b.textContent;b.textContent='…';b.disabled=true;navigator.geolocation.getCurrentPosition(function(pos){el('paddr').value='Getting address…';fetch(API+'?action=reverse&session='+encodeURIComponent(SESSION)+'&lat='+pos.coords.latitude+'&lng='+pos.coords.longitude).then(function(r){return r.json();}).then(function(j){el('paddr').value=(j&&j.address)?j.address:'My current location';b.textContent=prev;b.disabled=false;validate();}).catch(function(){el('paddr').value='My current location';b.textContent=prev;b.disabled=false;validate();});},function(){b.textContent=prev;b.disabled=false;alert('Couldn\\'t get your location — please allow access or type your address.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});};}
 function nameOf(s){return NAMES[s]||(s?s.charAt(0)+s.slice(1).toLowerCase():s);}
 function parkHTML(dest,over5){return over5?'📦 For a heavier item (over 5kg), our team works out the best price and confirms it in your chat 🙏 Your receiver collects at the <b>'+dest+' park</b> — <b>no home delivery</b>.':'🚚 We waybill to <b>'+dest+'</b> through our partner parks. Our rider takes your item to the park and <b>confirms we can waybill it there</b>, then sends you the <b>exact fee</b> (worked out by weight). Your receiver collects it at the <b>'+dest+' park</b> — <b>no home delivery</b>.';}
-function selectState(s,fromCard){state=s;lastPrice=null;isPark=false;Array.prototype.forEach.call(document.querySelectorAll('.st'),function(x){x.className='st'+(x.getAttribute('data-s')===s?' on':'');});if(fromCard)el('otherstate').value='';recalc();}
+${EXP_JS}
+function selectState(s,fromCard){state=s;lastPrice=null;isPark=false;
+  Array.prototype.forEach.call(document.querySelectorAll('.st'),function(x){x.className='st'+(x.getAttribute('data-s')===s?' on':'');});
+  Array.prototype.forEach.call(document.querySelectorAll('#stategrid button'),function(x){x.className=(x.getAttribute('data-s')===s)?'on':'';});
+  var ws=el('wstrip'); if(ws){ if(s){el('wsname').textContent=nameOf(s)+(FLAT[s]?'':' park'); ws.className='routestrip on';} else ws.className='routestrip'; }
+  recalc();}
 function wireAuto(inId,sugId){
   var inp=el(inId),sug=el(sugId),tt;
   inp.addEventListener('input',function(){
@@ -2236,7 +2346,8 @@ function recalc(){
   if(isNaN(w)||w<=0){validate();return;}
   el('fee').style.display='flex';el('fee').innerHTML='<div class="l">Calculating…</div>';
   fetch(API+'?action=price&session='+encodeURIComponent(SESSION)+'&mode=waybill&destination='+encodeURIComponent(state)+'&weight='+w).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.price){lastPrice=j.price;el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Waybill to '+nameOf(state)+'</div><div class="sub">up to 5kg • receiver collects at the '+nameOf(state)+' park</div></div><div class="amt">₦'+Number(j.price).toLocaleString()+'</div>';}
+    if(j&&j.price){lastPrice=j.price;el('fee').style.display='flex';el('fee').innerHTML='<div><div class="l">Waybill to '+nameOf(state)+'</div><div class="sub">up to 5kg • receiver collects at the '+nameOf(state)+' park</div></div><div class="amt"></div>';
+      countUp(el('fee').querySelector('.amt'),Number(j.price),'');}
     else if(j&&j.park){isPark=true;el('fee').style.display='none';el('parkinfo').style.display='block';el('parkinfo').innerHTML=parkHTML(nameOf(state),!!j.over5);}
     else{el('fee').style.display='none';}
     validate();
@@ -2258,7 +2369,14 @@ function book(){
 if(VALID!=='1'){el('app').innerHTML='<div class="body"><div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for a waybill again.</p></div></div>';}
 else{
   Array.prototype.forEach.call(document.querySelectorAll('.st'),function(b){b.onclick=function(){selectState(b.getAttribute('data-s'),true);};});
-  el('otherstate').addEventListener('change',function(){if(this.value){selectState(this.value,false);}else{state='';recalc();}});
+  // Every other state = a tappable pill (the select was the last form-feel holdout here).
+  var OTHERS=['ADAMAWA','AKWA IBOM','ANAMBRA','BAUCHI','BAYELSA','BENUE','BORNO','CROSS RIVER','DELTA','EBONYI','EDO','EKITI','ENUGU','GOMBE','JIGAWA','KADUNA','KANO','KATSINA','KEBBI','KOGI','KWARA','NASARAWA','NIGER','OGUN','ONDO','OSUN','OYO','PLATEAU','SOKOTO','TARABA','YOBE','ZAMFARA'];
+  el('stategrid').innerHTML=OTHERS.map(function(s){return '<button type="button" data-s="'+s+'">'+nameOf(s)+'</button>';}).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('#stategrid button'),function(b){b.onclick=function(){selectState(b.getAttribute('data-s'),false);};});
+  Array.prototype.forEach.call(document.querySelectorAll('#witems button'),function(b){
+    b.onclick=function(){var on=b.className==='on';Array.prototype.forEach.call(document.querySelectorAll('#witems button'),function(x){x.className='';});if(!on){b.className='on';el('item').value=b.getAttribute('data-i');}else el('item').value='';validate();};
+  });
+  el('item').addEventListener('input',function(){var v=val('item');Array.prototype.forEach.call(document.querySelectorAll('#witems button'),function(x){x.className=(x.getAttribute('data-i')===v)?'on':'';});});
   el('weight').addEventListener('input',function(){clearTimeout(t);t=setTimeout(recalc,300);});
   ['sname','sphone','paddr','rname','rphone','item'].forEach(function(id){el(id).addEventListener('input',validate);});
   flagPhone('sphone');flagPhone('rphone');
@@ -2352,11 +2470,22 @@ ${FONT_LINK}<style>${BASE_CSS}
 @keyframes blivep{0%,100%{opacity:1}50%{opacity:.35}}
 .btmore{display:block;width:100%;margin:12px 0 0;padding:11px 0;background:none;border:none;color:var(--plum);font-size:13px;font-weight:700;cursor:pointer;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s ease}
 .btmore:active{transform:scale(.98);opacity:.75}
+/* Composer feel: a sticky running count + cards that visibly complete as you fill them. */
+.dropbar{position:sticky;top:8px;z-index:40;display:none;align-items:center;gap:7px;background:var(--plum);color:#fff;border-radius:999px;padding:9px 16px;margin:2px auto 12px;font-size:12.5px;font-weight:700;box-shadow:0 6px 18px rgba(58,5,55,.25);width:max-content;max-width:100%}
+.dropbar b{font-size:14px}
+.dropbar .sep{opacity:.55}
+.ord{transition:border-color .25s ease,background .25s ease}
+.ord.done{border-color:#b9e2c4;background:#fbfffc}
+.ord .cap .capnm{color:var(--plum);text-transform:none;letter-spacing:0}
+.okdot{display:inline-flex;width:15px;height:15px;border-radius:50%;background:#16a34a;color:#fff;font-size:10px;align-items:center;justify-content:center;vertical-align:1px;margin-left:2px}
+.same:active,.rm:active,.locp:active{transform:scale(.94)}
+.same,.rm,.locp{transition:transform .16s cubic-bezier(.23,1,.32,1)}
 </style></head><body>
 <div class="wrap" id="app">
   <div class="hero"><h1>Multiple deliveries 🛵</h1><p>Add each delivery — pickup, drop-off, who's receiving and what you're sending. We price them all and send a rider to each.</p></div>
   <div class="body">
     <div class="row2"><input id="sname" placeholder="Your name"><input id="sphone" placeholder="Your phone" inputmode="tel"></div>
+    <div class="dropbar" id="dropbar">&#128230; <b id="dbN">0</b>&nbsp;<span id="dbW">drops</span> <span class="sep">&middot;</span> <span id="dbR">0 ready</span></div>
     <div id="deliveries"></div>
     <button class="add" id="add">+ Add another delivery</button>
     <div class="lbl">Payment</div>
@@ -2418,6 +2547,25 @@ function collect(){var out=[];document.querySelectorAll('.ord').forEach(function
 function rowsValid(){var os=collect();return os.length>0&&os.every(function(o){return o.pickup_address&&o.delivery_address&&o.receiver_name&&phoneOk(o.receiver_phone)&&o.item;});}
 function senderValid(){return el('sname').value.trim()&&phoneOk(el('sphone').value);}
 function syncGo(){quoted=null;el('go').textContent='Review \\u0026 book';var ok=senderValid()&&rowsValid();el('go').disabled=!ok;var r=el('review');if(r)r.remove();}
+// Living card headers + the sticky counter: each drop renumbers, takes its receiver's name,
+// and earns a green ✓ the moment it's complete — the batch builds visibly instead of form-ly.
+function rowDone(d){
+  var g=function(f){var i=d.querySelector('input[data-f='+f+']');return i?i.value.trim():'';};
+  var ph=g('receiver_phone').replace(/\\D/g,'');
+  return !!(g('pickup_address')&&g('delivery_address')&&g('receiver_name')&&ph.length>=10&&g('item'));
+}
+function refreshHds(){
+  var cards=el('deliveries').children, ready=0;
+  Array.prototype.forEach.call(cards,function(d,ix){
+    var ok=rowDone(d); if(ok)ready++;
+    d.className='ord'+(ok?' done':'');
+    var cap=d.querySelector('.cap');
+    var rn=(d.querySelector('input[data-f=receiver_name]')||{value:''}).value.trim();
+    if(cap)cap.innerHTML='DROP '+(ix+1)+(rn?' \\u00B7 <span class="capnm">'+bEsc(rn)+'</span>':'')+(ok?' <span class="okdot">\\u2713</span>':'');
+  });
+  var db=el('dropbar');
+  if(db){ db.style.display=cards.length?'flex':'none'; el('dbN').textContent=cards.length; el('dbW').textContent=cards.length===1?'drop':'drops'; el('dbR').textContent=ready+' ready'; }
+}
 function addDelivery(){
   n++;var d=document.createElement('div');d.className='ord';
   d.innerHTML='<button class="rm" title="Remove">×</button>'
@@ -2428,7 +2576,7 @@ function addDelivery(){
     +'<div class="row2 mt"><input placeholder="Receiver name" data-f="receiver_name"><input placeholder="Receiver phone" data-f="receiver_phone" inputmode="tel"></div>'
     +'<input class="mt" placeholder="What are you sending? (e.g. food, documents)" data-f="item">';
   el('deliveries').appendChild(d);
-  d.querySelector('.rm').onclick=function(){d.remove();syncGo();};
+  d.querySelector('.rm').onclick=function(){d.remove();syncGo();refreshHds();};
   var ins=d.querySelectorAll('input[data-f]');
   var pins=d.querySelectorAll('.sug');
   wireAuto(d.querySelector('input[data-f=pickup_address]'),pins[0]);
@@ -2436,8 +2584,8 @@ function addDelivery(){
   d.querySelectorAll('.locp').forEach(function(b){b.onclick=function(){useLoc(b.previousElementSibling);};});
   d.querySelector('.same').onclick=function(){var prev=d.previousElementSibling;var src=prev?prev.querySelector('input[data-f=pickup_address]'):null;var tgt=d.querySelector('input[data-f=pickup_address]');if(src&&src.value){tgt.value=src.value;tgt.dataset.coords=src.dataset.coords||'';syncGo();}};
   flagPhone(d.querySelector('input[data-f=receiver_phone]'));
-  ins.forEach(function(i){i.addEventListener('input',syncGo);});
-  syncGo();
+  ins.forEach(function(i){i.addEventListener('input',function(){syncGo();refreshHds();});});
+  syncGo();refreshHds();
 }
 function payMethod(){var r=document.querySelector('input[name=pay]:checked');return r?r.value:'now';}
 function doBook(){
