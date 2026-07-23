@@ -624,6 +624,10 @@ input,button,textarea,select{font-family:inherit}
 .sbar{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin:15px 10px 4px}
 .sfill{height:100%;width:6%;border-radius:99px;background:var(--plum);animation:screep 75s cubic-bezier(.25,.6,.3,1) forwards}
 @keyframes screep{0%{width:6%}15%{width:34%}45%{width:60%}100%{width:88%}}
+.ridericon{width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid var(--plum);box-shadow:0 2px 8px rgba(58,5,55,.25);display:flex;align-items:center;justify-content:center;font-size:15px}
+/* glide between GPS fixes — but never during Leaflet's zoom animation (it re-writes the same transform) */
+.leaflet-marker-icon.rglide{transition:transform 1.2s linear}
+.leaflet-zoom-anim .leaflet-marker-icon.rglide{transition:none}
 .radar{position:relative;width:18px;height:18px;pointer-events:none}
 .radar span{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:rgba(79,7,76,.30);animation:radarp 2.4s ease-out infinite}
 .radar span+span{animation-delay:1.2s}
@@ -1433,7 +1437,24 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // status (the same shipdayWebhook milestones that message the customer) so "Rider assigned" here is
   // true, never theater. If the status endpoint is not live yet (older mapPicker), the panel simply
   // settles into the honest "we confirm on WhatsApp" line — nothing breaks, nothing lies.
-  var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null;
+  var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null, riderM=null;
+  // Live rider marker: a bike chip that glides between GPS fixes (Shipday reports the rider app's
+  // location; we join it server-side). Camera fits ONCE on first fix — never fight the user's pan.
+  function updateRider(lat,lng){
+    if(!(isFinite(lat)&&isFinite(lng)))return;
+    try{
+      if(!riderM){
+        riderM=L.marker([lat,lng],{interactive:false,zIndexOffset:600,icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="ridericon">🛵</div>'})}).addTo(map);
+        var el=riderM._icon; if(el)el.classList.add('rglide');
+        var tgt=(trkState==='ontheway')?picked.dropoff:picked.pickup;
+        if(tgt)try{map.fitBounds(L.latLngBounds([[lat,lng],[tgt.lat,tgt.lng]]),{padding:[46,46],maxZoom:16});}catch(e){}
+      } else riderM.setLatLng([lat,lng]);
+    }catch(e){}
+  }
+  function clearRider(){
+    if(riderM){try{map.removeLayer(riderM);}catch(e){} riderM=null;}
+    var eb=document.getElementById('eta'); if(eb)eb.style.display='none';
+  }
   // The 4 milestones the customer sees. "On the way" lives in the HEADLINE (our webhook folds
   // picked-up + on-the-way into one milestone) — the dots mark what has HAPPENED.
   var TRK=['Order placed','Rider assigned','Picked up','Delivered'];
@@ -1489,6 +1510,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // WhatsApp; refreshing the page resumes it again.
   function newBooking(){
     stopPoll(); if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
+    clearRider();
     var bx=document.getElementById('searchbox'); if(bx&&bx.parentNode)bx.parentNode.removeChild(bx);
     RESUMED=false; RIDER=null; trkState=''; doneN=1; ORDNUM=''; MODE=''; pollN=0;
     // Clear the finished/running order's route completely — a stale prefilled route here would
@@ -1511,6 +1533,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         if(s&&(s.rider_name||s.rider_phone)) RIDER={name:String(s.rider_name||''),phone:String(s.rider_phone||'')};
         applyStatus(String((s&&s.status)||''));
         if(!hadRider&&RIDER&&(RIDER.name||RIDER.phone)&&(trkState==='assigned'||trkState==='ontheway')) trackUI(trkState);
+        // Live rider position + ETA on the map while the job is running.
+        if(s&&(trkState==='assigned'||trkState==='ontheway')){
+          updateRider(Number(s.rider_lat),Number(s.rider_lng));
+          var eb=document.getElementById('eta');
+          if(eb&&s.eta_mins){ eb.textContent='🛵 ~'+s.eta_mins+' min'; eb.style.display='block'; }
+        }
       }).catch(function(){});
     },ms);
   }
@@ -1522,7 +1550,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(st!=='failed')doneN=stageN(st);
     if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
     trackUI(st);
-    if(st==='delivered'||st==='failed'){ stopPoll(); }
+    if(st==='delivered'||st==='failed'){ stopPoll(); clearRider(); }
     else { startPoll(15000); }   // matched — keep tracking to the door at a gentler cadence
   }
   // Cancel the live order server-side (strictly POD + unpaid + not picked up — the server re-checks).
@@ -1541,6 +1569,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(!confirm('Cancel this delivery? Nothing has been paid, so there is no charge.'))return;
     doCancel(function(){
       stopPoll(); if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
+      clearRider();
       trkState='cancelled'; trackUI('cancelled');
     });
   }
@@ -1550,6 +1579,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(!confirm('Change a location? We cancel this unpaid order and keep all your details, so you can adjust the map and book again at the right price.'))return;
     doCancel(function(){
       stopPoll(); if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
+      clearRider();
       var bx=document.getElementById('searchbox'); if(bx&&bx.parentNode)bx.parentNode.removeChild(bx);
       trkState=''; doneN=1; ORDNUM='';
       var g=document.getElementById('go'); if(g){g.disabled=false; g.textContent='Confirm & book';}
@@ -1732,11 +1762,104 @@ button:disabled{background:#F0D9E8}
 .err{color:#c0392b;font-size:13px;min-height:16px;margin-top:6px}`;
 
 // ── INTERNATIONAL shipping page (rider-first estimate) — premium look, no waybill ──
+// ── Shared pickup tracker (quote + waybill pages) ── the map page's tracker, panel-only (these
+// pages have no map): live stages rail, rider card with Call, resume via check.active. Same class
+// names/motion as the map tracker so the whole product feels like one system.
+const TRACK_CSS = `
+.search{text-align:center;padding:18px 6px 4px;animation:searchin .18s cubic-bezier(.23,1,.32,1)}
+@keyframes searchin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.search h2{font-size:20px;font-weight:800;color:var(--plum-d);letter-spacing:-.02em;margin:0 0 6px}
+.livedot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pink);margin:0 8px 2px 0;vertical-align:middle;animation:livep 1.6s cubic-bezier(.23,1,.32,1) infinite}
+@keyframes livep{0%,100%{box-shadow:0 0 0 0 rgba(226,58,124,.35)}50%{box-shadow:0 0 0 6px rgba(226,58,124,0)}}
+.search .smut{font-size:13.5px;color:var(--ink-2);line-height:1.45;margin:0 0 2px}
+.search .ssub{font-size:12px;color:var(--ink-3);margin:12px 0 0;line-height:1.4}
+.sbar{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin:15px 10px 4px}
+.sfill{height:100%;width:6%;border-radius:99px;background:var(--plum);animation:screep 75s cubic-bezier(.25,.6,.3,1) forwards}
+@keyframes screep{0%{width:6%}15%{width:34%}45%{width:60%}100%{width:88%}}
+.trk{margin:14px auto 2px;text-align:left;max-width:300px}
+.tkrow{position:relative;display:flex;align-items:center;gap:12px;padding:8px 0;animation:tkrowin .22s cubic-bezier(.23,1,.32,1) both}
+@keyframes tkrowin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.tkrow:nth-child(2){animation-delay:.04s}.tkrow:nth-child(3){animation-delay:.08s}.tkrow:nth-child(4){animation-delay:.12s}
+.tkrow+.tkrow::before{content:'';position:absolute;left:10px;top:-8px;width:2px;height:16px;border-radius:2px;background:var(--line-2)}
+.tkrow+.tkrow.tk-done::before,.tkrow+.tkrow.tk-cur::before{background:var(--plum)}
+.tkd{width:22px;height:22px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;position:relative;z-index:1}
+.tk-done .tkd{background:var(--plum);color:#fff;animation:tkin .22s cubic-bezier(.23,1,.32,1) both}
+.tkrow:nth-child(2).tk-done .tkd{animation-delay:.04s}.tkrow:nth-child(3).tk-done .tkd{animation-delay:.08s}.tkrow:nth-child(4).tk-done .tkd{animation-delay:.12s}
+@keyframes tkin{from{transform:scale(.6);opacity:.4}to{transform:scale(1);opacity:1}}
+.tk-cur .tkd{background:#fff;border:2px solid var(--pink);animation:tkpulse 1.6s ease-in-out infinite}
+.tk-todo .tkd{background:#fff;border:2px solid var(--line-2)}
+.tkl{font-size:14px;font-weight:600;color:var(--ink)}
+.tk-todo .tkl{color:var(--ink-3);font-weight:500}
+.tk-cur .tkl{color:var(--plum-d);font-weight:700}
+@keyframes tkpulse{0%,100%{box-shadow:0 0 0 3px rgba(226,58,124,.20)}50%{box-shadow:0 0 0 8px rgba(226,58,124,.06)}}
+.riderrow{display:flex;align-items:center;gap:11px;margin:12px auto 0;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:13px;text-align:left;max-width:300px;animation:riderin .22s cubic-bezier(.23,1,.32,1)}
+@keyframes riderin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.rdrav{flex:none;width:38px;height:38px;border-radius:50%;background:var(--plum);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.rdrmeta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.rdrcap{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:var(--ink-3);text-transform:uppercase}
+.riderrow .rdrnm{font-size:14px;font-weight:800;color:var(--plum-d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.riderrow .rdrcall{flex:none;display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 15px;border-radius:11px;background:var(--plum);color:#fff;font-size:12.5px;font-weight:800;text-decoration:none;transition:transform .16s cubic-bezier(.23,1,.32,1)}
+.riderrow .rdrcall:active{transform:scale(.96)}
+`;
+const TRACK_JS = `
+function ldlTracker(opts){
+  var st='',done=1,pn=0,timer=null,RID=null,ORD='',L=opts.labels;
+  function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function stageN(s){return s==='assigned'?2:(s==='ontheway'?3:4);}
+  function head(s){return L.heads[s]||L.heads.searching;}
+  function ui(state){
+    var mount=document.getElementById(opts.mount); if(!mount)return;
+    var rows='',i,cls;
+    for(i=0;i<4;i++){cls='tk-todo';if(i<done)cls='tk-done';else if(i===done&&state!=='failed')cls='tk-cur';
+      rows+='<div class="tkrow '+cls+'"><span class="tkd">'+(i<done?'✓':'')+'</span><span class="tkl">'+L.stages[i]+'</span></div>';}
+    var h=head(state);
+    var rr='';
+    if(RID&&(RID.name||RID.phone)&&(state==='assigned'||state==='ontheway')){
+      var ini=(RID.name||'').trim().charAt(0).toUpperCase()||'🛵';
+      rr='<div class="riderrow"><div class="rdrav">'+esc(ini)+'</div><div class="rdrmeta"><span class="rdrcap">Your rider</span><span class="rdrnm">'+esc(RID.name||'On the job')+'</span></div>'
+        +(RID.phone?('<a class="rdrcall" href="tel:'+esc(String(RID.phone).replace(/[^\\d+]/g,''))+'">📞 Call</a>'):'')+'</div>';
+    }
+    mount.innerHTML='<div class="search"><h2>'+((state==='searching'||state==='settle')?'<span class="livedot"></span>':'')+h[0]+'</h2><p class="smut">'+h[1]+'</p>'
+      +((state==='searching'||state==='settle')?'<div class="sbar"><div class="sfill"></div></div>':'')
+      +'<div class="trk">'+rows+'</div>'+rr
+      +((state==='delivered'||state==='failed')?(opts.doneHtml||''):'<p class="ssub">You can close this page — every update also lands in your WhatsApp chat.</p>')
+      +'</div>';
+  }
+  function stop(){if(timer){clearInterval(timer);timer=null;}}
+  function apply(raw){
+    var s=(raw==='assigned'||raw==='ontheway'||raw==='delivered'||raw==='failed')?raw:'';
+    if(!s||s===st)return;
+    st=s; if(s!=='failed')done=stageN(s);
+    ui(s);
+    if(s==='delivered'||s==='failed'){stop();} else {poll(15000);}
+  }
+  function poll(ms){
+    stop();
+    timer=setInterval(function(){
+      pn++; if(pn>400){stop();return;}
+      if(st===''&&pn===30)ui('settle');
+      fetch(opts.api+'?action=orderstatus&session='+encodeURIComponent(opts.session)+'&order='+encodeURIComponent(ORD))
+        .then(function(r){return r.json();}).then(function(j){
+          var had=!!(RID&&(RID.name||RID.phone));
+          if(j&&(j.rider_name||j.rider_phone))RID={name:String(j.rider_name||''),phone:String(j.rider_phone||'')};
+          apply(String((j&&j.status)||''));
+          if(!had&&RID&&(RID.name||RID.phone)&&(st==='assigned'||st==='ontheway'))ui(st);
+        }).catch(function(){});
+    },ms);
+  }
+  return {open:function(orderNumber,status){
+    ORD=String(orderNumber||''); st=''; done=1; pn=0; RID=null;
+    ui('searching');
+    if(status)apply(String(status));
+    if(ORD&&st!=='delivered'&&st!=='failed')poll(st?15000:8000);
+  }};
+}
+`;
 const QUOTE_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Ship internationally &mdash; Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
-${FONT_LINK}<style>${BASE_CSS}
+${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
 .wrap{padding-bottom:96px}
 /* The sheet reaches the action bar, so a short step never leaves a dead pale band. */
 .sheet{display:flex;flex-direction:column;min-height:calc(100vh - 232px)}
@@ -1862,7 +1985,21 @@ function el(id){return document.getElementById(id);}
 function svc(){return SVC;}
 function val(id){var e=el(id);return e?(e.value||'').trim():'';}
 function esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-(function(){if(!SESSION)return;setTimeout(function(){try{fetch(API+'?action=check&session='+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement('div');b.style.cssText='position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif';b.textContent='This link has already been used or expired \u2014 ask us for a fresh one.';document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;}).catch(function(){});}catch(e){}},0);})();
+${TRACK_JS}
+// Live pickup tracker (same system as the local-delivery map): stages, rider card, resume.
+var QLBL={stages:['Pickup booked','Rider assigned','Item picked up','At our hub'],heads:{
+  searching:['Sending a rider your way\u2026','A rider comes to collect and weigh your item \u2014 you pay nothing until then.'],
+  settle:['Still matching a rider \ud83d\udef5','Hold tight \u2014 the moment one accepts, this page updates.'],
+  assigned:['Rider assigned \ud83c\udf89','Your rider is heading to you now to collect your item.'],
+  ontheway:['Item picked up \ud83d\udef5','Heading to our hub \u2014 your exact price lands in WhatsApp right after weighing.'],
+  delivered:['At our hub \u2705','We weigh it now and send your exact price + secure payment link on WhatsApp.'],
+  failed:['Pickup hit a snag \ud83d\ude15','No stress \u2014 our team is on it and will message you on WhatsApp.']}};
+function openTracker(ord,stat){
+  el('app').innerHTML='<div id="ldltrk"></div>';
+  ldlTracker({api:API,session:SESSION,mount:'ldltrk',labels:QLBL,
+    doneHtml:'<a class="wabtn" href="https://wa.me/2349110218825" style="margin-top:14px">Back to WhatsApp \u2192</a>'}).open(ord,stat);
+}
+(function(){if(!SESSION)return;setTimeout(function(){try{fetch(API+'?action=check&session='+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement('div');b.style.cssText='position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif';b.textContent='This link has already been used or expired \u2014 ask us for a fresh one.';document.body.appendChild(b);}if(j&&j.app_origin)APPMODE=true;if(j&&j.active&&j.active.order_number){openTracker(j.active.order_number,j.active.status||'');}}).catch(function(){});}catch(e){}},0);})();
 
 function showStep(n){
   STEP=n;
@@ -1969,7 +2106,12 @@ function book(){
     session:SESSION,mode:svc(),destination:val('country'),weight:parseFloat(el('weight').value),value:parseFloat(el('value').value)||0,pickup_city:pickupCity(),
     sender_name:val('sname'),sender_phone:val('sphone'),pickup_address:val('paddr'),receiver_name:val('rname'),receiver_phone:val('rphone'),delivery_address:val('daddr'),item:val('item'),delivery_instruction:val('dinstr')
   })}).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.ok&&j.booked){el('app').innerHTML='<div class="done"><h2>Pickup booked</h2><p class="muted">A rider will be assigned to come and weigh your item. The moment it is weighed we send your exact price and a payment link \u2014 nothing is charged before that.</p></div>';}
+    if(j&&j.ok&&j.booked){
+      // Rider dispatched \u2192 live tracker (Bolt-style), not a static note. Fallback text only
+      // when Shipday auto-dispatch failed (no order to track \u2014 the team books it manually).
+      if(j.order_number){openTracker(j.order_number,'');}
+      else el('app').innerHTML='<div class="done"><h2>Pickup booked</h2><p class="muted">A rider will be assigned to come and weigh your item. The moment it is weighed we send your exact price and a payment link \u2014 nothing is charged before that.</p></div>';
+    }
     else if(j&&j.ok){el('app').innerHTML='<div class="done"><h2>All set</h2><p class="muted">Your estimate is waiting in your WhatsApp chat \u2014 reply YES there to send the rider.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp</a></div>';}
     else{b.disabled=false;b.textContent=APPMODE?'Confirm pickup':'Request pickup';el('err2').textContent=(j&&j.error==='value_required')?'Please enter what the item is worth.':(j&&j.error)?('Could not book: '+j.error):'Something went wrong \u2014 try again.';}
   }).catch(function(){b.disabled=false;b.textContent=APPMODE?'Confirm pickup':'Request pickup';alert('Network hiccup \u2014 try again.');});
@@ -1999,7 +2141,7 @@ const WAYBILL_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Send a waybill — Lasalu Drop</title>
 <meta name="theme-color" content="#4F074C">
-${FONT_LINK}<style>${BASE_CSS}
+${FONT_LINK}<style>${BASE_CSS}${TRACK_CSS}
 .parkinfo{display:none;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:var(--r-lg);padding:14px 16px;margin:14px 0 2px;font-size:13px;color:#7a4d10;line-height:1.55}
 .parkinfo b{color:#5c3a0c;font-weight:700}
 .orsplit{display:flex;align-items:center;gap:12px;color:var(--ink-3);font-size:11px;font-weight:700;margin:16px 2px 12px;text-transform:uppercase;letter-spacing:.08em}
@@ -2040,8 +2182,24 @@ ${FONT_LINK}<style>${BASE_CSS}
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 // A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
-(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
+(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}if(j&&j.active&&j.active.order_number&&typeof openTracker==="function"){openTracker(j.active.order_number,j.active.status||"");}}).catch(function(){});}catch(e){}},0);})();
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/quotePicker";
+${TRACK_JS}
+// Live pickup tracker (same system as local delivery). Waybill riders are booked by the team
+// after confirmation, so this mostly lights up via RESUME — reopening the page with a live
+// hub-bound pickup drops straight into its tracker.
+var WLBL={stages:['Pickup booked','Rider assigned','Item picked up','At our hub'],heads:{
+  searching:['Sending a rider your way…','A rider comes to collect your parcel for the trip.'],
+  settle:['Still matching a rider 🛵','Hold tight — the moment one accepts, this page updates.'],
+  assigned:['Rider assigned 🎉','Your rider is heading to you now to collect your parcel.'],
+  ontheway:['Parcel picked up 🛵','Heading to our hub — next stop, the park/carrier for its trip.'],
+  delivered:['At our hub ✅','We hand it to the park/carrier next and send your waybill details on WhatsApp.'],
+  failed:['Pickup hit a snag 😕','No stress — our team is on it and will message you on WhatsApp.']}};
+function openTracker(ord,stat){
+  el('app').innerHTML='<div class="body"><div id="ldltrk"></div></div>';
+  ldlTracker({api:API,session:SESSION,mount:'ldltrk',labels:WLBL,
+    doneHtml:'<a class="wabtn" href="https://wa.me/2349110218825" style="margin-top:14px">Back to WhatsApp →</a>'}).open(ord,stat);
+}
 var lastPrice=null, state="", isPark=false, t;
 var FLAT={LAGOS:1,ABUJA:1,ABA:1,OWERRI:1};
 var NAMES={LAGOS:'Lagos',ABUJA:'Abuja',ABA:'Aba',OWERRI:'Owerri','AKWA IBOM':'Akwa Ibom','CROSS RIVER':'Cross River'};
@@ -2176,7 +2334,25 @@ app.get('/vendor', (req, res) => { res.type('html').send(withWa(VENDOR_PAGE)); }
 const BULK_PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Multiple deliveries — Lasalu Drop</title>
-${FONT_LINK}<style>${BASE_CSS}</style></head><body>
+${FONT_LINK}<style>${BASE_CSS}
+/* Batch tracker: one row per delivery, live status chip per rider. */
+.btrk{margin-top:6px}
+.btrow{display:flex;align-items:center;gap:10px;padding:12px 13px;background:#fff;border:1px solid var(--line-2);border-radius:13px;margin-bottom:9px;animation:btin .22s cubic-bezier(.23,1,.32,1) both}
+@keyframes btin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.btrow:nth-child(2){animation-delay:.04s}.btrow:nth-child(3){animation-delay:.08s}.btrow:nth-child(4){animation-delay:.12s}.btrow:nth-child(5){animation-delay:.16s}.btrow:nth-child(6){animation-delay:.2s}
+.btrow .nm{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btrow .rd{display:block;font-size:11px;font-weight:600;color:var(--ink-3);margin-top:2px}
+.bchip{flex:none;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:99px;font-size:11.5px;font-weight:800}
+.bc-wait{background:var(--bg);color:var(--ink-2);border:1px solid var(--line-2)}
+.bc-asg{background:var(--lilac);color:var(--plum)}
+.bc-otw{background:var(--pink-soft);color:#a3255f}
+.bc-del{background:#e8f6ec;color:#166534}
+.bc-fail{background:#fdecec;color:#b3261e}
+.bdot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blivep 1.6s cubic-bezier(.23,1,.32,1) infinite}
+@keyframes blivep{0%,100%{opacity:1}50%{opacity:.35}}
+.btmore{display:block;width:100%;margin:12px 0 0;padding:11px 0;background:none;border:none;color:var(--plum);font-size:13px;font-weight:700;cursor:pointer;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s ease}
+.btmore:active{transform:scale(.98);opacity:.75}
+</style></head><body>
 <div class="wrap" id="app">
   <div class="hero"><h1>Multiple deliveries 🛵</h1><p>Add each delivery — pickup, drop-off, who's receiving and what you're sending. We price them all and send a rider to each.</p></div>
   <div class="body">
@@ -2196,6 +2372,42 @@ var VALID=SESSION?"1":"0";
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/bulkOrders";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 function el(id){return document.getElementById(id)}
+// ── Live batch tracker ── one row per delivery, chip flips as each rider moves
+// (same status pipeline as the map page: webhook milestones + live Shipday fallback).
+var BT={list:[],timer:null,pn:0,head:'',sub:''};
+function bEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function bChip(st){
+  if(st==='delivered')return '<span class="bchip bc-del">Delivered ✓</span>';
+  if(st==='failed')return '<span class="bchip bc-fail">Failed</span>';
+  if(st==='cancelled')return '<span class="bchip bc-fail">Cancelled</span>';
+  if(st==='ontheway')return '<span class="bchip bc-otw"><span class="bdot"></span>On the way</span>';
+  if(st==='assigned')return '<span class="bchip bc-asg"><span class="bdot"></span>Rider assigned</span>';
+  return '<span class="bchip bc-wait"><span class="bdot"></span>Finding rider…</span>';
+}
+function btRender(){
+  var rows=BT.list.map(function(o){return '<div class="btrow"><div class="nm">'+bEsc(o.receiver||'Delivery')+(o.rider?'<span class="rd">🛵 '+bEsc(o.rider)+'</span>':'')+'</div>'+bChip(o.status)+'</div>';}).join('');
+  var doneAll=BT.list.length&&BT.list.every(function(o){return o.status==='delivered'||o.status==='failed'||o.status==='cancelled';});
+  el('app').innerHTML='<div class="hero"><h1>'+BT.head+'</h1><p>'+BT.sub+'</p></div><div class="body"><div class="btrk">'+rows+'</div>'
+    +(doneAll?'<a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a>':'<p style="font-size:12px;color:#a8a0ae;text-align:center;margin-top:10px">Updates land here and in your WhatsApp chat — you can close this page.</p>')
+    +'<button type="button" id="btmore" class="btmore">＋ Book more deliveries</button></div>';
+  var mb=el('btmore'); if(mb)mb.onclick=function(){ try{sessionStorage.setItem('ldl_skipresume','1');}catch(e){} location.reload(); };
+  if(doneAll&&BT.timer){clearInterval(BT.timer);BT.timer=null;}
+}
+function btPoll(){
+  if(BT.timer)clearInterval(BT.timer);
+  BT.timer=setInterval(function(){
+    BT.pn++; if(BT.pn>360){clearInterval(BT.timer);BT.timer=null;return;}
+    fetch(api('action=batchstatus&orders='+encodeURIComponent(BT.list.map(function(o){return o.n;}).join(','))))
+      .then(function(r){return r.json();}).then(function(j){
+        if(!j||!j.list)return;
+        var by={}; j.list.forEach(function(x){by[x.n]=x;});
+        var chg=false;
+        BT.list.forEach(function(o){var u=by[o.n]; if(u){ if((u.status||'')!==o.status||String(u.rider||'')!==String(o.rider||''))chg=true; o.status=u.status||o.status; o.rider=u.rider||o.rider; }});
+        if(chg)btRender();
+      }).catch(function(){});
+  },10000);
+}
+function openBatch(list,head,sub){ BT.list=list; BT.head=head; BT.sub=sub; BT.pn=0; btRender(); btPoll(); }
 (function(){if(!SESSION)return;setTimeout(function(){fetch(api("action=check")).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999";b.textContent="⚠️ This link has already been used or expired — go back to WhatsApp and ask me for a fresh link 🙌";document.body.appendChild(b);}}).catch(function(){});},0);})();
 var n=0, PODOK=false, quoted=null, POD_SUR=0;
 function phoneOk(v){var d=(v||'').replace(/\\D/g,'');if(d.length===13&&d.slice(0,3)==='234')d='0'+d.slice(3);if(d.length===14&&d.slice(0,4)==='2340')d='0'+d.slice(4);if(d.length===10&&d.charAt(0)!=='0')d='0'+d;return d.length===11&&d.charAt(0)==='0';}
@@ -2235,6 +2447,13 @@ function doBook(){
      if(j.error){b.disabled=false;b.textContent='Confirm';el('out').innerHTML='<div class="err">Couldn\\'t book: '+j.error+'</div>';return;}
      if(j.mode==='now'&&j.payment_url){el('app').innerHTML='<div class="done"><h2>Redirecting to payment… 💳</h2><p class="muted">Total ₦'+Number(j.total).toLocaleString()+' for '+j.count+' deliveries.</p></div>';location.href=j.payment_url;return;}
      var skipped=(j.errors&&j.errors.length)?' <b>'+j.errors.length+' address(es) couldn\\'t be booked</b> — our team will follow up on those.':'';
+     // Booked riders → LIVE batch tracker (a chip per delivery), not a static goodbye.
+     if(j.orders&&j.orders.length){
+       openBatch(j.orders.map(function(o){return {n:o.n,receiver:o.receiver,status:'',rider:''};}),
+         'All set! 🙌',
+         j.booked+' deliveries created — each receiver pays cash to their rider (total ₦'+Number(j.total).toLocaleString()+').'+skipped);
+       return;
+     }
      el('app').innerHTML='<div class="done"><h2>All set! 🙌</h2><p class="muted">'+j.booked+' deliveries created — a rider is being assigned to each. The receiver pays their delivery fee in cash when the rider arrives (total ₦'+Number(j.total).toLocaleString()+').'+skipped+'</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
    }).catch(function(){b.disabled=false;b.textContent='Confirm';alert('Network hiccup — try again.');});
 }
@@ -2270,7 +2489,14 @@ document.querySelectorAll('input[name=pay]').forEach(function(r){r.addEventListe
 el('go').onclick=function(){if(quoted)doBook();else doReview();};
 if(VALID!=='1'){el('app').innerHTML='<div class="hero"><h1>Link expired</h1><p>Head back to your chat and ask for a new bulk-delivery link.</p></div>';}
 else{
-  fetch(api('action=prefill')).then(function(r){return r.json()}).then(function(p){if(!p)return;if(p.name)el('sname').value=p.name;if(p.phone)el('sphone').value=p.phone;if(p.pod_allowed){PODOK=true;POD_SUR=Math.max(0,Number(p.pod_surcharge)||0);el('opt-pod').style.display='flex';if(POD_SUR>0){var ps=document.createElement('span');ps.style.cssText='color:#6a626f;font-size:12px;margin-left:6px';ps.textContent='(+₦'+POD_SUR.toLocaleString()+' each)';el('opt-pod').appendChild(ps);}}syncGo();});
+  fetch(api('action=prefill')).then(function(r){return r.json()}).then(function(p){if(!p)return;
+   // Deliveries still in motion own the screen (ride-app doctrine) — "＋ Book more" escapes to
+   // the form and sets a one-shot flag so the reload doesn't bounce straight back here.
+   if(p.active&&p.active.length){
+     var skip=false; try{ skip=sessionStorage.getItem('ldl_skipresume')==='1'; if(skip)sessionStorage.removeItem('ldl_skipresume'); }catch(e){}
+     if(!skip){ openBatch(p.active.map(function(o){return {n:o.n,receiver:o.receiver,status:o.status||'',rider:''};}), 'Your deliveries 📦', 'Live status of each rider — updated as they move.'); return; }
+   }
+   if(p.name)el('sname').value=p.name;if(p.phone)el('sphone').value=p.phone;if(p.pod_allowed){PODOK=true;POD_SUR=Math.max(0,Number(p.pod_surcharge)||0);el('opt-pod').style.display='flex';if(POD_SUR>0){var ps=document.createElement('span');ps.style.cssText='color:#6a626f;font-size:12px;margin-left:6px';ps.textContent='(+₦'+POD_SUR.toLocaleString()+' each)';el('opt-pod').appendChild(ps);}}syncGo();});
   addDelivery();
 }
 </script></body></html>`;
