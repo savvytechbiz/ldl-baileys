@@ -1225,8 +1225,12 @@ function btRender(){
     return '<div class="btrow">'+line+act+'</div>';
   }).join('');
   var doneAll=BT.list.length&&BT.list.every(function(o){return o.status==='delivered'||o.status==='failed'||o.status==='cancelled';});
+  var deliveredN=BT.list.filter(function(o){return o.status==='delivered';}).length;
+  // Only say "All delivered" when they ALL actually delivered — a cancelled/failed stop must not be counted
+  // as a happy delivery. Otherwise summarise honestly.
+  var doneMsg=(deliveredN===BT.list.length)?'All delivered — thanks for shipping with us':(deliveredN+' of '+BT.list.length+' delivered — the rest were cancelled or didn\\'t complete');
   document.getElementById('app').innerHTML='<div class="brevfull"><h2>Your deliveries</h2><p class="bsub">Live status of each rider — updated as they move.</p><div class="btrk">'+rows+'</div>'
-    +(doneAll?(BATCH?'<p class="bnote">All delivered — thanks for shipping with us</p>':'<a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a>')
+    +(doneAll?(BATCH?'<p class="bnote">'+doneMsg+'</p>':'<a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a>')
              :'<p class="bnote">Updates land here'+(BATCH?'':' and in your WhatsApp chat')+' — you can close this page.</p>')+'</div>';
   if(doneAll&&BT.timer){clearInterval(BT.timer);BT.timer=null;}
 }
@@ -1236,7 +1240,7 @@ function openBatchTracker(orders){
   BT.timer=setInterval(function(){ BT.pn++; if(BT.pn>360){clearInterval(BT.timer);BT.timer=null;return;}
     fetch(BULK_API+'?session='+encodeURIComponent(SESSION)+'&action=batchstatus&orders='+encodeURIComponent(BT.list.map(function(o){return o.n;}).join(',')))
      .then(function(r){return r.json();}).then(function(j){ if(!j||!j.list)return; var by={}; j.list.forEach(function(x){by[x.n]=x;}); var chg=false;
-       BT.list.forEach(function(o){var u=by[o.n]; if(u){ if((u.status||'')!==o.status||String(u.rider||'')!==String(o.rider||''))chg=true; o.status=u.status||o.status; o.rider=u.rider||o.rider; }}); if(chg)btRender();
+       BT.list.forEach(function(o){ if(o.status==='cancelled'||o.cancelling)return; /* locally terminal — a lagging poll must not revive it */ var u=by[o.n]; if(u){ if((u.status||'')!==o.status||String(u.rider||'')!==String(o.rider||''))chg=true; o.status=u.status||o.status; o.rider=u.rider||o.rider; }}); if(chg)btRender();
      }).catch(function(){});
   },10000);
 }
@@ -1418,9 +1422,9 @@ function validate(){
 // Decode a Google-encoded polyline into [lat,lng] points (so we can draw the route, Bolt-style).
 function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,sh=0,res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lat+=((res&1)?~(res>>1):(res>>1)); sh=0;res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lng+=((res&1)?~(res>>1):(res>>1)); c.push([lat/1e5,lng/1e5]); } return c; }
 var routeLine=null, mapFee=null, mapMin=null, mapKm=null, POD_SURCHARGE=0;
-// Price negotiation (app-only, Phase 1). NEGO from prefill; OFFER = the customer's accepted lower price
-// (null = paying the recommended fee). A new route price invalidates any prior offer.
-var NEGO={enabled:false,max:10}, OFFER=null;
+// Price negotiation (app-only). NEGO.enabled from prefill; OFFER = the customer's opening price to riders
+// (null = accepting the recommended fee). A new route price invalidates any prior offer.
+var NEGO={enabled:false}, OFFER=null;
 // Render the fee box (and top badge). Pay-on-delivery adds the surcharge, so the number shown here matches
 // what the rider actually collects (base + POD surcharge) — not the base-only price. COD (buyer-hasn't-paid)
 // is a separate model whose delivery fee is netted from the goods, so it stays on the base price.
@@ -1437,10 +1441,9 @@ function renderFee(){
   if(pt){ var pw=(pt.style.display==='none'||!pt.style.display); pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+tot.toLocaleString()+'</span>'; if(pw){pt.classList.remove('popin');void pt.offsetWidth;pt.classList.add('popin');} }
   renderOffer(base);
 }
-// ── Price negotiation UI (app-only) ── The offer control lives right under the fee box. The floor shown
-// here mirrors the server's floor (recommended − max%); the server re-checks on booking, so the page can't
-// undercut it. An accepted offer forces pay-now (renderOffer note + syncPayForOffer hide the pay choices).
-function offerFloor(base){ return Math.max(1,Math.round(Number(base)*(1-(Number(NEGO.max)||10)/100))); }
+// ── Price negotiation UI (app-only) ── The customer BARGAINS WITH RIDERS. Their offer is a starting price
+// riders see and can accept or COUNTER — there's no Lasalu floor and no prepay; the agreed price is paid on
+// delivery. The control lives right under the fee box.
 function renderOffer(base){
   var host=document.getElementById('fee'); if(!host)return;
   var w=document.getElementById('offerwrap');
@@ -1448,7 +1451,7 @@ function renderOffer(base){
   if(!w){ w=document.createElement('div'); w.id='offerwrap'; w.className='offerwrap'; host.parentNode.insertBefore(w,host.nextSibling); }
   w.style.display='block';
   if(OFFER!=null){
-    w.innerHTML='<div class="offon"><div><span class="offlbl">Your price</span> <b>₦'+Number(OFFER).toLocaleString()+'</b> <span class="offwas">₦'+Number(base).toLocaleString()+'</span></div><button type="button" id="offreset" class="offlink">Reset</button></div><p class="offnote">Negotiated price — you pay now to lock it in.</p>';
+    w.innerHTML='<div class="offon"><div><span class="offlbl">Your offer</span> <b>&#8358;'+Number(OFFER).toLocaleString()+'</b> <span class="offwas">&#8358;'+Number(base).toLocaleString()+'</span></div><button type="button" id="offreset" class="offlink">Reset</button></div><p class="offnote">Riders will accept your price or propose their own — you pay the agreed price on delivery.</p>';
     document.getElementById('offreset').onclick=function(){ OFFER=null; renderFee(); syncPayForOffer(); if(typeof validate==='function')validate(); };
     return;
   }
@@ -1457,30 +1460,26 @@ function renderOffer(base){
 }
 function openOfferPanel(base){
   var w=document.getElementById('offerwrap'); if(!w)return;
-  var floor=offerFloor(base);
   w.innerHTML='<div class="offpanel"><div class="offh">Name your price</div>'
     +'<div class="offin"><span>&#8358;</span><input id="offval" inputmode="numeric" value="'+Math.round(base)+'"></div>'
-    +'<div class="offhint" id="offhint">Anywhere from <b>&#8358;'+floor.toLocaleString()+'</b> up to &#8358;'+Math.round(base).toLocaleString()+'.</div>'
-    +'<div class="offrow"><button type="button" class="offcancel" id="offcancel">Cancel</button><button type="button" class="offuse" id="offuse">Use this price</button></div></div>';
+    +'<div class="offhint" id="offhint">Riders near you will see your offer and can accept it or propose their own price. You pay the agreed price on delivery.</div>'
+    +'<div class="offrow"><button type="button" class="offcancel" id="offcancel">Cancel</button><button type="button" class="offuse" id="offuse">Set my price</button></div></div>';
   var inp=document.getElementById('offval'); try{ inp.focus(); inp.select(); }catch(e){}
   document.getElementById('offcancel').onclick=function(){ renderFee(); };
   document.getElementById('offuse').onclick=function(){
     var v=Math.round(Number((inp.value||'').replace(/[^0-9.]/g,''))||0);
     if(!(v>0)) return;
-    if(v>=Math.round(base)){ OFFER=null; renderFee(); syncPayForOffer(); if(typeof validate==='function')validate(); return; }
-    var fl=offerFloor(base);
-    if(v<fl){ var h=document.getElementById('offhint'); h.className='offhint low'; h.innerHTML='The lowest we can do on this route is <b>&#8358;'+fl.toLocaleString()+'</b>.'; inp.value=fl; try{inp.select();}catch(e){} return; }
+    if(v>=Math.round(base)){ OFFER=null; renderFee(); syncPayForOffer(); if(typeof validate==='function')validate(); return; } // offering full price → no negotiation
     OFFER=v; renderFee(); syncPayForOffer(); if(typeof validate==='function')validate();
   };
 }
-// A negotiated order is always paid now (that's what captures the fee) — hide the pay-on-delivery / COD
-// choices and select pay-now while an offer is active; restore them if the offer is reset.
+// A bargained order settles pay-on-delivery — hide the pay-now / COD choices while an offer is active (no
+// choice to make), and restore them if the offer is reset.
 function syncPayForOffer(){
   var neg=(OFFER!=null);
   var cb=document.getElementById('codbox');
   if(neg&&cb&&cb.checked){ cb.checked=false; try{ cb.dispatchEvent(new Event('change')); }catch(e){} }
   var pr=document.getElementById('payradios'); if(pr)pr.style.display=neg?'none':'block';
-  var now=document.querySelector('input[name=pay][value=now]'); if(now&&neg)now.checked=true;
 }
 function injectNegCss(){
   if(document.getElementById('negcss'))return;
@@ -1681,7 +1680,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
     if(p.pod_allowed){ var po=document.getElementById('opt-pod'); po.style.display='flex'; POD_SURCHARGE=Math.max(0,Number(p.pod_surcharge)||0); if(POD_SURCHARGE>0){ var ps=document.createElement('span'); ps.className='sur'; ps.textContent='+₦'+POD_SURCHARGE.toLocaleString(); po.appendChild(ps); } renderFee(); }
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
-    if(p.negotiation&&p.negotiation.enabled){ NEGO.enabled=true; NEGO.max=Number(p.negotiation.max_discount_pct)||10; injectNegCss(); renderFee(); }
+    if(p.negotiation&&p.negotiation.enabled){ NEGO.enabled=true; injectNegCss(); renderFee(); }
     if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
     // PICKUP DEFAULT = where the booker is standing. Unless the chat already named a pickup, we drop
@@ -1758,7 +1757,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // status (the same shipdayWebhook milestones that message the customer) so "Rider assigned" here is
   // true, never theater. If the status endpoint is not live yet (older mapPicker), the panel simply
   // settles into the honest "we confirm on WhatsApp" line — nothing breaks, nothing lies.
-  var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null, riderM=null;
+  var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null, riderM=null, ORDER_OWN=false, ORDER_RATED=false;
+  var COFF_DECLINED={}, _lastCounters=[], _lastViewers=0;   // rider-offer picker (inDrive-style) state
+  var NEG_BASE=0, NEG_RAISE=0, NEG_TIMER=null, NEG_LEFT=0;  // raise-offer + auto-accept + search countdown
   // Live rider marker: a bike chip that glides between GPS fixes (Shipday reports the rider app's
   // location; we join it server-side). Camera fits ONCE on first fix — never fight the user's pan.
   function updateRider(lat,lng){
@@ -1842,6 +1843,144 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     showStep(1);
   }
   function stopPoll(){ if(pollT){clearInterval(pollT);pollT=null;} }
+  // Rider price counters shown on the "finding a rider" screen — the customer accepts one to lock the rider
+  // at that price (POD, receiver pays cash). Kept as a self-managed #counters block so the poll can refresh it.
+  function injectCofferCss(){ if(document.getElementById('coffercss'))return; var s=document.createElement('style'); s.id='coffercss'; s.textContent=
+    '#counters{margin-top:16px}'
+   +'.cofferh{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--plum,#4F074C);margin-bottom:10px;text-align:center}'
+   +'.coffview{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink2,#6A6270);padding:8px 0}'
+   +'.coffdot{width:8px;height:8px;border-radius:99px;background:var(--magenta,#E23A7C);animation:coffpulse 1.4s infinite}'
+   +'@keyframes coffpulse{0%{box-shadow:0 0 0 0 rgba(226,58,124,.5)}70%{box-shadow:0 0 0 8px rgba(226,58,124,0)}100%{box-shadow:0 0 0 0 rgba(226,58,124,0)}}'
+   +'.coffer{background:#fff;border:1.5px solid var(--line-2,#ddd0e2);border-radius:16px;padding:13px;margin-bottom:10px}'
+   +'.coffhead{display:flex;align-items:center;gap:11px}'
+   +'.coffav{width:40px;height:40px;border-radius:99px;background:var(--plum,#4F074C);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0}'
+   +'.coffid{flex:1;min-width:0}.cofn{font-size:15px;font-weight:800;color:var(--ink,#241826);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cofsub{font-size:12.5px;color:var(--ink2,#6A6270);margin-top:1px}'
+   +'.cofpx{text-align:right;flex-shrink:0}.cofp{font-size:18px;font-weight:800;color:var(--plum,#4F074C)}.coffeta{font-size:11.5px;color:var(--ink2,#6A6270);margin-top:1px}'
+   +'.coffact{display:flex;gap:9px;margin-top:12px}'
+   +'.coffdecline{flex:1;background:#fff;border:1.5px solid var(--line-2,#ddd0e2);color:var(--ink2,#6A6270);border-radius:12px;padding:11px;font-size:14px;font-weight:700;cursor:pointer}'
+   +'.cofa{flex:1.7;background:var(--plum,#4F074C);color:#fff;border:none;border-radius:12px;padding:11px;font-size:14px;font-weight:800;cursor:pointer}.cofa:disabled{opacity:.5}'
+   +'.coffav.hasimg{overflow:hidden}.coffav img{width:100%;height:100%;object-fit:cover;border-radius:99px;display:block}'
+   +'.cofftag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.02em;color:#0B7A45;background:#E4F7EC;border-radius:99px;padding:2px 9px;margin-top:9px}'
+   +'.cofftag.counter{color:var(--magenta,#E23A7C);background:#FCE7F1}'
+   +'.negctl{margin-top:14px;background:#fff;border:1.5px solid var(--line-2,#ddd0e2);border-radius:16px;padding:13px}'
+   +'.negrow{display:flex;align-items:center;justify-content:space-between;gap:10px}'
+   +'.neglbl{font-size:13.5px;font-weight:800;color:var(--ink,#241826)}.negsub{font-size:11.5px;color:var(--ink2,#6A6270);margin-top:1px}'
+   +'.negstep{display:flex;align-items:center;gap:11px}'
+   +'.negbtn{width:34px;height:34px;border-radius:99px;border:1.5px solid var(--line-2,#ddd0e2);background:#fff;font-size:19px;font-weight:800;color:var(--plum,#4F074C);cursor:pointer;line-height:0}'
+   +'.negamt{font-size:16px;font-weight:800;color:var(--plum,#4F074C);min-width:72px;text-align:center}'
+   +'.negraise{margin-top:11px;width:100%;background:var(--plum,#4F074C);color:#fff;border:none;border-radius:12px;padding:11px;font-size:14px;font-weight:800;cursor:pointer}.negraise:disabled{opacity:.5}'
+   +'.negtog{position:relative;width:44px;height:26px;border-radius:99px;background:#d9cfe0;transition:background .15s;cursor:pointer;flex-shrink:0}.negtog.on{background:var(--magenta,#E23A7C)}'
+   +'.negtog span{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:99px;background:#fff;transition:left .15s}.negtog.on span{left:21px}'
+   +'.negcount{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--ink2,#6A6270);padding:2px 0 4px}'
+   +'.negdiv{height:1px;background:var(--line,#ECE5EE);margin:12px 0}';
+   document.head.appendChild(s); }
+  function cofSub(c){
+    var v=String(c.vehicle||'bike'); v=v.charAt(0).toUpperCase()+v.slice(1);
+    var lead;
+    if(c.rating!=null) lead='★ '+Number(c.rating).toFixed(1)+(c.trips?(' · '+c.trips+' trip'+(c.trips===1?'':'s')):'');
+    else if(c.trips) lead=c.trips+' trip'+(c.trips===1?'':'s');
+    else lead='New rider';
+    return lead+' · '+v;
+  }
+  // inDrive-style rider-offer picker: each rider price counter is a rich card (name, rating, trips, vehicle,
+  // ETA) the customer Accepts or Declines; before any counter lands, a live "N riders are viewing" line.
+  function renderCounters(list, viewers){
+    _lastCounters=list||[]; _lastViewers=Number(viewers)||0;
+    var box=document.getElementById('searchbox'); if(!box)return;
+    var host=box.querySelector('.search')||box;
+    var el=document.getElementById('counters');
+    var shown=_lastCounters.filter(function(c){ return !COFF_DECLINED[String(c.offer_id)]; });
+    if(!shown.length&&!(_lastViewers>0)){ if(el&&el.parentNode)el.parentNode.removeChild(el); return; }
+    injectCofferCss();
+    if(!el){ el=document.createElement('div'); el.id='counters'; host.appendChild(el); }
+    if(shown.length){
+      el.innerHTML='<div class="cofferh">Choose your rider</div>'+shown.map(function(c){
+        var id=esc(String(c.offer_id)), nm=esc(c.rider_name||'A rider'), ini=esc((String(c.rider_name||'R').trim().charAt(0)||'R').toUpperCase());
+        var av=c.photo?('<div class="coffav hasimg"><img src="'+esc(String(c.photo))+'" alt=""></div>'):('<div class="coffav">'+ini+'</div>');
+        var tag=c.took_price?'<span class="cofftag">Took your price</span>':'<span class="cofftag counter">Rider\\'s offer</span>';
+        return '<div class="coffer"><div class="coffhead">'
+          +av
+          +'<div class="coffid"><div class="cofn">'+nm+'</div><div class="cofsub">'+esc(cofSub(c))+'</div>'+tag+'</div>'
+          +'<div class="cofpx"><div class="cofp">₦'+Number(c.price||0).toLocaleString()+'</div>'+(c.eta_mins?('<div class="coffeta">'+c.eta_mins+' min away</div>'):'')+'</div>'
+          +'</div><div class="coffact"><button type="button" class="coffdecline" data-off="'+id+'">Decline</button><button type="button" class="cofa" data-off="'+id+'">Accept</button></div></div>';
+      }).join('');
+      Array.prototype.forEach.call(el.querySelectorAll('.cofa'),function(b){ b.onclick=function(){ acceptCounter(b.getAttribute('data-off'), b); }; });
+      Array.prototype.forEach.call(el.querySelectorAll('.coffdecline'),function(b){ b.onclick=function(){ COFF_DECLINED[b.getAttribute('data-off')]=1; renderCounters(_lastCounters, _lastViewers); }; });
+    } else {
+      el.innerHTML='<div class="coffview"><span class="coffdot"></span>'+_lastViewers+(_lastViewers===1?' rider is':' riders are')+' viewing your request…</div>';
+    }
+  }
+  function acceptCounter(offerId, btn){
+    if(btn){ btn.disabled=true; btn.textContent='…'; }
+    var _to={}; try{ if(window.AbortSignal&&AbortSignal.timeout)_to={signal:AbortSignal.timeout(25000)}; }catch(e){}
+    fetch(api('action=acceptcounter&order='+encodeURIComponent(ORDNUM)+'&offer='+encodeURIComponent(offerId)),Object.assign({method:'POST'},_to))
+     .then(function(r){return r.json();}).then(function(j){
+       if(j&&j.ok){ var el=document.getElementById('counters'); if(el&&el.parentNode)el.parentNode.removeChild(el); applyStatus('assigned'); return; }
+       if(j&&j.error==='taken'){ alert('That rider just took another order — we\\'re still finding you one.'); return; }
+       if(btn){ btn.disabled=false; btn.textContent='Accept'; }
+       alert('Could not accept just now — please try again.');
+     }).catch(function(){ if(btn){ btn.disabled=false; btn.textContent='Accept'; } alert('Network hiccup — try again.'); });
+  }
+  function _postOpt(){ var o={method:'POST'}; try{ if(window.AbortSignal&&AbortSignal.timeout)o.signal=AbortSignal.timeout(25000); }catch(e){} return o; }
+  // inDrive-style waiting controls (only in "pick your rider" mode = own order, still searching, auto-accept OFF):
+  // a search countdown, "raise your offer" stepper, and the auto-accept toggle.
+  function renderNegControls(s){
+    var show=ORDER_OWN&&(trkState==='searching'||trkState==='settle')&&s&&s.auto_accept===false;
+    var el=document.getElementById('negctl');
+    if(!show){ if(el&&el.parentNode)el.parentNode.removeChild(el); stopNegTimer(); return; }
+    var box=document.getElementById('searchbox'); if(!box)return;
+    var host=box.querySelector('.search')||box;
+    NEG_BASE=Number(s.base)||NEG_BASE||0;
+    if(!(NEG_RAISE>=NEG_BASE)) NEG_RAISE=NEG_BASE;
+    injectCofferCss();
+    if(!el){
+      el=document.createElement('div'); el.id='negctl'; el.className='negctl';
+      el.innerHTML=
+        '<div class="negcount"><span class="coffdot"></span><span id="negtimer">Finding you the best rider…</span></div>'
+       +'<div class="negdiv"></div>'
+       +'<div class="negrow"><div><div class="neglbl">Raise your offer</div><div class="negsub">A little more brings riders faster</div></div>'
+         +'<div class="negstep"><button type="button" class="negbtn" id="negminus">−</button><span class="negamt" id="negamt"></span><button type="button" class="negbtn" id="negplus">+</button></div></div>'
+       +'<button type="button" class="negraise" id="negraise" disabled>Raise offer</button>'
+       +'<div class="negdiv"></div>'
+       +'<div class="negrow"><div><div class="neglbl">Auto-accept</div><div class="negsub" id="negtogsub"></div></div><div class="negtog" id="negtog"><span></span></div></div>';
+      var cnt=document.getElementById('counters');
+      if(cnt) host.insertBefore(el,cnt); else host.appendChild(el);
+      document.getElementById('negminus').onclick=function(){ NEG_RAISE=Math.max(NEG_BASE,NEG_RAISE-100); updateNeg(); };
+      document.getElementById('negplus').onclick=function(){ NEG_RAISE=NEG_RAISE+100; updateNeg(); };
+      document.getElementById('negraise').onclick=function(){ commitRaise(); };
+      document.getElementById('negtog').onclick=function(){ toggleAutoAccept(); };
+      startNegTimer();
+    }
+    updateNeg();
+  }
+  function updateNeg(){
+    var a=document.getElementById('negamt'); if(a)a.textContent='₦'+NEG_RAISE.toLocaleString();
+    var r=document.getElementById('negraise'); if(r)r.disabled=!(NEG_RAISE>NEG_BASE);
+    var sub=document.getElementById('negtogsub'); if(sub)sub.textContent='Match instantly at ₦'+NEG_BASE.toLocaleString();
+  }
+  function commitRaise(){
+    var b=document.getElementById('negraise'); if(b){ b.disabled=true; b.textContent='Raising…'; }
+    var amt=NEG_RAISE;
+    fetch(api('action=raiseoffer&order='+encodeURIComponent(ORDNUM)+'&amount='+amt),_postOpt())
+     .then(function(r){return r.json();}).then(function(j){
+       if(j&&j.ok){ NEG_BASE=Number(j.base)||amt; NEG_RAISE=NEG_BASE; resetNegTimer(); }
+       if(b){ b.textContent='Raise offer'; } updateNeg();
+     }).catch(function(){ if(b){ b.disabled=false; b.textContent='Raise offer'; } });
+  }
+  function toggleAutoAccept(){
+    var t=document.getElementById('negtog'); var on=!(t&&t.classList.contains('on'));
+    if(t)t.classList.toggle('on',on);
+    fetch(api('action=setautoaccept&order='+encodeURIComponent(ORDNUM)+'&on='+(on?'1':'0')),_postOpt())
+     .then(function(r){return r.json();}).then(function(j){ if(j&&j.assigned)applyStatus('assigned'); }).catch(function(){});
+  }
+  function startNegTimer(){ if(NEG_TIMER)return; NEG_LEFT=120; tickNeg(); NEG_TIMER=setInterval(tickNeg,1000); }
+  function resetNegTimer(){ NEG_LEFT=120; tickNeg(); }
+  function stopNegTimer(){ if(NEG_TIMER){ clearInterval(NEG_TIMER); NEG_TIMER=null; } }
+  function tickNeg(){
+    var t=document.getElementById('negtimer'); if(!t){ stopNegTimer(); return; }
+    if(NEG_LEFT>0){ NEG_LEFT--; var m=Math.floor(NEG_LEFT/60), sc=NEG_LEFT%60; t.textContent='Finding you the best rider · '+m+':'+(sc<10?'0':'')+sc; }
+    else { t.textContent='Taking a while — raise your offer to reach more riders'; }
+  }
   function startPoll(ms){
     stopPoll();
     pollT=setInterval(function(){
@@ -1853,7 +1992,11 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         // refresh the panel once so the name + Call button appear without waiting for the next stage.
         var hadRider=!!(RIDER&&(RIDER.name||RIDER.phone));
         if(s&&(s.rider_name||s.rider_phone)) RIDER={name:String(s.rider_name||''),phone:String(s.rider_phone||'')};
+        if(s){ ORDER_OWN=!!s.own; if(s.rated)ORDER_RATED=true; }   // own-fleet + already-rated flags for the rating widget
         applyStatus(String((s&&s.status)||''));
+        // Rider price counters while still searching — let the customer accept one right here.
+        if(trkState==='searching'||trkState==='settle') renderCounters((s&&s.counters)||[], (s&&s.viewers)||0); else renderCounters([], 0);
+        renderNegControls(s);
         if(!hadRider&&RIDER&&(RIDER.name||RIDER.phone)&&(trkState==='assigned'||trkState==='ontheway')) trackUI(trkState);
         // Live rider position + ETA on the map while the job is running.
         if(s&&(trkState==='assigned'||trkState==='ontheway')){
@@ -1875,8 +2018,38 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(st!=='failed')doneN=stageN(st);
     if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
     trackUI(st);
-    if(st==='delivered'||st==='failed'){ stopPoll(); clearRider(); }
+    if(st==='delivered'||st==='failed'){ stopPoll(); clearRider(); if(st==='delivered') maybeRenderRating(); }
     else { startPoll(15000); }   // matched — keep tracking to the door at a gentler cadence
+  }
+  // ── Rate your rider ── after an own-fleet delivery, let the customer give 1–5 stars.
+  function injectRateCss(){ if(document.getElementById('ratecss'))return; var s=document.createElement('style'); s.id='ratecss'; s.textContent=
+    '#ratebox{margin-top:16px;background:#fff;border:1px solid var(--line,#ece3ef);border-radius:16px;padding:16px;text-align:center}'
+   +'.rateh{font-size:14px;font-weight:800;color:var(--ink,#241826);margin-bottom:12px}'
+   +'.stars{display:flex;justify-content:center;gap:8px}'
+   +'.star{font-size:34px;line-height:1;color:#d9cfe0;cursor:pointer;transition:transform .1s ease}.star:active{transform:scale(.9)}.star.on{color:#F2B01E}'
+   +'.ratethx{font-size:14px;font-weight:700;color:var(--plum,#4F074C)}';
+   document.head.appendChild(s); }
+  function maybeRenderRating(){
+    if(!ORDER_OWN||ORDER_RATED)return;
+    var box=document.getElementById('searchbox'); if(!box)return;
+    var host=box.querySelector('.search')||box;
+    if(document.getElementById('ratebox'))return;
+    injectRateCss();
+    var el=document.createElement('div'); el.id='ratebox';
+    el.innerHTML='<div class="rateh">How was your rider?</div><div class="stars">'+[1,2,3,4,5].map(function(n){return '<span class="star" data-n="'+n+'">&#9733;</span>';}).join('')+'</div>';
+    host.appendChild(el);
+    var stars=el.querySelectorAll('.star');
+    Array.prototype.forEach.call(stars,function(st){
+      st.onmouseover=function(){ var n=+st.getAttribute('data-n'); Array.prototype.forEach.call(stars,function(s2){ s2.classList.toggle('on', (+s2.getAttribute('data-n'))<=n); }); };
+      st.onclick=function(){ rateOrder(+st.getAttribute('data-n')); };
+    });
+  }
+  function rateOrder(n){
+    ORDER_RATED=true;
+    var el=document.getElementById('ratebox'); if(el){ var stars=el.querySelectorAll('.star'); Array.prototype.forEach.call(stars,function(s2){ s2.classList.toggle('on',(+s2.getAttribute('data-n'))<=n); s2.onclick=null; s2.onmouseover=null; }); }
+    fetch(api('action=rate&order='+encodeURIComponent(ORDNUM)+'&rating='+n),{method:'POST'}).then(function(r){return r.json();}).then(function(j){
+      var e=document.getElementById('ratebox'); if(e){ var h=e.querySelector('.rateh'); if(h)h.innerHTML='<span class="ratethx">Thanks for rating '+n+'/5 &#10024;</span>'; }
+    }).catch(function(){});
   }
   // Cancel the live order server-side (strictly POD + unpaid + not picked up — the server re-checks).
   function doCancel(onOk){
@@ -1930,8 +2103,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   }
   document.getElementById('go').onclick=function(){
     var codOn=document.getElementById('codbox').checked;
-    // A negotiated order is always pay-now — the server enforces this too, but keep the client consistent.
-    var payVal=(OFFER!=null)?'now':(codOn?'cod':(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })());
+    // A bargained order goes out pay-on-delivery so riders can accept/counter and settle cash on delivery —
+    // the server routes any offered_price to POD regardless, but keep the client consistent.
+    var payVal=(OFFER!=null)?'pod':(codOn?'cod':(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })());
     if(OFFER!=null)codOn=false;
     var goodsVal=codOn?Number((document.getElementById('goods').value||'').replace(/[^0-9.]/g,'')):0;
     if(codOn&&!(goodsVal>0)){ alert('Please enter how much we should collect from the buyer.'); return; }
@@ -1946,8 +2120,6 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       offered_price:(OFFER!=null?OFFER:0)
     })})
      .then(r=>r.json()).then(j=>{
-       // Server counter: the offer was below the floor (e.g. settings changed mid-session) — show the floor.
-       if(j&&j.error==='below-floor'){ b.disabled=false; b.textContent='Confirm & book'; OFFER=Number(j.floor)||OFFER; renderFee(); syncPayForOffer(); alert('The lowest we can do on this route is ₦'+(Number(j.floor)||0).toLocaleString()+'. We\\'ve set your offer there — tap book again to confirm.'); return; }
        // App (pay now): the server returns a payment link — go straight to secure checkout, no WhatsApp.
        if(j&&j.pay_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment</p></div>'; window.location.href=j.pay_url; return; }
        // Rider dispatched now (pay-on-delivery or COD): keep the map alive and search Bolt-style —
