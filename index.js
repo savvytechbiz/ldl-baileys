@@ -688,8 +688,11 @@ input,button,textarea,select{font-family:inherit}
 .morebtn:active{opacity:.55;transform:none}
 .dotlive{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block;margin-right:7px;box-shadow:0 0 0 3px rgba(22,163,74,.18)}
 #continue,#tonext{display:flex;align-items:center;justify-content:center;gap:9px}
-/* Past the route step the fee lives in the sheet, so the map badge would only be clipped — hide it. */
+/* Past the route step the fee lives in the sheet, so the map badge would only be clipped — hide it.
+   EXCEPT the details (phones) step: there's no fee box there, and the customer should never lose
+   sight of the price/offer they just locked in — the badge stays pinned on the map. */
 #app.instep .pricetop{display:none !important}
+#app.stepdetails .pricetop{display:flex !important}
 .etabadge .i,.riderchip .i{opacity:.9}
 /* ── Icon system — one stroke weight, optical sizing, inherits colour ── */
 .i{width:19px;height:19px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
@@ -797,17 +800,9 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
 <div class="recentlist" id="recentlist"></div>
-<button id="continue" style="display:none;margin-top:16px" onclick="routeNext()">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
-</div>
-<div id="step-pickup" style="display:none">
-<a onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 8px">&lsaquo; Back to route</a>
-<div class="sec first">Where should the rider come?</div>
-<div class="pickconf" id="pickconf"></div>
-<button id="pickok" style="margin-top:16px" onclick="showStep(3)">Confirm pickup<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
-</div>
-<div id="step-details" style="display:none">
-<a id="backstep" onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to pickup</a>
-<div class="sec first">What are you sending?<span class="reqtag">Required</span></div>
+<div class="feebig" id="routefee" style="margin:14px 0 0"></div>
+<div id="routeitem" style="display:none">
+<div class="sec" id="itemsec">What are you sending?<span class="reqtag">Required</span></div>
 <div class="chipwrap" id="itemchips">
   <button type="button" class="ichip" data-i="Documents"><svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 13h7M8.5 17h5"/></svg>Documents</button>
   <button type="button" class="ichip" data-i="Food"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 11h17a8.5 8.5 0 0 1-17 0z"/><path d="M12 4v3.5"/><path d="M2.5 20h19"/></svg>Food</button>
@@ -828,7 +823,19 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
   </div>
   <input id="dinstr" class="f1" placeholder="Or type your own — gate code, landmark…" maxlength="200" style="margin-top:8px">
 </div>
-<div class="sec">Who's on this trip?<span class="reqtag">Required</span></div>
+</div>
+<button id="continue" style="display:none;margin-top:16px" onclick="routeNext()">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+<div class="needhint" id="routehint"></div>
+</div>
+<div id="step-pickup" style="display:none">
+<a onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 8px">&lsaquo; Back to route</a>
+<div class="sec first">Where should the rider come?</div>
+<div class="pickconf" id="pickconf"></div>
+<button id="pickok" style="margin-top:16px" onclick="showStep(3)">Confirm pickup<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+</div>
+<div id="step-details" style="display:none">
+<a id="backstep" onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to pickup</a>
+<div class="sec first" id="whosec">Who's on this trip?<span class="reqtag">Required</span></div>
 <div class="hint" style="margin:2px 2px 10px;color:var(--ink-3)">Tick who you are — your side fills in automatically.</div>
 <div class="stopc">
   <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><label class="melab" id="mepk_w"><input type="checkbox" id="mepk">I am the sender</label></div>
@@ -890,6 +897,11 @@ var VALID=SESSION?"1":"0";
 (function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="This link has already been used or expired — go back to WhatsApp and ask me for a fresh link";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/mapPicker";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
+// ── Funnel checkpoints ── best-effort, once per step per visit. These decide (with real numbers, not
+// guesses) whether the phones step is where customers quit — i.e. whether the "type details while riders
+// bid" variant is worth building. Never blocks or breaks the flow.
+var FUNNEL_SENT={};
+function track(step){ if(FUNNEL_SENT[step])return; FUNNEL_SENT[step]=1; try{ fetch(api('action=funnel&step='+encodeURIComponent(step)),{method:'POST'}).catch(function(){}); }catch(e){} }
 var picked={pickup:null,dropoff:null};
 // ── BATCH mode (/bulk) ── the SAME map flow, but you ADD several drops and book them together.
 // Everything batch is gated on BATCH, so /map is completely unaffected.
@@ -1040,7 +1052,7 @@ function showStep(n){
   function only(el,cls){ [r,k,d,p].forEach(function(x){ x.style.display='none'; }); el.style.display=''; anim(el,cls); if(sh)sh.scrollTop=0; }
   if(n===2){
     if(!(picked.pickup&&picked.dropoff))return;
-    buildPickConf(); only(k,'stepInR'); if(app)app.classList.remove('instep'); sheetH(0.44);
+    buildPickConf(); only(k,'stepInR'); if(app){app.classList.remove('instep');app.classList.remove('stepdetails');} sheetH(0.44);
     // Zoom right in on the pickup so the exact spot is obvious and the pin is easy to drag.
     setTimeout(function(){ try{ map.invalidateSize(); map.flyTo([picked.pickup.lat,picked.pickup.lng],18,{duration:.7}); }catch(e){} },360);
   }
@@ -1052,20 +1064,42 @@ function showStep(n){
     // Coming BACK to details: re-sync the "This is me" boxes (claimed side ticked, other hidden,
     // and COD keeps the Receiver box away — that seat belongs to the buyer).
     updateMeChips();
-    only(d,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9);
+    only(d,'stepInR'); if(app){app.classList.add('instep');if(!BATCH)app.classList.add('stepdetails');} sheetH(0.9);
   }
-  else if(n===4){ buildSummary(); only(p,'stepInR'); if(app)app.classList.add('instep'); sheetH(0.9); }
-  else { only(r,'stepInL'); if(app)app.classList.remove('instep'); sheetH(0.6); }
+  else if(n===4){ buildSummary(); only(p,'stepInR'); if(app){app.classList.add('instep');app.classList.remove('stepdetails');} sheetH(0.9); }
+  else { only(r,'stepInL'); if(app){app.classList.remove('instep');app.classList.remove('stepdetails');} sheetH(0.6); }
 }
 // Reveal the "Continue" button only once both ends are set (and the map is pricing the trip).
-function step(){var c=document.getElementById('continue');if(!c)return;var show=!!(picked.pickup&&picked.dropoff);if(show){if(c.style.display==='none'||!c.style.display){c.style.display='block';anim(c,'risein');}}else c.style.display='none';}
+// Price-first flow (/map only): the moment both pins land, the fee + "Make an offer" + item chips appear
+// RIGHT HERE on the route screen — the customer sees the price and strikes their deal before typing
+// anything. /bulk keeps its own per-stop item cards (routeitem is moved back into details there).
+function step(){
+  var c=document.getElementById('continue');if(!c)return;
+  var show=!!(picked.pickup&&picked.dropoff);
+  if(show){if(c.style.display==='none'||!c.style.display){c.style.display='block';anim(c,'risein');}}else c.style.display='none';
+  if(!BATCH){
+    var ri=document.getElementById('routeitem');
+    if(ri){ var was=ri.style.display!=='none'; ri.style.display=show?'block':'none'; if(show&&!was)anim(ri,'risein'); }
+    if(show)track('route_set');
+    routeGate();
+  }
+}
+// The route Continue needs an item picked (one tap) — never a dead grey button, always say what's missing.
+function routeGate(){
+  if(BATCH)return;
+  var c=document.getElementById('continue'), h=document.getElementById('routehint');
+  if(!c)return;
+  var ready=!!val('item');
+  c.disabled=!ready;
+  if(h)h.textContent=(!ready&&picked.pickup&&picked.dropoff)?"Tap what you're sending to continue":'';
+}
 // ── BATCH module ── /map ends the details step by going to Pay; /bulk ADDS the drop to a batch and
 // resets the map for the next one, then books them all together via bulkOrders. All gated on BATCH.
 // ── Two-phase batch flow ── PHASE 1: pin ALL the drop-off locations (fast, map only). PHASE 2:
 // one scrollable card per numbered stop to fill item + receiver. Then review price + book.
 // /map is untouched (routeNext→step2, detailsNext→step4).
-function routeNext(){ if(BATCH){ addLocation(); } else { showStep(2); } }
-function detailsNext(){ if(!BATCH){ showStep(4); } }
+function routeNext(){ if(BATCH){ addLocation(); } else { if(!val('item')){ routeGate(); return; } showStep(2); } }
+function detailsNext(){ if(!BATCH){ track('phones_done'); showStep(4); } }
 var dropMarkers=[];
 var ITEMS=[['Documents',''],['Food',''],['Clothes',''],['Parcel',''],['Gadget',''],['Medicine',''],['Gift','']];
 // PHASE 1 — add a drop-off LOCATION only (no details yet); keep the one pickup fixed.
@@ -1418,6 +1452,8 @@ function validate(){
   var ok = picked.pickup&&picked.dropoff&&val('item')&&phonesOk;
   if(ok&&cb&&cb.checked&&!BANK_SAVED) ok=ACCT_OK;
   document.getElementById('go').disabled=!ok;
+  if(val('item'))track('item_set');
+  if(typeof routeGate==='function')routeGate();   // item now gates the ROUTE Continue (price-first flow)
 }
 // Decode a Google-encoded polyline into [lat,lng] points (so we can draw the route, Bolt-style).
 function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,sh=0,res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lat+=((res&1)?~(res>>1):(res>>1)); sh=0;res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lng+=((res&1)?~(res>>1):(res>>1)); c.push([lat/1e5,lng/1e5]); } return c; }
@@ -1430,14 +1466,18 @@ var NEGO={enabled:false}, OFFER=null;
 // is a separate model whose delivery fee is netted from the goods, so it stays on the base price.
 function podPicked(){ var cb=document.getElementById('codbox'); if(cb&&cb.checked) return false; var r=document.querySelector('input[name=pay]:checked'); return !!(r&&r.value==='pod'); }
 function renderFee(){
-  var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
-  if(mapFee==null){ if(f)f.style.display='none'; if(pt)pt.style.display='none'; var ow0=document.getElementById('offerwrap'); if(ow0)ow0.style.display='none'; return; }
+  var f=document.getElementById('fee'), pt=document.getElementById('pricetop'), rf=document.getElementById('routefee');
+  if(mapFee==null){ if(f)f.style.display='none'; if(rf)rf.style.display='none'; if(pt)pt.style.display='none'; var ow0=document.getElementById('offerwrap'); if(ow0)ow0.style.display='none'; return; }
   var base=Number(mapFee), neg=(OFFER!=null);
   var sc=(!neg&&podPicked())?(Number(POD_SURCHARGE)||0):0, tot=(neg?Number(OFFER):base)+sc;
   var sub=[]; if(mapMin)sub.push('~'+mapMin+' min trip'); if(mapKm)sub.push('~'+mapKm+' km');
   if(sc>0)sub.push('incl. ₦'+sc.toLocaleString()+' pay-on-delivery');
   if(neg)sub.push('your offer · was ₦'+base.toLocaleString());
-  if(f){ f.style.display='flex'; f.innerHTML='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+tot.toLocaleString()+'</div>'; }
+  var feeHtml='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+tot.toLocaleString()+'</div>';
+  if(f){ f.style.display='flex'; f.innerHTML=feeHtml; }
+  // Price-first: the same fee box lives on the route screen so the price (and the offer button under it)
+  // shows the moment the pins land — before any typing. /bulk keeps the old single spot.
+  if(rf&&!BATCH){ rf.style.display='flex'; rf.innerHTML=feeHtml; }
   if(pt){ var pw=(pt.style.display==='none'||!pt.style.display); pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+tot.toLocaleString()+'</span>'; if(pw){pt.classList.remove('popin');void pt.offsetWidth;pt.classList.add('popin');} }
   renderOffer(base);
 }
@@ -1445,7 +1485,9 @@ function renderFee(){
 // riders see and can accept or COUNTER — there's no Lasalu floor and no prepay; the agreed price is paid on
 // delivery. The control lives right under the fee box.
 function renderOffer(base){
-  var host=document.getElementById('fee'); if(!host)return;
+  // Price-first: the offer widget anchors under the ROUTE-screen fee box (/map), so bargaining happens
+  // before any details. /bulk keeps the old anchor under the pay-step fee box.
+  var host=(!BATCH&&document.getElementById('routefee'))||document.getElementById('fee'); if(!host)return;
   var w=document.getElementById('offerwrap');
   if(!NEGO.enabled||mapFee==null){ if(w)w.style.display='none'; return; }
   if(!w){ w=document.createElement('div'); w.id='offerwrap'; w.className='offerwrap'; host.parentNode.insertBefore(w,host.nextSibling); }
@@ -1460,6 +1502,7 @@ function renderOffer(base){
 }
 function openOfferPanel(base){
   var w=document.getElementById('offerwrap'); if(!w)return;
+  track('offer_opened');
   w.innerHTML='<div class="offpanel"><div class="offh">Name your price</div>'
     +'<div class="offin"><span>&#8358;</span><input id="offval" inputmode="numeric" value="'+Math.round(base)+'"></div>'
     +'<div class="offhint" id="offhint">Riders near you will see your offer and can accept it or propose their own price. You pay the agreed price on delivery.</div>'
@@ -1470,7 +1513,7 @@ function openOfferPanel(base){
     var v=Math.round(Number((inp.value||'').replace(/[^0-9.]/g,''))||0);
     if(!(v>0)) return;
     if(v>=Math.round(base)){ OFFER=null; renderFee(); syncPayForOffer(); if(typeof validate==='function')validate(); return; } // offering full price → no negotiation
-    OFFER=v; renderFee(); syncPayForOffer(); if(typeof validate==='function')validate();
+    OFFER=v; track('offer_set'); renderFee(); syncPayForOffer(); if(typeof validate==='function')validate();
   };
 }
 // A bargained order settles pay-on-delivery — hide the pay-now / COD choices while an offer is active (no
@@ -1536,20 +1579,22 @@ function resolveAcct(){
 }
 function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#E23A7C',weight:5,opacity:.9,lineJoin:'round',className:'routeanim'}).addTo(map); try{ map.flyToBounds(routeLine.getBounds(),{padding:[40,40],maxZoom:16,duration:.9}); }catch(e){ map.fitBounds(routeLine.getBounds(),{padding:[40,40],maxZoom:16}); } }catch(e){} }
 function quote(){
-  var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
+  var f=document.getElementById('fee'), pt=document.getElementById('pricetop'), rf=document.getElementById('routefee');
   f.style.display='flex'; f.innerHTML='<div class="lbl">Calculating fee…</div>';
+  if(rf&&!BATCH){ rf.style.display='flex'; rf.innerHTML='<div class="lbl">Calculating fee…</div>'; }
   if(pt){ pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">…</span>'; }
   fetch(api('action=price&plat='+picked.pickup.lat+'&plng='+picked.pickup.lng+'&dlat='+picked.dropoff.lat+'&dlng='+picked.dropoff.lng))
    .then(r=>r.json()).then(j=>{
      var e=document.getElementById('eta');
      if(j.price){
        mapFee=j.price; mapMin=j.min||null; mapKm=j.km||null; OFFER=null;  // new price → any prior offer is stale
+       track('price_shown');
        renderFee();   // fee box + top badge (adds the POD surcharge when pay-on-delivery is selected)
        if(j.min){ var ew=(e.style.display==='none'||!e.style.display); e.style.display='flex'; e.innerHTML='<svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="6" cy="17" r="2.6"/><circle cx="18.5" cy="17" r="2.6"/><path d="M8.6 17h7.3l1.9-7h2.7M6 17l2.8-8.4h4.4"/></svg>'+j.min+' min <span class="d">trip</span>'; if(ew){e.classList.remove('popin');void e.offsetWidth;e.classList.add('popin');} } else { e.style.display='none'; }
      } else { mapFee=null; renderFee(); if(e)e.style.display='none'; }
      if(typeof codBreak==='function') codBreak();
      if(j.polyline) drawRoute(j.polyline);
-   }).catch(function(){ f.style.display='none'; if(pt)pt.style.display='none'; });
+   }).catch(function(){ f.style.display='none'; if(rf)rf.style.display='none'; if(pt)pt.style.display='none'; });
 }
 function wire(inId,sugId,which){
   var inp=document.getElementById(inId), sug=document.getElementById(sugId), t;
@@ -1569,7 +1614,22 @@ function wire(inId,sugId,which){
 }
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
 else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
-  if(BATCH){ try{ initBatch(); }catch(e){} }
+  if(BATCH){
+    // /bulk keeps its original layout: the item block belongs in step-details there (bulk collects items
+    // per-stop in its own phase-2 cards) — move it back where it always was and drop the route-step extras.
+    try{
+      var _ri=document.getElementById('routeitem'), _ws=document.getElementById('whosec');
+      if(_ri&&_ws){
+        while(_ri.firstChild){ _ws.parentNode.insertBefore(_ri.firstChild,_ws); }
+        _ri.parentNode.removeChild(_ri);
+        var _is=document.getElementById('itemsec'); if(_is)_is.classList.add('first');
+        _ws.classList.remove('first');
+        var _rf=document.getElementById('routefee'); if(_rf)_rf.parentNode.removeChild(_rf);
+        var _rh=document.getElementById('routehint'); if(_rh)_rh.parentNode.removeChild(_rh);
+      }
+    }catch(e){}
+    try{ initBatch(); }catch(e){}
+  }
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
   Array.prototype.forEach.call(document.querySelectorAll('.clr'),function(b){ b.onclick=function(){ clearLoc(b.getAttribute('data-clr')); }; });
   // ── Draggable bottom sheet (Bolt-style): drag the handle to fill the screen or shrink to see the map ──
@@ -1699,7 +1759,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         if(p.active.dropoff&&p.active.dropoff.lat){ document.getElementById('din').value=p.active.dropoff.address||''; setPin('dropoff',p.active.dropoff); }
       }catch(e){}
       RESUMED=true;
-      var ap=document.getElementById('app'); if(ap)ap.classList.add('instep');   // keeps the price pill off the tracker map
+      var ap=document.getElementById('app'); if(ap){ap.classList.add('instep');ap.classList.remove('stepdetails');}   // keeps the price pill off the tracker map
       showSearching({booked:true,fee:(p.active.mode==='pod'?p.active.fee:0),cod_booked:p.active.mode!=='pod',order_number:p.active.order_number});
       if(p.active.status)applyStatus(String(p.active.status));
     }
@@ -2017,6 +2077,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(raw==='cancelled'){ trkState='cancelled'; if(radarM){try{map.removeLayer(radarM);}catch(e){}radarM=null;} clearRider(); trackUI('cancelled'); stopPoll(); return; }
     var st=(raw==='assigned'||raw==='ontheway'||raw==='delivered'||raw==='failed')?raw:'';
     if(!st||st===trkState)return;
+    if(st==='assigned')track('rider_assigned');
     trkState=st;
     if(st!=='failed')doneN=stageN(st);
     if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
@@ -2123,6 +2184,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       offered_price:(OFFER!=null?OFFER:0)
     })})
      .then(r=>r.json()).then(j=>{
+       if(j&&(j.pay_url||j.booked||j.cod_booked))track('booked');
        // App (pay now): the server returns a payment link — go straight to secure checkout, no WhatsApp.
        if(j&&j.pay_url){ document.getElementById('app').innerHTML='<div class="done"><h2>Opening secure payment…</h2><p class="muted">One moment</p></div>'; window.location.href=j.pay_url; return; }
        // Rider dispatched now (pay-on-delivery or COD): keep the map alive and search Bolt-style —
