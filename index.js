@@ -770,6 +770,21 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .payopt#opt-cod input{accent-color:var(--amber)}
 .payopt#opt-cod:has(input:checked){border-color:var(--amber);background:var(--amber-bg)}
 .feebig{display:none;align-items:center;justify-content:space-between;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 18px;margin:16px 0 0}
+/* ── inDrive-style fare card (route screen): recommended fare centred, − / + steppers to name your price ── */
+#farecard{align-items:center;gap:10px;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin:16px 0 0}
+.fbtn{width:46px;height:46px;flex:none;border-radius:50%;background:#fff;border:1.5px solid var(--line-2);color:var(--plum);box-shadow:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.fbtn .i{width:20px;height:20px;stroke-width:2.2}
+.fbtn:disabled{opacity:.3}
+.fmid{flex:1;text-align:center;cursor:pointer;min-width:0}
+.famt{font-size:24px;font-weight:800;color:var(--plum);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.famt .was{font-size:13px;color:var(--ink-3);text-decoration:line-through;font-weight:600;margin-left:6px}
+.flbl{font-size:11.5px;color:var(--ink-2);font-weight:600;margin-top:2px}
+.autorow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 4px 0}
+.autolbl{font-size:13.5px;font-weight:600;color:var(--ink)}
+.fartog{width:46px;height:26px;flex:none;border-radius:13px;background:var(--line-2);position:relative;cursor:pointer;transition:background .18s ease}
+.fartog span{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .18s ease}
+.fartog.on{background:var(--plum)}
+.fartog.on span{left:23px}
 .feebig .lbl{font-size:13px;color:var(--ink-2);font-weight:600}
 .feebig .sub{font-size:12px;color:var(--ink-2);margin-top:2px;font-weight:500}
 .feebig .amt{font-size:23px;font-weight:800;color:var(--plum);letter-spacing:-.02em}
@@ -800,9 +815,24 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 <div class="reuse" id="rpickup"></div>
 <div class="reuse" id="rdrop"></div>
 <div class="recentlist" id="recentlist"></div>
-<div class="feebig" id="routefee" style="margin:14px 0 0"></div>
-<div id="routeitem" style="display:none">
-<div class="sec" id="itemsec">What are you sending?<span class="reqtag">Required</span></div>
+<div id="farecard" style="display:none">
+  <button type="button" class="fbtn" id="fminus" aria-label="Lower your offer"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+  <div class="fmid" id="fmid"><div class="famt" id="famt"></div><div class="flbl" id="flbl">Recommended fare</div></div>
+  <button type="button" class="fbtn" id="fplus" aria-label="Raise your offer"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+</div>
+<div id="farepanel" style="display:none"></div>
+<div class="autorow" id="autorow" style="display:none"><div class="autolbl" id="autolbl">Auto-accept offer</div><div class="fartog" id="fartog"><span></span></div></div>
+<button id="continue" style="display:none;margin-top:16px" onclick="routeNext()">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+</div>
+<div id="step-pickup" style="display:none">
+<a onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 8px">&lsaquo; Back to route</a>
+<div class="sec first">Where should the rider come?</div>
+<div class="pickconf" id="pickconf"></div>
+<button id="pickok" style="margin-top:16px" onclick="showStep(3)">Confirm pickup<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+</div>
+<div id="step-details" style="display:none">
+<a id="backstep" onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to pickup</a>
+<div class="sec first">What are you sending?<span class="reqtag">Required</span></div>
 <div class="chipwrap" id="itemchips">
   <button type="button" class="ichip" data-i="Documents"><svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 13h7M8.5 17h5"/></svg>Documents</button>
   <button type="button" class="ichip" data-i="Food"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 11h17a8.5 8.5 0 0 1-17 0z"/><path d="M12 4v3.5"/><path d="M2.5 20h19"/></svg>Food</button>
@@ -823,19 +853,7 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
   </div>
   <input id="dinstr" class="f1" placeholder="Or type your own — gate code, landmark…" maxlength="200" style="margin-top:8px">
 </div>
-</div>
-<button id="continue" style="display:none;margin-top:16px" onclick="routeNext()">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
-<div class="needhint" id="routehint"></div>
-</div>
-<div id="step-pickup" style="display:none">
-<a onclick="showStep(1)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 8px">&lsaquo; Back to route</a>
-<div class="sec first">Where should the rider come?</div>
-<div class="pickconf" id="pickconf"></div>
-<button id="pickok" style="margin-top:16px" onclick="showStep(3)">Confirm pickup<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
-</div>
-<div id="step-details" style="display:none">
-<a id="backstep" onclick="showStep(2)" style="display:inline-flex;align-items:center;gap:6px;color:#4F074C;font-weight:600;font-size:13.5px;cursor:pointer;margin:2px 2px 6px">&lsaquo; Back to pickup</a>
-<div class="sec first" id="whosec">Who's on this trip?<span class="reqtag">Required</span></div>
+<div class="sec">Who's on this trip?<span class="reqtag">Required</span></div>
 <div class="hint" style="margin:2px 2px 10px;color:var(--ink-3)">Tick who you are — your side fills in automatically.</div>
 <div class="stopc">
   <div class="stophd"><span class="stopdot pk"></span><span class="stopnm">Pickup</span><label class="melab" id="mepk_w"><input type="checkbox" id="mepk">I am the sender</label></div>
@@ -1070,35 +1088,21 @@ function showStep(n){
   else { only(r,'stepInL'); if(app){app.classList.remove('instep');app.classList.remove('stepdetails');} sheetH(0.6); }
 }
 // Reveal the "Continue" button only once both ends are set (and the map is pricing the trip).
-// Price-first flow (/map only): the moment both pins land, the fee + "Make an offer" + item chips appear
-// RIGHT HERE on the route screen — the customer sees the price and strikes their deal before typing
-// anything. /bulk keeps its own per-stop item cards (routeitem is moved back into details there).
+// Price-first flow (/map only): the moment both pins land, the inDrive-style FARE CARD appears right here
+// on the route screen — recommended fare centred, − / + to name your own price, auto-accept toggle under
+// it. The customer strikes their deal before typing anything; details stay on their own step.
 function step(){
   var c=document.getElementById('continue');if(!c)return;
   var show=!!(picked.pickup&&picked.dropoff);
   if(show){if(c.style.display==='none'||!c.style.display){c.style.display='block';anim(c,'risein');}}else c.style.display='none';
-  if(!BATCH){
-    var ri=document.getElementById('routeitem');
-    if(ri){ var was=ri.style.display!=='none'; ri.style.display=show?'block':'none'; if(show&&!was)anim(ri,'risein'); }
-    if(show)track('route_set');
-    routeGate();
-  }
-}
-// The route Continue needs an item picked (one tap) — never a dead grey button, always say what's missing.
-function routeGate(){
-  if(BATCH)return;
-  var c=document.getElementById('continue'), h=document.getElementById('routehint');
-  if(!c)return;
-  var ready=!!val('item');
-  c.disabled=!ready;
-  if(h)h.textContent=(!ready&&picked.pickup&&picked.dropoff)?"Tap what you're sending to continue":'';
+  if(!BATCH){ if(show)track('route_set'); renderFareCard(); }
 }
 // ── BATCH module ── /map ends the details step by going to Pay; /bulk ADDS the drop to a batch and
 // resets the map for the next one, then books them all together via bulkOrders. All gated on BATCH.
 // ── Two-phase batch flow ── PHASE 1: pin ALL the drop-off locations (fast, map only). PHASE 2:
 // one scrollable card per numbered stop to fill item + receiver. Then review price + book.
 // /map is untouched (routeNext→step2, detailsNext→step4).
-function routeNext(){ if(BATCH){ addLocation(); } else { if(!val('item')){ routeGate(); return; } showStep(2); } }
+function routeNext(){ if(BATCH){ addLocation(); } else { showStep(2); } }
 function detailsNext(){ if(!BATCH){ track('phones_done'); showStep(4); } }
 var dropMarkers=[];
 var ITEMS=[['Documents',''],['Food',''],['Clothes',''],['Parcel',''],['Gadget',''],['Medicine',''],['Gift','']];
@@ -1453,7 +1457,6 @@ function validate(){
   if(ok&&cb&&cb.checked&&!BANK_SAVED) ok=ACCT_OK;
   document.getElementById('go').disabled=!ok;
   if(val('item'))track('item_set');
-  if(typeof routeGate==='function')routeGate();   // item now gates the ROUTE Continue (price-first flow)
 }
 // Decode a Google-encoded polyline into [lat,lng] points (so we can draw the route, Bolt-style).
 function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,sh=0,res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lat+=((res&1)?~(res>>1):(res>>1)); sh=0;res=0; do{b=str.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20); lng+=((res&1)?~(res>>1):(res>>1)); c.push([lat/1e5,lng/1e5]); } return c; }
@@ -1466,8 +1469,8 @@ var NEGO={enabled:false}, OFFER=null;
 // is a separate model whose delivery fee is netted from the goods, so it stays on the base price.
 function podPicked(){ var cb=document.getElementById('codbox'); if(cb&&cb.checked) return false; var r=document.querySelector('input[name=pay]:checked'); return !!(r&&r.value==='pod'); }
 function renderFee(){
-  var f=document.getElementById('fee'), pt=document.getElementById('pricetop'), rf=document.getElementById('routefee');
-  if(mapFee==null){ if(f)f.style.display='none'; if(rf)rf.style.display='none'; if(pt)pt.style.display='none'; var ow0=document.getElementById('offerwrap'); if(ow0)ow0.style.display='none'; return; }
+  var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
+  if(mapFee==null){ if(f)f.style.display='none'; if(pt)pt.style.display='none'; var ow0=document.getElementById('offerwrap'); if(ow0)ow0.style.display='none'; renderFareCard(); return; }
   var base=Number(mapFee), neg=(OFFER!=null);
   var sc=(!neg&&podPicked())?(Number(POD_SURCHARGE)||0):0, tot=(neg?Number(OFFER):base)+sc;
   var sub=[]; if(mapMin)sub.push('~'+mapMin+' min trip'); if(mapKm)sub.push('~'+mapKm+' km');
@@ -1475,19 +1478,72 @@ function renderFee(){
   if(neg)sub.push('your offer · was ₦'+base.toLocaleString());
   var feeHtml='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+tot.toLocaleString()+'</div>';
   if(f){ f.style.display='flex'; f.innerHTML=feeHtml; }
-  // Price-first: the same fee box lives on the route screen so the price (and the offer button under it)
-  // shows the moment the pins land — before any typing. /bulk keeps the old single spot.
-  if(rf&&!BATCH){ rf.style.display='flex'; rf.innerHTML=feeHtml; }
   if(pt){ var pw=(pt.style.display==='none'||!pt.style.display); pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+tot.toLocaleString()+'</span>'; if(pw){pt.classList.remove('popin');void pt.offsetWidth;pt.classList.add('popin');} }
   renderOffer(base);
+  renderFareCard();
+}
+// ── inDrive-style fare card (route screen, /map only) ── recommended fare centred; − / + step the
+// customer's offer ₦100 at a time (below the quote = a bargain, above = reaches riders faster); tapping
+// the amount opens a type-your-price panel. Under it: "Auto-accept offer of ₦X" — ON matches the first
+// rider instantly at that price, OFF collects rider offers and the customer picks (inDrive mode).
+var FARE_STEP=100, AUTO_PICK=null;   // AUTO_PICK null = customer hasn't touched the toggle → smart default
+function autoPickOn(){ if(AUTO_PICK!==null)return AUTO_PICK; if(OFFER!=null)return false; return !NEGO.pick_default; }
+function renderFareCard(){
+  var fc=document.getElementById('farecard'); if(!fc||BATCH)return;
+  var ar=document.getElementById('autorow'), fp=document.getElementById('farepanel');
+  if(mapFee==null||!(picked.pickup&&picked.dropoff)){ fc.style.display='none'; if(ar)ar.style.display='none'; if(fp){fp.style.display='none';fp.innerHTML='';} return; }
+  var base=Math.round(Number(mapFee)), cur=(OFFER!=null?Math.round(Number(OFFER)):base);
+  var was=fc.style.display!=='none';
+  fc.style.display='flex'; if(!was)anim(fc,'risein');
+  var am=document.getElementById('famt'), lb=document.getElementById('flbl');
+  if(am)am.innerHTML='₦'+cur.toLocaleString()+(OFFER!=null?'<span class="was">₦'+base.toLocaleString()+'</span>':'');
+  if(lb)lb.textContent=!NEGO.enabled?'Delivery fee'
+    :(OFFER==null?'Recommended fare · tap to type yours'
+    :(OFFER<base?'Your offer — riders accept or counter':'Boosted offer — reaches riders faster'));
+  var mi=document.getElementById('fminus'), pl=document.getElementById('fplus');
+  if(mi){ mi.style.display=NEGO.enabled?'flex':'none'; mi.disabled=cur<=FARE_STEP; }
+  if(pl){ pl.style.display=NEGO.enabled?'flex':'none'; pl.disabled=cur>=base*3-FARE_STEP; }
+  if(ar){
+    ar.style.display=NEGO.enabled?'flex':'none';
+    var al=document.getElementById('autolbl'); if(al)al.textContent='Auto-accept offer of ₦'+cur.toLocaleString();
+    var tg=document.getElementById('fartog'); if(tg)tg.classList.toggle('on',autoPickOn());
+  }
+}
+function setFare(v){
+  var base=Math.round(Number(mapFee)||0); if(!base||!NEGO.enabled)return;
+  v=Math.round(v); if(!(v>0))v=FARE_STEP;
+  if(v>=base*3)v=base*3-FARE_STEP;
+  track('offer_opened');
+  if(v===base){ OFFER=null; } else { OFFER=v; track('offer_set'); }
+  renderFee(); syncPayForOffer(); if(typeof validate==='function')validate();
+}
+function openFareEntry(){
+  if(!NEGO.enabled||mapFee==null)return;
+  injectNegCss(); track('offer_opened');
+  var fp=document.getElementById('farepanel'); if(!fp)return;
+  var base=Math.round(Number(mapFee));
+  fp.style.display='block';
+  fp.innerHTML='<div class="offpanel"><div class="offh">Name your price</div>'
+    +'<div class="offin"><span>₦</span><input id="fareval" inputmode="numeric" value="'+Math.round(OFFER!=null?OFFER:base)+'"></div>'
+    +'<div class="offhint">Riders near you see your offer and can accept it or propose their own price. You pay the agreed price on delivery.</div>'
+    +'<div class="offrow"><button type="button" class="offcancel" id="farecancel">Cancel</button><button type="button" class="offuse" id="fareuse">Set my price</button></div></div>';
+  var inp=document.getElementById('fareval'); try{ inp.focus(); inp.select(); }catch(e){}
+  document.getElementById('farecancel').onclick=function(){ fp.style.display='none'; fp.innerHTML=''; };
+  document.getElementById('fareuse').onclick=function(){
+    var v=Math.round(Number((inp.value||'').replace(/[^0-9.]/g,''))||0);
+    if(!(v>0))return;
+    fp.style.display='none'; fp.innerHTML='';
+    setFare(v);
+  };
 }
 // ── Price negotiation UI (app-only) ── The customer BARGAINS WITH RIDERS. Their offer is a starting price
 // riders see and can accept or COUNTER — there's no Lasalu floor and no prepay; the agreed price is paid on
 // delivery. The control lives right under the fee box.
 function renderOffer(base){
-  // Price-first: the offer widget anchors under the ROUTE-screen fee box (/map), so bargaining happens
-  // before any details. /bulk keeps the old anchor under the pay-step fee box.
-  var host=(!BATCH&&document.getElementById('routefee'))||document.getElementById('fee'); if(!host)return;
+  // /map: the inDrive fare card (renderFareCard) owns negotiation now — this "Make an offer" widget is
+  // only kept for /bulk's fee box, where the fare card doesn't exist.
+  if(!BATCH){ var w0=document.getElementById('offerwrap'); if(w0)w0.style.display='none'; return; }
+  var host=document.getElementById('fee'); if(!host)return;
   var w=document.getElementById('offerwrap');
   if(!NEGO.enabled||mapFee==null){ if(w)w.style.display='none'; return; }
   if(!w){ w=document.createElement('div'); w.id='offerwrap'; w.className='offerwrap'; host.parentNode.insertBefore(w,host.nextSibling); }
@@ -1579,9 +1635,9 @@ function resolveAcct(){
 }
 function drawRoute(enc){ try{ var pts=decodePoly(enc); if(!pts.length)return; if(routeLine)map.removeLayer(routeLine); routeLine=L.polyline(pts,{color:'#E23A7C',weight:5,opacity:.9,lineJoin:'round',className:'routeanim'}).addTo(map); try{ map.flyToBounds(routeLine.getBounds(),{padding:[40,40],maxZoom:16,duration:.9}); }catch(e){ map.fitBounds(routeLine.getBounds(),{padding:[40,40],maxZoom:16}); } }catch(e){} }
 function quote(){
-  var f=document.getElementById('fee'), pt=document.getElementById('pricetop'), rf=document.getElementById('routefee');
+  var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
   f.style.display='flex'; f.innerHTML='<div class="lbl">Calculating fee…</div>';
-  if(rf&&!BATCH){ rf.style.display='flex'; rf.innerHTML='<div class="lbl">Calculating fee…</div>'; }
+  var fa0=document.getElementById('famt'); if(fa0&&!BATCH)fa0.textContent='…';
   if(pt){ pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">…</span>'; }
   fetch(api('action=price&plat='+picked.pickup.lat+'&plng='+picked.pickup.lng+'&dlat='+picked.dropoff.lat+'&dlng='+picked.dropoff.lng))
    .then(r=>r.json()).then(j=>{
@@ -1594,7 +1650,7 @@ function quote(){
      } else { mapFee=null; renderFee(); if(e)e.style.display='none'; }
      if(typeof codBreak==='function') codBreak();
      if(j.polyline) drawRoute(j.polyline);
-   }).catch(function(){ f.style.display='none'; if(rf)rf.style.display='none'; if(pt)pt.style.display='none'; });
+   }).catch(function(){ f.style.display='none'; if(pt)pt.style.display='none'; var fc0=document.getElementById('farecard'); if(fc0)fc0.style.display='none'; });
 }
 function wire(inId,sugId,which){
   var inp=document.getElementById(inId), sug=document.getElementById(sugId), t;
@@ -1614,21 +1670,13 @@ function wire(inId,sugId,which){
 }
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
 else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
-  if(BATCH){
-    // /bulk keeps its original layout: the item block belongs in step-details there (bulk collects items
-    // per-stop in its own phase-2 cards) — move it back where it always was and drop the route-step extras.
-    try{
-      var _ri=document.getElementById('routeitem'), _ws=document.getElementById('whosec');
-      if(_ri&&_ws){
-        while(_ri.firstChild){ _ws.parentNode.insertBefore(_ri.firstChild,_ws); }
-        _ri.parentNode.removeChild(_ri);
-        var _is=document.getElementById('itemsec'); if(_is)_is.classList.add('first');
-        _ws.classList.remove('first');
-        var _rf=document.getElementById('routefee'); if(_rf)_rf.parentNode.removeChild(_rf);
-        var _rh=document.getElementById('routehint'); if(_rh)_rh.parentNode.removeChild(_rh);
-      }
-    }catch(e){}
-    try{ initBatch(); }catch(e){}
+  if(BATCH){ try{ initBatch(); }catch(e){} }
+  // inDrive fare card controls (/map): − / + step the offer, tap the amount to type it, toggle auto-accept.
+  if(!BATCH){
+    var _fm=document.getElementById('fminus'); if(_fm)_fm.onclick=function(){ var b=Math.round(Number(mapFee)||0); if(!b)return; var cur=(OFFER!=null?Math.round(Number(OFFER)):b); setFare(cur-FARE_STEP); };
+    var _fp=document.getElementById('fplus'); if(_fp)_fp.onclick=function(){ var b=Math.round(Number(mapFee)||0); if(!b)return; var cur=(OFFER!=null?Math.round(Number(OFFER)):b); setFare(cur+FARE_STEP); };
+    var _fd=document.getElementById('fmid'); if(_fd)_fd.onclick=function(){ openFareEntry(); };
+    var _ft=document.getElementById('fartog'); if(_ft)_ft.onclick=function(){ AUTO_PICK=!autoPickOn(); renderFareCard(); };
   }
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
   Array.prototype.forEach.call(document.querySelectorAll('.clr'),function(b){ b.onclick=function(){ clearLoc(b.getAttribute('data-clr')); }; });
@@ -1740,7 +1788,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
     if(p.pod_allowed){ var po=document.getElementById('opt-pod'); po.style.display='flex'; POD_SURCHARGE=Math.max(0,Number(p.pod_surcharge)||0); if(POD_SURCHARGE>0){ var ps=document.createElement('span'); ps.className='sur'; ps.textContent='+₦'+POD_SURCHARGE.toLocaleString(); po.appendChild(ps); } renderFee(); }
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
-    if(p.negotiation&&p.negotiation.enabled){ NEGO.enabled=true; injectNegCss(); renderFee(); }
+    if(p.negotiation&&p.negotiation.enabled){ NEGO.enabled=true; NEGO.pick_default=!!p.negotiation.pick_default; injectNegCss(); renderFee(); }
     if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
     // PICKUP DEFAULT = where the booker is standing. Unless the chat already named a pickup, we drop
@@ -2181,7 +2229,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       session:SESSION,pickup:picked.pickup,dropoff:picked.dropoff,
       sender_name:val('sname'),sender_phone:val('sphone'),receiver_name:val('rname'),receiver_phone:val('rphone'),item:val('item'),delivery_instruction:val('dinstr'),
       pay_method:payVal,cod:codOn,goods_value:goodsVal,account_number:acctNo,bank_code:bankCode,bank_name:bankName,
-      offered_price:(OFFER!=null?OFFER:0)
+      offered_price:(OFFER!=null?OFFER:0),
+      auto_pick:(AUTO_PICK===null?'':(AUTO_PICK?'1':'0'))
     })})
      .then(r=>r.json()).then(j=>{
        if(j&&(j.pay_url||j.booked||j.cod_booked))track('booked');
