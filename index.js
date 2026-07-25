@@ -718,6 +718,10 @@ button:active:not(:disabled),.recentlist .rr:active{transform:scale(.97)}
 .pricetop{position:absolute;bottom:22px;right:14px;z-index:1000;background:var(--plum);color:#fff;border-radius:15px;padding:9px 16px;box-shadow:0 8px 22px rgba(79,7,76,.34);white-space:nowrap;align-items:baseline;gap:8px}
 .pricetop .cap{font-size:10.5px;font-weight:600;color:#e7b9df;text-transform:uppercase;letter-spacing:.09em}
 .pricetop .amt{font-size:19px;font-weight:800;letter-spacing:-.02em}
+/* Negotiating: the pill KEEPS the recommended fare and shows the offer as its own second line, so the
+   customer always sees both numbers and knows they're bargaining. */
+.pricetop.neg{flex-wrap:wrap;justify-content:center}
+.pricetop .off{flex-basis:100%;font-size:11.5px;font-weight:800;background:rgba(255,255,255,.17);border-radius:8px;padding:3px 9px;margin-top:5px;text-align:center;letter-spacing:.01em}
 @keyframes pop{from{opacity:0;transform:translateY(7px) scale(.95)}to{opacity:1;transform:none}}
 .riderchip{position:absolute;top:16px;left:14px;z-index:1000;background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:13px;padding:8px 12px;box-shadow:var(--sh-1);font-size:12.5px;font-weight:600;color:var(--plum-d);display:none;align-items:center;gap:6px}
 .sheet{position:relative;z-index:3;flex:0 0 auto;margin-top:-26px;background:var(--surface);border-radius:var(--r-xl) var(--r-xl) 0 0;box-shadow:0 -1px 0 var(--line),0 -14px 34px rgba(58,5,55,.08);padding:9px 17px 24px;animation:rise .45s var(--ease)}
@@ -769,6 +773,8 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .payopt:has(input:checked){border-color:var(--plum);background:var(--lilac)}
 .payopt#opt-cod input{accent-color:var(--amber)}
 .payopt#opt-cod:has(input:checked){border-color:var(--amber);background:var(--amber-bg)}
+.negpaynote{display:none;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px;font-size:13px;color:var(--ink-2);line-height:1.55;margin-bottom:9px}
+.negpaynote b{color:var(--ink)}
 .feebig{display:none;align-items:center;justify-content:space-between;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 18px;margin:16px 0 0}
 /* ── inDrive-style fare card (route screen): recommended fare centred, − / + steppers to name your price ── */
 #farecard{align-items:center;gap:10px;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin:16px 0 0}
@@ -1478,7 +1484,16 @@ function renderFee(){
   if(neg)sub.push('your offer · was ₦'+base.toLocaleString());
   var feeHtml='<div><div class="lbl">Delivery fee</div>'+(sub.length?('<div class="sub">'+sub.join(' · ')+'</div>'):'')+'</div><div class="amt">₦'+tot.toLocaleString()+'</div>';
   if(f){ f.style.display='flex'; f.innerHTML=feeHtml; }
-  if(pt){ var pw=(pt.style.display==='none'||!pt.style.display); pt.style.display='flex'; pt.innerHTML='<span class="cap">Fee</span><span class="amt">₦'+tot.toLocaleString()+'</span>'; if(pw){pt.classList.remove('popin');void pt.offsetWidth;pt.classList.add('popin');} }
+  if(pt){
+    var pw=(pt.style.display==='none'||!pt.style.display); pt.style.display='flex';
+    pt.classList.toggle('neg',neg);
+    // While negotiating the pill KEEPS the recommended fare on top and adds the offer as a second line —
+    // the recommended price never changes, and the customer clearly sees they're bargaining.
+    pt.innerHTML=neg
+      ?'<span class="cap">Fee</span><span class="amt">₦'+base.toLocaleString()+'</span><span class="off">Your offer ₦'+Number(OFFER).toLocaleString()+'</span>'
+      :'<span class="cap">Fee</span><span class="amt">₦'+tot.toLocaleString()+'</span>';
+    if(pw){pt.classList.remove('popin');void pt.offsetWidth;pt.classList.add('popin');}
+  }
   renderOffer(base);
   renderFareCard();
 }
@@ -1501,8 +1516,8 @@ function renderFareCard(){
     :(OFFER==null?'Recommended fare · tap to type yours'
     :(OFFER<base?'Your offer — riders accept or counter':'Boosted offer — reaches riders faster'));
   var mi=document.getElementById('fminus'), pl=document.getElementById('fplus');
-  if(mi){ mi.style.display=NEGO.enabled?'flex':'none'; mi.disabled=cur<=FARE_STEP; }
-  if(pl){ pl.style.display=NEGO.enabled?'flex':'none'; pl.disabled=cur>=base*3-FARE_STEP; }
+  if(mi){ mi.style.display=NEGO.enabled?'flex':'none'; mi.disabled=cur<=Math.max(FARE_STEP,base-500); }   // ₦500-below floor
+  if(pl){ pl.style.display=NEGO.enabled?'flex':'none'; pl.disabled=false; }                               // no ceiling
   if(ar){
     ar.style.display=NEGO.enabled?'flex':'none';
     var al=document.getElementById('autolbl'); if(al)al.textContent='Auto-accept offer of ₦'+cur.toLocaleString();
@@ -1511,8 +1526,11 @@ function renderFareCard(){
 }
 function setFare(v){
   var base=Math.round(Number(mapFee)||0); if(!base||!NEGO.enabled)return;
-  v=Math.round(v); if(!(v>0))v=FARE_STEP;
-  if(v>=base*3)v=base*3-FARE_STEP;
+  // FLOOR: at most ₦500 below the recommended fare (riders won't move for less and lowballs stall the
+  // search). No ceiling — offering more just reaches riders faster.
+  var floor=Math.max(FARE_STEP,base-500);
+  v=Math.round(v); if(!(v>0))v=floor;
+  if(v<floor)v=floor;
   track('offer_opened');
   if(v===base){ OFFER=null; } else { OFFER=v; track('offer_set'); }
   renderFee(); syncPayForOffer(); if(typeof validate==='function')validate();
@@ -1525,13 +1543,16 @@ function openFareEntry(){
   fp.style.display='block';
   fp.innerHTML='<div class="offpanel"><div class="offh">Name your price</div>'
     +'<div class="offin"><span>₦</span><input id="fareval" inputmode="numeric" value="'+Math.round(OFFER!=null?OFFER:base)+'"></div>'
-    +'<div class="offhint">Riders near you see your offer and can accept it or propose their own price. You pay the agreed price on delivery.</div>'
+    +'<div class="offhint">Offer up to ₦500 below the recommended fare — or more to reach riders faster. You pay the agreed price on delivery.</div>'
     +'<div class="offrow"><button type="button" class="offcancel" id="farecancel">Cancel</button><button type="button" class="offuse" id="fareuse">Set my price</button></div></div>';
   var inp=document.getElementById('fareval'); try{ inp.focus(); inp.select(); }catch(e){}
   document.getElementById('farecancel').onclick=function(){ fp.style.display='none'; fp.innerHTML=''; };
   document.getElementById('fareuse').onclick=function(){
     var v=Math.round(Number((inp.value||'').replace(/[^0-9.]/g,''))||0);
     if(!(v>0))return;
+    var floor=Math.max(FARE_STEP,base-500);
+    if(v<floor){ alert('You can offer at most ₦500 below the recommended fare — the lowest offer for this trip is ₦'+floor.toLocaleString()+'.'); inp.value=floor; return; }
+    if(v>base*3 && !confirm('You are offering ₦'+v.toLocaleString()+' — much more than the recommended ₦'+base.toLocaleString()+'. Continue?')) return;
     fp.style.display='none'; fp.innerHTML='';
     setFare(v);
   };
@@ -1572,13 +1593,18 @@ function openOfferPanel(base){
     OFFER=v; track('offer_set'); renderFee(); syncPayForOffer(); if(typeof validate==='function')validate();
   };
 }
-// A bargained order settles pay-on-delivery — hide the pay-now / COD choices while an offer is active (no
-// choice to make), and restore them if the offer is reset.
+// A bargained order settles pay-on-delivery — swap the pay-now / COD choices for a clear explainer while
+// an offer is active (an EMPTY payment section reads as broken), and restore them if the offer is reset.
 function syncPayForOffer(){
   var neg=(OFFER!=null);
   var cb=document.getElementById('codbox');
   if(neg&&cb&&cb.checked){ cb.checked=false; try{ cb.dispatchEvent(new Event('change')); }catch(e){} }
   var pr=document.getElementById('payradios'); if(pr)pr.style.display=neg?'none':'block';
+  var note=document.getElementById('negpaynote');
+  if(neg){
+    if(!note&&pr){ note=document.createElement('div'); note.id='negpaynote'; note.className='negpaynote'; pr.parentNode.insertBefore(note,pr); }
+    if(note){ note.style.display='block'; note.innerHTML='🤝 <b>Bargained delivery — pay on delivery.</b> You pay the price you and your rider agree, in cash, when your parcel is delivered. Prefer to pay online now? Set your price back to the recommended fare.'; }
+  } else if(note){ note.style.display='none'; }
 }
 function injectNegCss(){
   if(document.getElementById('negcss'))return;
@@ -1866,7 +1892,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // true, never theater. If the status endpoint is not live yet (older mapPicker), the panel simply
   // settles into the honest "we confirm on WhatsApp" line — nothing breaks, nothing lies.
   var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null, riderM=null, ORDER_OWN=false, ORDER_RATED=false;
-  var COFF_DECLINED={}, _lastCounters=[], _lastViewers=0;   // rider-offer picker (inDrive-style) state
+  var COFF_DECLINED={}, _lastCounters=[], _lastViewers=0, _lastDeclines=0, COFF_EXPANDED=false;   // rider-offer picker (inDrive-style) state
   var NEG_BASE=0, NEG_RAISE=0, NEG_TIMER=null, NEG_LEFT=0;  // raise-offer + auto-accept + search countdown
   // Live rider marker: a bike chip that glides between GPS fixes (Shipday reports the rider app's
   // location; we join it server-side). Camera fits ONCE on first fix — never fight the user's pan.
@@ -1956,6 +1982,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   function injectCofferCss(){ if(document.getElementById('coffercss'))return; var s=document.createElement('style'); s.id='coffercss'; s.textContent=
     '#counters{margin-top:16px}'
    +'.cofferh{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--plum,#4F074C);margin-bottom:10px;text-align:center}'
+   +'.coffdecl{font-size:12px;color:#b45309;font-weight:700;background:#fff8ec;border:1px solid #ffe0a6;border-radius:10px;padding:8px 12px;margin:0 0 10px;text-align:center}'
    +'.coffview{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink2,#6A6270);padding:8px 0}'
    +'.coffdot{width:8px;height:8px;border-radius:99px;background:var(--magenta,#E23A7C);animation:coffpulse 1.4s infinite}'
    +'@keyframes coffpulse{0%{box-shadow:0 0 0 0 rgba(226,58,124,.5)}70%{box-shadow:0 0 0 8px rgba(226,58,124,0)}100%{box-shadow:0 0 0 0 rgba(226,58,124,0)}}'
@@ -1992,17 +2019,23 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   }
   // inDrive-style rider-offer picker: each rider price counter is a rich card (name, rating, trips, vehicle,
   // ETA) the customer Accepts or Declines; before any counter lands, a live "N riders are viewing" line.
-  function renderCounters(list, viewers){
-    _lastCounters=list||[]; _lastViewers=Number(viewers)||0;
+  function renderCounters(list, viewers, declines){
+    _lastCounters=list||[]; _lastViewers=Number(viewers)||0; if(declines!==undefined)_lastDeclines=Number(declines)||0;
     var box=document.getElementById('searchbox'); if(!box)return;
     var host=box.querySelector('.search')||box;
     var el=document.getElementById('counters');
     var shown=_lastCounters.filter(function(c){ var dp=COFF_DECLINED[String(c.offer_id)]; return dp===undefined||dp!==Number(c.price); });
-    if(!shown.length&&!(_lastViewers>0)){ if(el&&el.parentNode)el.parentNode.removeChild(el); return; }
+    if(!shown.length&&!(_lastViewers>0)&&!(_lastDeclines>0)){ if(el&&el.parentNode)el.parentNode.removeChild(el); COFF_EXPANDED=false; return; }
     injectCofferCss();
     if(!el){ el=document.createElement('div'); el.id='counters'; host.appendChild(el); }
+    // Riders who PASSED on the price — honest signal that the offer is low; nudges a raise.
+    var passed=_lastDeclines>0?('<div class="coffdecl">'+_lastDeclines+(_lastDeclines===1?' rider':' riders')+' passed on this price — raising your offer helps</div>'):'';
     if(shown.length){
-      el.innerHTML='<div class="cofferh">Choose your rider</div>'+shown.map(function(c){
+      // Rider offers arriving = the decision moment: grow the sheet so "Choose your rider" takes the
+      // whole screen (inDrive-style) instead of a strip under the map. Once per wave, so a customer who
+      // drags it back down isn't fought.
+      if(!COFF_EXPANDED){ COFF_EXPANDED=true; try{ sheetH(0.94); }catch(e){} }
+      el.innerHTML='<div class="cofferh">Choose your rider</div>'+passed+shown.map(function(c){
         var id=esc(String(c.offer_id)), nm=esc(c.rider_name||'A rider'), ini=esc((String(c.rider_name||'R').trim().charAt(0)||'R').toUpperCase());
         var av=c.photo?('<div class="coffav hasimg" style="position:relative">'+ini+'<img src="'+esc(String(c.photo))+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()"></div>'):('<div class="coffav">'+ini+'</div>');
         var tag=c.took_price?'<span class="cofftag">Took your price</span>':'<span class="cofftag counter">Rider\\'s offer</span>';
@@ -2013,9 +2046,10 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
           +'</div><div class="coffact"><button type="button" class="coffdecline" data-off="'+id+'">Decline</button><button type="button" class="cofa" data-off="'+id+'">Accept</button></div></div>';
       }).join('');
       Array.prototype.forEach.call(el.querySelectorAll('.cofa'),function(b){ b.onclick=function(){ acceptCounter(b.getAttribute('data-off'), b); }; });
-      Array.prototype.forEach.call(el.querySelectorAll('.coffdecline'),function(b){ b.onclick=function(){ var oid=b.getAttribute('data-off'); var c=_lastCounters.filter(function(x){return String(x.offer_id)===oid;})[0]; COFF_DECLINED[oid]=c?Number(c.price):1; fetch(api('action=declineoffer&order='+encodeURIComponent(ORDNUM)+'&offer='+encodeURIComponent(oid)),_postOpt()).catch(function(){}); renderCounters(_lastCounters, _lastViewers); }; });
+      Array.prototype.forEach.call(el.querySelectorAll('.coffdecline'),function(b){ b.onclick=function(){ var oid=b.getAttribute('data-off'); var c=_lastCounters.filter(function(x){return String(x.offer_id)===oid;})[0]; COFF_DECLINED[oid]=c?Number(c.price):1; fetch(api('action=declineoffer&order='+encodeURIComponent(ORDNUM)+'&offer='+encodeURIComponent(oid)),_postOpt()).catch(function(){}); renderCounters(_lastCounters, _lastViewers, _lastDeclines); }; });
     } else {
-      el.innerHTML='<div class="coffview"><span class="coffdot"></span>'+_lastViewers+(_lastViewers===1?' rider is':' riders are')+' viewing your request…</div>';
+      COFF_EXPANDED=false;
+      el.innerHTML=(_lastViewers>0?('<div class="coffview"><span class="coffdot"></span>'+_lastViewers+(_lastViewers===1?' rider is':' riders are')+' viewing your request…</div>'):'')+passed;
     }
   }
   function acceptCounter(offerId, btn){
@@ -2106,7 +2140,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         if(s){ ORDER_OWN=!!s.own; if(s.rated)ORDER_RATED=true; }   // own-fleet + already-rated flags for the rating widget
         applyStatus(String((s&&s.status)||''));
         // Rider price counters while still searching — let the customer accept one right here.
-        if(trkState==='searching'||trkState==='settle') renderCounters((s&&s.counters)||[], (s&&s.viewers)||0); else renderCounters([], 0);
+        if(trkState==='searching'||trkState==='settle') renderCounters((s&&s.counters)||[], (s&&s.viewers)||0, (s&&s.declines)||0); else renderCounters([], 0, 0);
         renderNegControls(s);
         if(!hadRider&&RIDER&&(RIDER.name||RIDER.phone)&&(trkState==='assigned'||trkState==='ontheway')) trackUI(trkState);
         // Live rider position + ETA on the map while the job is running.
