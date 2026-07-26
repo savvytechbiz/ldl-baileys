@@ -626,7 +626,7 @@ input,button,textarea,select{font-family:inherit}
 @keyframes screep{0%{width:6%}15%{width:34%}45%{width:60%}100%{width:88%}}
 .ridericon{width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid var(--plum);box-shadow:0 2px 8px rgba(58,5,55,.25);display:flex;align-items:center;justify-content:center;font-size:15px}
 /* glide between GPS fixes — but never during Leaflet's zoom animation (it re-writes the same transform) */
-.leaflet-marker-icon.rglide{transition:transform 1.2s linear}
+.leaflet-marker-icon.rglide{transition:transform 4.5s linear}   /* glide the FULL gap between 5s GPS fixes — the bike visibly moves, never teleports */
 .leaflet-zoom-anim .leaflet-marker-icon.rglide{transition:none}
 .radar{position:relative;width:18px;height:18px;pointer-events:none}
 .radar span{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:rgba(79,7,76,.30);animation:radarp 2.4s ease-out infinite}
@@ -663,6 +663,31 @@ input,button,textarea,select{font-family:inherit}
 .riderrow .rdrnm{font-size:14px;font-weight:800;color:var(--plum-d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .riderrow .rdrcall{flex:none;display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 15px;border-radius:11px;background:var(--plum);color:#fff;font-size:12.5px;font-weight:800;text-decoration:none;transition:transform .16s cubic-bezier(.23,1,.32,1)}
 .riderrow .rdrcall:active{transform:scale(.96)}
+/* ── Shipday-style tracker card (owner screenshot 2026-07-25): headline + ETA pill, est-arrival line,
+   segmented progress, driver row with round call/chat, collapsible Updates + Order sections ── */
+.tkhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tkhead h2{margin:0}
+.etapill{flex:none;background:var(--lilac);border:1px solid var(--line);color:var(--plum);font-size:13px;font-weight:800;border-radius:99px;padding:7px 14px;white-space:nowrap}
+.estline{font-size:12.5px;color:var(--ink-2);margin:5px 0 0;font-weight:500}
+.tsegs{display:flex;gap:6px;margin:15px 0 3px}
+.tseg{flex:1;height:5px;border-radius:99px;background:var(--line-2)}
+.tseg.on{background:#16a34a}
+.tseg.cur{background:#16a34a;animation:segpulse 1.1s ease-in-out infinite alternate}
+@keyframes segpulse{from{opacity:.25}to{opacity:.75}}
+.rdrbtns{flex:none;display:flex;gap:8px}
+.rdricon{width:40px;height:40px;border-radius:50%;background:var(--lilac);border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--plum);text-decoration:none;transition:transform .16s cubic-bezier(.23,1,.32,1)}
+.rdricon:active{transform:scale(.93)}
+.rdricon .i{width:18px;height:18px}
+.tacc{border-top:1px solid var(--line);margin-top:12px}
+.tacc summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 2px;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
+.tacc summary::-webkit-details-marker{display:none}
+.tacc summary::after{content:'▾';color:var(--ink-3);font-size:12px;transition:transform .18s ease}
+.tacc[open] summary::after{transform:rotate(180deg)}
+.tacc .taccb{padding:0 2px 12px}
+.updrow{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--ink-2);padding:5px 0}
+.updrow b{color:var(--ink);font-weight:600}
+.ordrow{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--ink-2);padding:4px 0;line-height:1.45}
+.ordrow .odot{flex:none;width:8px;height:8px;border-radius:99px;margin-top:4px}
 .tknew{display:block;width:100%;margin:10px 0 0;padding:10px 0;background:none;border:none;box-shadow:none;color:var(--plum);font-size:13px;font-weight:700;letter-spacing:0;cursor:pointer;height:auto;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s ease}
 .tknew:active{transform:scale(.98);opacity:.75}
 #pickok{display:flex;align-items:center;justify-content:center;gap:9px}
@@ -1892,6 +1917,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // true, never theater. If the status endpoint is not live yet (older mapPicker), the panel simply
   // settles into the honest "we confirm on WhatsApp" line — nothing breaks, nothing lies.
   var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null, riderM=null, ORDER_OWN=false, ORDER_RATED=false;
+  var TRK_LOG=[], ORDER_META=null;   // Updates-accordion history + what-was-booked (item/route/fee) for the Order accordion
+  function fmtClock(d){ var hh=d.getHours()%12||12, mm=('0'+d.getMinutes()).slice(-2); return hh+':'+mm+' '+(d.getHours()<12?'AM':'PM'); }
+  function trkLog(t){ try{ if(TRK_LOG.length&&TRK_LOG[TRK_LOG.length-1].t===t)return; TRK_LOG.push({t:t,at:fmtClock(new Date())}); }catch(e){} }
   var COFF_DECLINED={}, _lastCounters=[], _lastViewers=0, _lastDeclines=0, COFF_EXPANDED=false;   // rider-offer picker (inDrive-style) state
   var NEG_BASE=0, NEG_RAISE=0, NEG_TIMER=null, NEG_LEFT=0;  // raise-offer + auto-accept + search countdown
   // Live rider marker: a bike chip that glides between GPS fixes (Shipday reports the rider app's
@@ -1900,11 +1928,18 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(!(isFinite(lat)&&isFinite(lng)))return;
     try{
       if(!riderM){
-        riderM=L.marker([lat,lng],{interactive:false,zIndexOffset:600,icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="ridericon"></div>'})}).addTo(map);
+        riderM=L.marker([lat,lng],{interactive:false,zIndexOffset:600,icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="ridericon">🛵</div>'})}).addTo(map);
         var el=riderM._icon; if(el)el.classList.add('rglide');
         var tgt=(trkState==='ontheway')?picked.dropoff:picked.pickup;
         if(tgt)try{map.fitBounds(L.latLngBounds([[lat,lng],[tgt.lat,tgt.lng]]),{padding:[46,46],maxZoom:16});}catch(e){}
-      } else riderM.setLatLng([lat,lng]);
+      } else {
+        var prev=riderM.getLatLng();
+        if(prev&&Math.abs(prev.lat-lat)<1e-6&&Math.abs(prev.lng-lng)<1e-6)return;   // same fix — keep gliding, no restart
+        riderM.setLatLng([lat,lng]);
+        // Follow the movement: if the bike glides toward the edge, nudge the map so it stays on screen.
+        // panInside only pans when actually needed, so it never fights the customer's own zoom/drag.
+        try{ map.panInside([lat,lng],{padding:[70,70]}); }catch(e){}
+      }
     }catch(e){}
   }
   function clearRider(){
@@ -1926,11 +1961,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   function stageN(st){ if(st==='assigned')return 2; if(st==='ontheway')return 3; if(st==='delivered')return 4; return 1; }
   function trackUI(st){
     var box=document.getElementById('searchbox'); if(!box)return;
-    var h=trkHead(st), rows='', i, cls;
+    var h=trkHead(st), i;
+    // Shipday-style SEGMENTED progress (owner screenshot): filled = happened, pulsing = current stage.
+    var segs='';
     for(i=0;i<TRK.length;i++){
-      cls='tk-todo';
-      if(i<doneN)cls='tk-done'; else if(i===doneN&&st!=='failed'&&st!=='cancelled')cls='tk-cur';
-      rows+='<div class="tkrow '+cls+'"><span class="tkd">'+(i<doneN?'✓':'')+'</span><span class="tkl">'+TRK[i]+'</span></div>';
+      var scls=(i<doneN)?'tseg on':((i===doneN&&st!=='failed'&&st!=='cancelled')?'tseg cur':'tseg');
+      segs+='<div class="'+scls+'" title="'+TRK[i]+'"></div>';
     }
     // CANCEL is offered for ANY order while the parcel isn't picked up yet (searching or just-assigned) —
     // keke/prepaid included (owner: "I can't cancel keke drop"); the server re-checks & handles refunds.
@@ -1938,21 +1974,47 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var canCancel=(ORDNUM&&(st==='searching'||st==='settle'||st==='assigned'));
     var canEdit=(MODE==='pod'&&canCancel);
     var ended=(st==='delivered'||st==='failed'||st==='cancelled');
-    // Rider card: once a real person has the job, show who they are — avatar initial, name,
-    // one-tap Call. The same trust move Bolt makes the moment a driver accepts.
+    var running=(st==='assigned'||st==='ontheway');
+    // Driver row (Shipday-style): avatar, name over "Your driver", round CALL + round WhatsApp CHAT.
     var riderRow='';
-    if(RIDER&&(RIDER.name||RIDER.phone)&&(st==='assigned'||st==='ontheway')){
+    if(RIDER&&(RIDER.name||RIDER.phone)&&running){
       var _init=(RIDER.name||'').trim().charAt(0).toUpperCase()||'';
+      var _dig=String(RIDER.phone||'').replace(/\\D/g,'');
+      var _wa=(_dig.length===11&&_dig.charAt(0)==='0')?('234'+_dig.slice(1)):_dig;
       riderRow='<div class="riderrow"><div class="rdrav">'+esc(_init)+'</div>'
-        +'<div class="rdrmeta"><span class="rdrcap">Your rider</span><span class="rdrnm">'+esc(RIDER.name||'On the job')+'</span></div>'
-        +(RIDER.phone?('<a class="rdrcall" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'">Call</a>'):'')+'</div>';
+        +'<div class="rdrmeta"><span class="rdrnm">'+esc(RIDER.name||'On the job')+'</span><span class="rdrcap" style="text-transform:none;letter-spacing:0">Your driver</span></div>'
+        +(RIDER.phone?('<div class="rdrbtns">'
+          +'<a class="rdricon" aria-label="Call your driver" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.4 2.1L8.1 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.6 1.9z"/></svg></a>'
+          +'<a class="rdricon" aria-label="Message your driver" href="https://wa.me/'+esc(_wa)+'" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 20l1-5.1a8.4 8.4 0 1 1 17-3.4z"/></svg></a>'
+          +'</div>'):'')+'</div>';
+    }
+    // Updates accordion — the timestamped story of this order (Shipday's "Updates" section).
+    var upd='';
+    if(TRK_LOG.length){
+      var rows2=''; for(i=TRK_LOG.length-1;i>=0;i--)rows2+='<div class="updrow"><b>'+esc(TRK_LOG[i].t)+'</b><span>'+esc(TRK_LOG[i].at)+'</span></div>';
+      upd='<details class="tacc"><summary>Updates</summary><div class="taccb">'+rows2+'</div></details>';
+    }
+    // Order accordion — what was booked (number, item, route, price), whatever this visit knows.
+    var ord='';
+    if(ORDNUM){
+      var om=ORDER_META||{};
+      var obody='';
+      if(om.pu)obody+='<div class="ordrow"><span class="odot" style="background:var(--plum)"></span><span>'+esc(om.pu)+'</span></div>';
+      if(om.doff)obody+='<div class="ordrow"><span class="odot" style="background:#16a34a"></span><span>'+esc(om.doff)+'</span></div>';
+      if(om.fee)obody+='<div class="ordrow"><span class="odot" style="background:var(--magenta)"></span><span>Delivery fee ₦'+Number(om.fee).toLocaleString()+(MODE==='pod'?' — cash on delivery':'')+'</span></div>';
+      if(!obody)obody='<div class="ordrow"><span>Full details are in your WhatsApp chat.</span></div>';
+      ord='<details class="tacc"><summary>Order '+esc(ORDNUM)+(om.item?(' · '+esc(om.item)):'')+'</summary><div class="taccb">'+obody+'</div></details>';
     }
     var live=(st==='searching'||st==='settle')?'<span class="livedot"></span>':'';
-    box.innerHTML='<div class="search"><h2>'+live+h[0]+'</h2><p class="smut">'+h[1]+'</p>'
+    box.innerHTML='<div class="search">'
+      +'<div class="tkhead"><h2>'+live+h[0]+'</h2>'+(running?'<span class="etapill" id="etapill" style="display:none"></span>':'')+'</div>'
+      +'<p class="smut estline" id="estline">'+h[1]+'</p>'
       +((st==='searching'||st==='settle')?'<div class="sbar"><div class="sfill"></div></div>':'')
-      +'<div class="trk">'+rows+'</div>'
+      +'<div class="tsegs">'+segs+'</div>'
       +riderRow
       +(feeLine&&!ended?('<p class="feenote">'+feeLine+'</p>'):'')
+      +upd
+      +ord
       +((canEdit||canCancel)?('<div class="trkact">'+(canEdit?'<button type="button" id="trkedit">Edit location</button>':'')+(canCancel?'<button type="button" id="trkcancel" class="tkx">Cancel order</button>':'')+'</div>'):'')
       +(ended?'<div class="trkact"><button type="button" id="trknew">Book another delivery</button></div>'
              :(RESUMED?'<button type="button" id="trknew" class="tknew">＋ Book another delivery</button>':''))
@@ -1969,7 +2031,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     stopPoll(); if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
     clearRider();
     var bx=document.getElementById('searchbox'); if(bx&&bx.parentNode)bx.parentNode.removeChild(bx);
-    RESUMED=false; RIDER=null; trkState=''; doneN=1; ORDNUM=''; MODE=''; pollN=0;
+    RESUMED=false; RIDER=null; trkState=''; doneN=1; ORDNUM=''; MODE=''; pollN=0; TRK_LOG=[]; ORDER_META=null;
     // Clear the finished/running order's route completely — a stale prefilled route here would
     // let one absent-minded Continue re-book the SAME trip, so the new booking starts clean.
     try{ clearLoc('pickup'); clearLoc('dropoff'); }catch(e){}
@@ -2148,6 +2210,11 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
           updateRider(Number(s.rider_lat),Number(s.rider_lng));
           var eb=document.getElementById('eta');
           if(eb&&s.eta_mins){ eb.textContent='~'+s.eta_mins+' min'; eb.style.display='block'; }
+          // Shipday-style card: "8 mins" pill next to the headline + "Est. arrival at 1:04 PM" line.
+          if(s.eta_mins){
+            var ep=document.getElementById('etapill'); if(ep){ ep.textContent=s.eta_mins+(Number(s.eta_mins)===1?' min':' mins'); ep.style.display='inline-block'; }
+            var esl=document.getElementById('estline'); if(esl)esl.textContent='Est. arrival at '+fmtClock(new Date(Date.now()+Number(s.eta_mins)*60000));
+          }
         }
       }).catch(function(){});
     },ms);
@@ -2156,16 +2223,17 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(trkState==='cancelled')return;   // a poll already in flight must never repaint a cancelled order
     // A cancelled order (cancelled here, in chat, or by the team) must LEAVE the radar — not sit on
     // "Finding your rider" forever. orderstatus now reports 'cancelled'; show it and stop polling.
-    if(raw==='cancelled'){ trkState='cancelled'; if(radarM){try{map.removeLayer(radarM);}catch(e){}radarM=null;} clearRider(); trackUI('cancelled'); stopPoll(); return; }
+    if(raw==='cancelled'){ trkState='cancelled'; trkLog('Order cancelled'); if(radarM){try{map.removeLayer(radarM);}catch(e){}radarM=null;} clearRider(); trackUI('cancelled'); stopPoll(); return; }
     var st=(raw==='assigned'||raw==='ontheway'||raw==='delivered'||raw==='failed')?raw:'';
     if(!st||st===trkState)return;
     if(st==='assigned')track('rider_assigned');
+    trkLog(trkHead(st)[0]);
     trkState=st;
     if(st!=='failed')doneN=stageN(st);
     if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
     trackUI(st);
     if(st==='delivered'||st==='failed'){ stopPoll(); clearRider(); if(st==='delivered') maybeRenderRating(); }
-    else { startPoll(15000); }   // matched — keep tracking to the door at a gentler cadence
+    else { startPoll(5000); }   // matched — LIVE tracking: poll every 5s so the rider pin moves continuously
   }
   // ── Rate your rider ── after an own-fleet delivery, let the customer give 1–5 stars.
   function injectRateCss(){ if(document.getElementById('ratecss'))return; var s=document.createElement('style'); s.id='ratecss'; s.textContent=
@@ -2238,6 +2306,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // MODE and ORDNUM must be set BEFORE the first render — the cancel/edit buttons key off them,
     // and the searching phase is exactly when those buttons matter most.
     MODE=j.cod_booked?'cod':'pod'; pollN=0; ORDNUM=j.order_number||'';
+    // Fresh order → fresh story for the Updates accordion, and remember what was booked for the Order one.
+    TRK_LOG=[]; trkLog('Order placed');
+    ORDER_META={ item:val('item')||'', pu:(picked.pickup?picked.pickup.address:''), doff:(picked.dropoff?picked.dropoff.address:''), fee:(j.fee?Number(j.fee):(OFFER!=null?Number(OFFER):(mapFee?Number(mapFee):0))) };
     trkState='searching'; doneN=1; trackUI('searching');
     try{ sheetH(0.44); }catch(e){}
     if(picked.pickup){
