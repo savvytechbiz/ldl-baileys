@@ -806,7 +806,7 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .fbtn{width:46px;height:46px;flex:none;border-radius:50%;background:#fff;border:1.5px solid var(--line-2);color:var(--plum);box-shadow:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .fbtn .i{width:20px;height:20px;stroke-width:2.2}
 .fbtn:disabled{opacity:.3}
-.fmid{flex:1;text-align:center;cursor:pointer;min-width:0}
+.fmid{flex:1;text-align:center;min-width:0}
 .famt{font-size:24px;font-weight:800;color:var(--plum);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .famt .was{font-size:13px;color:var(--ink-3);text-decoration:line-through;font-weight:600;margin-left:6px}
 .flbl{font-size:11.5px;color:var(--ink-2);font-weight:600;margin-top:2px}
@@ -851,7 +851,6 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
   <div class="fmid" id="fmid"><div class="famt" id="famt"></div><div class="flbl" id="flbl">Recommended fare</div></div>
   <button type="button" class="fbtn" id="fplus" aria-label="Raise your offer"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
 </div>
-<div id="farepanel" style="display:none"></div>
 <div class="autorow" id="autorow" style="display:none"><div class="autolbl" id="autolbl">Auto-accept offer</div><div class="fartog" id="fartog"><span></span></div></div>
 <button id="continue" style="display:none;margin-top:16px" onclick="routeNext()">Continue<svg class="i" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
 </div>
@@ -1530,15 +1529,15 @@ var FARE_STEP=100, AUTO_PICK=null;   // AUTO_PICK null = customer hasn't touched
 function autoPickOn(){ if(AUTO_PICK!==null)return AUTO_PICK; if(OFFER!=null)return false; return !NEGO.pick_default; }
 function renderFareCard(){
   var fc=document.getElementById('farecard'); if(!fc||BATCH)return;
-  var ar=document.getElementById('autorow'), fp=document.getElementById('farepanel');
-  if(mapFee==null||!(picked.pickup&&picked.dropoff)){ fc.style.display='none'; if(ar)ar.style.display='none'; if(fp){fp.style.display='none';fp.innerHTML='';} return; }
+  var ar=document.getElementById('autorow');
+  if(mapFee==null||!(picked.pickup&&picked.dropoff)){ fc.style.display='none'; if(ar)ar.style.display='none'; return; }
   var base=Math.round(Number(mapFee)), cur=(OFFER!=null?Math.round(Number(OFFER)):base);
   var was=fc.style.display!=='none';
   fc.style.display='flex'; if(!was)anim(fc,'risein');
   var am=document.getElementById('famt'), lb=document.getElementById('flbl');
   if(am)am.innerHTML='₦'+cur.toLocaleString()+(OFFER!=null?'<span class="was">₦'+base.toLocaleString()+'</span>':'');
   if(lb)lb.textContent=!NEGO.enabled?'Delivery fee'
-    :(OFFER==null?'Recommended fare · tap to type yours'
+    :(OFFER==null?'Recommended fare'
     :(OFFER<base?'Your offer — riders accept or counter':'Boosted offer — reaches riders faster'));
   var mi=document.getElementById('fminus'), pl=document.getElementById('fplus');
   if(mi){ mi.style.display=NEGO.enabled?'flex':'none'; mi.disabled=cur<=Math.max(FARE_STEP,base-500); }   // ₦500-below floor
@@ -1559,28 +1558,6 @@ function setFare(v){
   track('offer_opened');
   if(v===base){ OFFER=null; } else { OFFER=v; track('offer_set'); }
   renderFee(); syncPayForOffer(); if(typeof validate==='function')validate();
-}
-function openFareEntry(){
-  if(!NEGO.enabled||mapFee==null)return;
-  injectNegCss(); track('offer_opened');
-  var fp=document.getElementById('farepanel'); if(!fp)return;
-  var base=Math.round(Number(mapFee));
-  fp.style.display='block';
-  fp.innerHTML='<div class="offpanel"><div class="offh">Name your price</div>'
-    +'<div class="offin"><span>₦</span><input id="fareval" inputmode="numeric" value="'+Math.round(OFFER!=null?OFFER:base)+'"></div>'
-    +'<div class="offhint">Offer up to ₦500 below the recommended fare — or more to reach riders faster. You pay the agreed price on delivery.</div>'
-    +'<div class="offrow"><button type="button" class="offcancel" id="farecancel">Cancel</button><button type="button" class="offuse" id="fareuse">Set my price</button></div></div>';
-  var inp=document.getElementById('fareval'); try{ inp.focus(); inp.select(); }catch(e){}
-  document.getElementById('farecancel').onclick=function(){ fp.style.display='none'; fp.innerHTML=''; };
-  document.getElementById('fareuse').onclick=function(){
-    var v=Math.round(Number((inp.value||'').replace(/[^0-9.]/g,''))||0);
-    if(!(v>0))return;
-    var floor=Math.max(FARE_STEP,base-500);
-    if(v<floor){ alert('You can offer at most ₦500 below the recommended fare — the lowest offer for this trip is ₦'+floor.toLocaleString()+'.'); inp.value=floor; return; }
-    if(v>base*3 && !confirm('You are offering ₦'+v.toLocaleString()+' — much more than the recommended ₦'+base.toLocaleString()+'. Continue?')) return;
-    fp.style.display='none'; fp.innerHTML='';
-    setFare(v);
-  };
 }
 // ── Price negotiation UI (app-only) ── The customer BARGAINS WITH RIDERS. Their offer is a starting price
 // riders see and can accept or COUNTER — there's no Lasalu floor and no prepay; the agreed price is paid on
@@ -1726,7 +1703,6 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   if(!BATCH){
     var _fm=document.getElementById('fminus'); if(_fm)_fm.onclick=function(){ var b=Math.round(Number(mapFee)||0); if(!b)return; var cur=(OFFER!=null?Math.round(Number(OFFER)):b); setFare(cur-FARE_STEP); };
     var _fp=document.getElementById('fplus'); if(_fp)_fp.onclick=function(){ var b=Math.round(Number(mapFee)||0); if(!b)return; var cur=(OFFER!=null?Math.round(Number(OFFER)):b); setFare(cur+FARE_STEP); };
-    var _fd=document.getElementById('fmid'); if(_fd)_fd.onclick=function(){ openFareEntry(); };
     var _ft=document.getElementById('fartog'); if(_ft)_ft.onclick=function(){ AUTO_PICK=!autoPickOn(); renderFareCard(); };
   }
   Array.prototype.forEach.call(document.querySelectorAll('.locp'),function(b){ b.onclick=function(){ useLoc(b.getAttribute('data-for')); }; });
@@ -1961,6 +1937,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   function stageN(st){ if(st==='assigned')return 2; if(st==='ontheway')return 3; if(st==='delivered')return 4; return 1; }
   function trackUI(st){
     var box=document.getElementById('searchbox'); if(!box)return;
+    box.classList.remove('choosing');   // a state repaint always starts from the normal panel; renderCounters re-enters chooser mode if bids exist
     var h=trkHead(st), i;
     // Shipday-style SEGMENTED progress (owner screenshot): filled = happened, pulsing = current stage.
     var segs='';
@@ -2043,6 +2020,22 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // at that price (POD, receiver pays cash). Kept as a self-managed #counters block so the poll can refresh it.
   function injectCofferCss(){ if(document.getElementById('coffercss'))return; var s=document.createElement('style'); s.id='coffercss'; s.textContent=
     '#counters{margin-top:16px}'
+   /* Bids on screen → the chooser IS the page: hide every sibling of #counters (headline, bar, segments,
+      raise/auto controls, hints) until the wave clears or a rider is picked. */
+   +'#searchbox.choosing .search>*{display:none!important}'
+   +'#searchbox.choosing .search>#counters{display:block!important;margin-top:2px}'
+   +'.coffcancel{display:inline-flex;align-items:center;gap:7px;width:auto;background:var(--plum,#4F074C);border:none;border-radius:99px;padding:10px 16px;font-size:13.5px;font-weight:800;color:#fff;box-shadow:none;margin:0 0 12px;cursor:pointer}'
+   +'.coffcancel .i{width:15px;height:15px;stroke:#fff}'
+   +'.cofferh2{font-size:20px;font-weight:800;letter-spacing:-.01em;color:var(--ink,#241826);margin:0 0 4px}'
+   +'.coffverified{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink2,#6A6270);margin:0 0 13px}'
+   +'.coffverified .vck{width:16px;height:16px;border-radius:99px;background:var(--plum,#4F074C);color:#fff;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}'
+   +'.coffprice{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--ink,#241826)}'
+   +'.coffeta2{font-size:13px;font-weight:600;color:var(--ink2,#6A6270);margin-left:8px;letter-spacing:0}'
+   +'.coffer>.cofftag{margin:7px 0 0}'
+   +'.coffer .coffhead{margin-top:10px}'
+   +'.coffstar{font-weight:800;color:var(--ink,#241826);font-size:13px;margin-left:6px}'
+   +'.coffrides{font-size:12.5px;color:var(--ink2,#6A6270);font-weight:600;margin-left:5px}'
+   +'.coffveh{font-size:12px;color:var(--ink2,#6A6270);margin-top:1px}'
    +'.cofferh{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--plum,#4F074C);margin-bottom:10px;text-align:center}'
    +'.coffdecl{font-size:12px;color:#b45309;font-weight:700;background:#fff8ec;border:1px solid #ffe0a6;border-radius:10px;padding:8px 12px;margin:0 0 10px;text-align:center}'
    +'.coffview{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink2,#6A6270);padding:8px 0}'
@@ -2071,46 +2064,52 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
    +'.negcount{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--ink2,#6A6270);padding:2px 0 4px}'
    +'.negdiv{height:1px;background:var(--line,#ECE5EE);margin:12px 0}';
    document.head.appendChild(s); }
-  function cofSub(c){
-    var v=String(c.vehicle||'bike'); v=v.charAt(0).toUpperCase()+v.slice(1);
-    var lead;
-    if(c.rating!=null) lead='★ '+Number(c.rating).toFixed(1)+(c.trips?(' · '+c.trips+' trip'+(c.trips===1?'':'s')):'');
-    else if(c.trips) lead=c.trips+' trip'+(c.trips===1?'':'s');
-    else lead='New rider';
-    return lead+' · '+v;
-  }
-  // inDrive-style rider-offer picker: each rider price counter is a rich card (name, rating, trips, vehicle,
-  // ETA) the customer Accepts or Declines; before any counter lands, a live "N riders are viewing" line.
+  // inDrive-style rider-offer picker (owner screenshot 2026-07-26): the moment bids exist the WHOLE panel
+  // becomes "Choose your rider" — cancel pill, verified line, then one card per bidding rider led by their
+  // PRICE + ETA, a "Your fare"/"Rider's offer" chip, avatar + name ★rating rides + vehicle, Decline/Accept.
+  // Everything else (radar headline, progress, raise/auto controls) hides until the bids clear.
   function renderCounters(list, viewers, declines){
     _lastCounters=list||[]; _lastViewers=Number(viewers)||0; if(declines!==undefined)_lastDeclines=Number(declines)||0;
     var box=document.getElementById('searchbox'); if(!box)return;
     var host=box.querySelector('.search')||box;
     var el=document.getElementById('counters');
     var shown=_lastCounters.filter(function(c){ var dp=COFF_DECLINED[String(c.offer_id)]; return dp===undefined||dp!==Number(c.price); });
-    if(!shown.length&&!(_lastViewers>0)&&!(_lastDeclines>0)){ if(el&&el.parentNode)el.parentNode.removeChild(el); COFF_EXPANDED=false; return; }
+    if(!shown.length&&!(_lastViewers>0)&&!(_lastDeclines>0)){ if(el&&el.parentNode)el.parentNode.removeChild(el); COFF_EXPANDED=false; box.classList.remove('choosing'); return; }
     injectCofferCss();
     if(!el){ el=document.createElement('div'); el.id='counters'; host.appendChild(el); }
     // Riders who PASSED on the price — honest signal that the offer is low; nudges a raise.
     var passed=_lastDeclines>0?('<div class="coffdecl">'+_lastDeclines+(_lastDeclines===1?' rider':' riders')+' passed on this price — raising your offer helps</div>'):'';
     if(shown.length){
-      // Rider offers arriving = the decision moment: grow the sheet so "Choose your rider" takes the
-      // whole screen (inDrive-style) instead of a strip under the map. Once per wave, so a customer who
-      // drags it back down isn't fought.
+      // Bids exist → the panel becomes ONLY the chooser (owner: "exactly as in the image"). The 'choosing'
+      // class hides every sibling in .search; the sheet grows once per wave so a customer who drags it
+      // back down isn't fought.
+      box.classList.add('choosing');
       if(!COFF_EXPANDED){ COFF_EXPANDED=true; try{ sheetH(0.94); }catch(e){} }
-      el.innerHTML='<div class="cofferh">Choose your rider</div>'+passed+shown.map(function(c){
+      el.innerHTML='<button type="button" class="coffcancel" id="coffcancel"><svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M18 6 6 18M6 6l12 12"/></svg>Cancel request</button>'
+       +'<div class="cofferh2">Choose your rider</div>'
+       +'<div class="coffverified"><span class="vck">✓</span>All riders verified</div>'
+       +passed
+       +shown.map(function(c){
         var id=esc(String(c.offer_id)), nm=esc(c.rider_name||'A rider'), ini=esc((String(c.rider_name||'R').trim().charAt(0)||'R').toUpperCase());
         var av=c.photo?('<div class="coffav hasimg" style="position:relative">'+ini+'<img src="'+esc(String(c.photo))+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()"></div>'):('<div class="coffav">'+ini+'</div>');
-        var tag=c.took_price?'<span class="cofftag">Took your price</span>':'<span class="cofftag counter">Rider\\'s offer</span>';
-        return '<div class="coffer"><div class="coffhead">'
+        var tag=c.took_price?'<span class="cofftag">Your fare</span>':'<span class="cofftag counter">Rider\\'s offer</span>';
+        var veh=(String(c.vehicle||'bike')==='keke')?'Keke':'Motorbike';
+        var stat=(c.rating!=null?('<span class="coffstar">★ '+Number(c.rating).toFixed(2)+'</span>'):'')
+                +(c.trips?('<span class="coffrides">'+c.trips+' ride'+(c.trips===1?'':'s')+'</span>'):(c.rating==null?'<span class="coffrides">New rider</span>':''));
+        return '<div class="coffer">'
+          +'<div class="coffprice">₦'+Number(c.price||0).toLocaleString()+(c.eta_mins?('<span class="coffeta2">'+c.eta_mins+' min</span>'):'')+'</div>'
+          +tag
+          +'<div class="coffhead">'
           +av
-          +'<div class="coffid"><div class="cofn">'+nm+'</div><div class="cofsub">'+esc(cofSub(c))+'</div>'+tag+'</div>'
-          +'<div class="cofpx"><div class="cofp">₦'+Number(c.price||0).toLocaleString()+'</div>'+(c.eta_mins?('<div class="coffeta">'+c.eta_mins+' min away</div>'):'')+'</div>'
+          +'<div class="coffid"><div class="cofn">'+nm+' '+stat+'</div><div class="coffveh">'+veh+'</div></div>'
           +'</div><div class="coffact"><button type="button" class="coffdecline" data-off="'+id+'">Decline</button><button type="button" class="cofa" data-off="'+id+'">Accept</button></div></div>';
       }).join('');
+      var _cc=document.getElementById('coffcancel'); if(_cc)_cc.onclick=function(){ cancelOrd(); };
       Array.prototype.forEach.call(el.querySelectorAll('.cofa'),function(b){ b.onclick=function(){ acceptCounter(b.getAttribute('data-off'), b); }; });
       Array.prototype.forEach.call(el.querySelectorAll('.coffdecline'),function(b){ b.onclick=function(){ var oid=b.getAttribute('data-off'); var c=_lastCounters.filter(function(x){return String(x.offer_id)===oid;})[0]; COFF_DECLINED[oid]=c?Number(c.price):1; fetch(api('action=declineoffer&order='+encodeURIComponent(ORDNUM)+'&offer='+encodeURIComponent(oid)),_postOpt()).catch(function(){}); renderCounters(_lastCounters, _lastViewers, _lastDeclines); }; });
     } else {
       COFF_EXPANDED=false;
+      box.classList.remove('choosing');
       el.innerHTML=(_lastViewers>0?('<div class="coffview"><span class="coffdot"></span>'+_lastViewers+(_lastViewers===1?' rider is':' riders are')+' viewing your request…</div>'):'')+passed;
     }
   }
@@ -2119,7 +2118,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var _to={}; try{ if(window.AbortSignal&&AbortSignal.timeout)_to={signal:AbortSignal.timeout(25000)}; }catch(e){}
     fetch(api('action=acceptcounter&order='+encodeURIComponent(ORDNUM)+'&offer='+encodeURIComponent(offerId)),Object.assign({method:'POST'},_to))
      .then(function(r){return r.json();}).then(function(j){
-       if(j&&j.ok){ var el=document.getElementById('counters'); if(el&&el.parentNode)el.parentNode.removeChild(el); applyStatus('assigned'); return; }
+       if(j&&j.ok){ var el=document.getElementById('counters'); if(el&&el.parentNode)el.parentNode.removeChild(el); var bx=document.getElementById('searchbox'); if(bx)bx.classList.remove('choosing'); applyStatus('assigned'); return; }
        if(j&&j.error==='taken'){ alert('That rider just took another order — we\\'re still finding you one.'); return; }
        if(btn){ btn.disabled=false; btn.textContent='Accept'; }
        alert('Could not accept just now — please try again.');
