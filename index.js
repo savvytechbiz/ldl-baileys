@@ -688,6 +688,8 @@ input,button,textarea,select{font-family:inherit}
 .updrow b{color:var(--ink);font-weight:600}
 .ordrow{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--ink-2);padding:4px 0;line-height:1.45}
 .ordrow .odot{flex:none;width:8px;height:8px;border-radius:99px;margin-top:4px}
+.paybtn{display:block;width:100%;margin:12px 0 0;padding:13px;background:#fff;border:1.5px solid var(--plum);border-radius:var(--r-lg);color:var(--plum);font-size:14px;font-weight:800;letter-spacing:0;box-shadow:none;cursor:pointer}
+.paybtn:disabled{opacity:.55;background:#fff;color:var(--plum)}
 .tknew{display:block;width:100%;margin:10px 0 0;padding:10px 0;background:none;border:none;box-shadow:none;color:var(--plum);font-size:13px;font-weight:700;letter-spacing:0;cursor:pointer;height:auto;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s ease}
 .tknew:active{transform:scale(.98);opacity:.75}
 #pickok{display:flex;align-items:center;justify-content:center;gap:9px}
@@ -1605,7 +1607,7 @@ function syncPayForOffer(){
   var note=document.getElementById('negpaynote');
   if(neg){
     if(!note&&pr){ note=document.createElement('div'); note.id='negpaynote'; note.className='negpaynote'; pr.parentNode.insertBefore(note,pr); }
-    if(note){ note.style.display='block'; note.innerHTML='🤝 <b>Bargained delivery — pay on delivery.</b> You pay the price you and your rider agree, in cash, when your parcel is delivered. Prefer to pay online now? Set your price back to the recommended fare.'; }
+    if(note){ note.style.display='block'; note.innerHTML='🤝 <b>Bargained delivery — pay when the price is agreed.</b> Riders answer your offer and you pick one. Then pay however you like: cash on delivery, or <b>pay online</b> right from the tracking screen once your rider is locked in.'; }
   } else if(note){ note.style.display='none'; }
 }
 function injectNegCss(){
@@ -1894,6 +1896,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // settles into the honest "we confirm on WhatsApp" line — nothing breaks, nothing lies.
   var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null, riderM=null, ORDER_OWN=false, ORDER_RATED=false;
   var TRK_LOG=[], ORDER_META=null;   // Updates-accordion history + what-was-booked (item/route/fee) for the Order accordion
+  var ORDER_PAID=false;              // CASH order paid online AFTER the price was agreed (payonline flow)
   function fmtClock(d){ var hh=d.getHours()%12||12, mm=('0'+d.getMinutes()).slice(-2); return hh+':'+mm+' '+(d.getHours()<12?'AM':'PM'); }
   function trkLog(t){ try{ if(TRK_LOG.length&&TRK_LOG[TRK_LOG.length-1].t===t)return; TRK_LOG.push({t:t,at:fmtClock(new Date())}); }catch(e){} }
   var COFF_DECLINED={}, _lastCounters=[], _lastViewers=0, _lastDeclines=0, COFF_EXPANDED=false;   // rider-offer picker (inDrive-style) state
@@ -1949,9 +1952,15 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // keke/prepaid included (owner: "I can't cancel keke drop"); the server re-checks & handles refunds.
     // EDIT (= cancel + rebook) stays POD-only, since editing a prepaid order would mean a refund + re-pay.
     var canCancel=(ORDNUM&&(st==='searching'||st==='settle'||st==='assigned'));
-    var canEdit=(MODE==='pod'&&canCancel);
+    var canEdit=(MODE==='pod'&&!ORDER_PAID&&canCancel);   // once paid online, edit(=cancel+rebook) means a refund — humans only
     var ended=(st==='delivered'||st==='failed'||st==='cancelled');
     var running=(st==='assigned'||st==='ontheway');
+    // Price agreed + still cash → offer to settle it ONLINE right here (owner 2026-07-26): the fare is
+    // locked once a rider is assigned, so prepaying it is safe; the webhook tells the rider not to collect.
+    var feeL=ORDER_PAID?'✅ Paid online — nothing to pay on delivery.':feeLine;
+    var payBtn=(running&&MODE==='pod'&&ORDER_OWN&&!ORDER_PAID&&ORDNUM)
+      ?('<button type="button" id="paybtn" class="paybtn">💳 Pay online instead'+(ORDER_META&&ORDER_META.fee?(' — ₦'+Number(ORDER_META.fee).toLocaleString()):'')+'</button>')
+      :'';
     // Driver row (Shipday-style): avatar, name over "Your driver", round CALL + round WhatsApp CHAT.
     var riderRow='';
     if(RIDER&&(RIDER.name||RIDER.phone)&&running){
@@ -1989,7 +1998,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       +((st==='searching'||st==='settle')?'<div class="sbar"><div class="sfill"></div></div>':'')
       +'<div class="tsegs">'+segs+'</div>'
       +riderRow
-      +(feeLine&&!ended?('<p class="feenote">'+feeLine+'</p>'):'')
+      +(feeL&&!ended?('<p class="feenote">'+feeL+'</p>'):'')
+      +payBtn
       +upd
       +ord
       +((canEdit||canCancel)?('<div class="trkact">'+(canEdit?'<button type="button" id="trkedit">Edit location</button>':'')+(canCancel?'<button type="button" id="trkcancel" class="tkx">Cancel order</button>':'')+'</div>'):'')
@@ -2000,6 +2010,16 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var _eb=document.getElementById('trkedit'); if(_eb)_eb.onclick=editLoc;
     var _cb=document.getElementById('trkcancel'); if(_cb)_cb.onclick=cancelOrd;
     var _nb=document.getElementById('trknew'); if(_nb)_nb.onclick=newBooking;
+    var _pb=document.getElementById('paybtn'); if(_pb)_pb.onclick=payOnline;
+  }
+  function payOnline(){
+    var b=document.getElementById('paybtn'); if(b){ b.disabled=true; b.textContent='Opening secure payment…'; }
+    fetch(api('action=payonline&order='+encodeURIComponent(ORDNUM)),_postOpt())
+     .then(function(r){return r.json();}).then(function(j){
+       if(j&&j.pay_url){ window.location.href=j.pay_url; return; }
+       if(b){ b.disabled=false; b.textContent='💳 Pay online instead'; }
+       alert(j&&j.error==='too-late'?'This delivery is already completing — please settle with the rider.':'Could not start the payment just now — please try again.');
+     }).catch(function(){ if(b){ b.disabled=false; b.textContent='💳 Pay online instead'; } alert('Network hiccup — try again.'); });
   }
   // Leave the tracker WITHOUT touching the live order (unlike editLoc, which cancels it):
   // used by "Book another delivery" — the active order keeps running and keeps messaging
@@ -2008,7 +2028,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     stopPoll(); if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
     clearRider();
     var bx=document.getElementById('searchbox'); if(bx&&bx.parentNode)bx.parentNode.removeChild(bx);
-    RESUMED=false; RIDER=null; trkState=''; doneN=1; ORDNUM=''; MODE=''; pollN=0; TRK_LOG=[]; ORDER_META=null;
+    RESUMED=false; RIDER=null; trkState=''; doneN=1; ORDNUM=''; MODE=''; pollN=0; TRK_LOG=[]; ORDER_META=null; ORDER_PAID=false;
     // Clear the finished/running order's route completely — a stale prefilled route here would
     // let one absent-minded Continue re-book the SAME trip, so the new booking starts clean.
     try{ clearLoc('pickup'); clearLoc('dropoff'); }catch(e){}
@@ -2199,7 +2219,18 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         var hadRider=!!(RIDER&&(RIDER.name||RIDER.phone));
         if(s&&(s.rider_name||s.rider_phone)) RIDER={name:String(s.rider_name||''),phone:String(s.rider_phone||'')};
         if(s){ ORDER_OWN=!!s.own; if(s.rated)ORDER_RATED=true; }   // own-fleet + already-rated flags for the rating widget
+        // Keep the AGREED price in sync (a counter-accept changes delivery_fee) — the Order accordion,
+        // the cash note and the pay-online button label all read it.
+        if(s&&Number(s.base)>0&&ORDER_META&&Number(s.base)!==Number(ORDER_META.fee)){
+          ORDER_META.fee=Number(s.base);
+          if(MODE==='pod'&&!ORDER_PAID&&feeLine)feeLine='The receiver pays <b>₦'+Number(s.base).toLocaleString()+'</b> in cash on delivery.';
+        }
         applyStatus(String((s&&s.status)||''));
+        // CASH order flipped to paid (payonline webhook landed) → repaint once: note becomes "✅ Paid online",
+        // the pay button disappears, and the Updates story records it.
+        if(s&&s.cash===false&&MODE==='pod'&&!ORDER_PAID&&(trkState==='assigned'||trkState==='ontheway')){
+          ORDER_PAID=true; trkLog('Paid online'); trackUI(trkState);
+        }
         // Rider price counters while still searching — let the customer accept one right here.
         if(trkState==='searching'||trkState==='settle') renderCounters((s&&s.counters)||[], (s&&s.viewers)||0, (s&&s.declines)||0); else renderCounters([], 0, 0);
         renderNegControls(s);
@@ -2306,7 +2337,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // and the searching phase is exactly when those buttons matter most.
     MODE=j.cod_booked?'cod':'pod'; pollN=0; ORDNUM=j.order_number||'';
     // Fresh order → fresh story for the Updates accordion, and remember what was booked for the Order one.
-    TRK_LOG=[]; trkLog('Order placed');
+    TRK_LOG=[]; trkLog('Order placed'); ORDER_PAID=false;
     ORDER_META={ item:val('item')||'', pu:(picked.pickup?picked.pickup.address:''), doff:(picked.dropoff?picked.dropoff.address:''), fee:(j.fee?Number(j.fee):(OFFER!=null?Number(OFFER):(mapFee?Number(mapFee):0))) };
     trkState='searching'; doneN=1; trackUI('searching');
     try{ sheetH(0.44); }catch(e){}
