@@ -1116,7 +1116,7 @@ function showStep(n){
     updateMeChips();
     only(d,'stepInR'); if(app){app.classList.add('instep');if(!BATCH)app.classList.add('stepdetails');} sheetH(0.9);
   }
-  else if(n===4){ buildSummary(); only(p,'stepInR'); if(app){app.classList.add('instep');app.classList.remove('stepdetails');} sheetH(0.9); }
+  else if(n===4){ buildSummary(); if(typeof syncPayForOffer==='function')syncPayForOffer(); only(p,'stepInR'); if(app){app.classList.add('instep');app.classList.remove('stepdetails');} sheetH(0.9); }
   else { only(r,'stepInL'); if(app){app.classList.remove('instep');app.classList.remove('stepdetails');} sheetH(0.6); }
 }
 // Reveal the "Continue" button only once both ends are set (and the map is pricing the trip).
@@ -1499,7 +1499,9 @@ var NEGO={enabled:false}, OFFER=null;
 // Render the fee box (and top badge). Pay-on-delivery adds the surcharge, so the number shown here matches
 // what the rider actually collects (base + POD surcharge) — not the base-only price. COD (buyer-hasn't-paid)
 // is a separate model whose delivery fee is netted from the goods, so it stays on the base price.
-function podPicked(){ var cb=document.getElementById('codbox'); if(cb&&cb.checked) return false; var r=document.querySelector('input[name=pay]:checked'); return !!(r&&r.value==='pod'); }
+// Under the negotiation model the pay radios are hidden, but a stale 'pod' selection would still add the
+// POD surcharge to the displayed fare — inflating the number above the price the customer actually named.
+function podPicked(){ var cb=document.getElementById('codbox'); if(cb&&cb.checked) return false; if(NEGO&&NEGO.enabled) return false; var r=document.querySelector('input[name=pay]:checked'); return !!(r&&r.value==='pod'); }
 function renderFee(){
   var f=document.getElementById('fee'), pt=document.getElementById('pricetop');
   if(mapFee==null){ if(f)f.style.display='none'; if(pt)pt.style.display='none'; var ow0=document.getElementById('offerwrap'); if(ow0)ow0.style.display='none'; renderFareCard(); return; }
@@ -1527,12 +1529,17 @@ function renderFee(){
 // customer's offer ₦100 at a time (below the quote = a bargain, above = reaches riders faster); tapping
 // the amount opens a type-your-price panel. Under it: "Auto-accept offer of ₦X" — ON matches the first
 // rider instantly at that price, OFF collects rider offers and the customer picks (inDrive mode).
-var FARE_STEP=100, AUTO_PICK=null;   // AUTO_PICK null = customer hasn't touched the toggle → smart default
-function autoPickOn(){ if(AUTO_PICK!==null)return AUTO_PICK; if(OFFER!=null)return false; return !NEGO.pick_default; }
+var FARE_STEP=100, AUTO_PICK=null;   // AUTO_PICK null = customer hasn't touched the toggle → model default
+// Under the negotiation model the customer ALWAYS picks their rider by default (riders state what they'll
+// charge and the offer cards come back). The toggle is the escape hatch for someone in a hurry: ON = match
+// me instantly with the first rider who takes my price.
+function autoPickOn(){ return AUTO_PICK===null ? false : AUTO_PICK; }
 function renderFareCard(){
   var fc=document.getElementById('farecard'); if(!fc||BATCH)return;
   var ar=document.getElementById('autorow');
-  if(mapFee==null||!(picked.pickup&&picked.dropoff)){ fc.style.display='none'; if(ar)ar.style.display='none'; return; }
+  var _cb=document.getElementById('codbox'), _codOn=!!(_cb&&_cb.checked);
+  // COD (collect the goods money for a vendor) is its own model — not rider-bargained, so no fare stepper.
+  if(mapFee==null||_codOn||!(picked.pickup&&picked.dropoff)){ fc.style.display='none'; if(ar)ar.style.display='none'; return; }
   var base=Math.round(Number(mapFee)), cur=(OFFER!=null?Math.round(Number(OFFER)):base);
   var was=fc.style.display!=='none';
   fc.style.display='flex'; if(!was)anim(fc,'risein');
@@ -1597,17 +1604,24 @@ function openOfferPanel(base){
     OFFER=v; track('offer_set'); renderFee(); syncPayForOffer(); if(typeof validate==='function')validate();
   };
 }
-// A bargained order settles pay-on-delivery — swap the pay-now / COD choices for a clear explainer while
-// an offer is active (an EMPTY payment section reads as broken), and restore them if the offer is reset.
+// EVERY local order goes through the negotiation model: you name a price, riders say what they'll charge,
+// you pick one — so money only moves AFTER the price is agreed. That means no pay-now choice at booking;
+// the payment section explains the flow instead (an EMPTY section reads as broken). The one exception is
+// COD (the buyer hasn't paid for the goods) — that's a collect-for-a-vendor order settled through Lasalu,
+// so it can't also be rider-bargained: ticking it drops any offer and restores the normal payment choices.
 function syncPayForOffer(){
-  var neg=(OFFER!=null);
   var cb=document.getElementById('codbox');
-  if(neg&&cb&&cb.checked){ cb.checked=false; try{ cb.dispatchEvent(new Event('change')); }catch(e){} }
-  var pr=document.getElementById('payradios'); if(pr)pr.style.display=neg?'none':'block';
+  var codOn=!!(cb&&cb.checked);
+  if(codOn&&OFFER!=null){ OFFER=null; renderFee(); }
+  var neg=!!NEGO.enabled&&!codOn;
+  // BOTH models own the payment section: negotiation replaces it with the explainer, COD with the
+  // collect-amount block. Only show the pay-now/POD radios when neither is active — otherwise this
+  // function would re-show the radios the COD handler just hid.
+  var pr=document.getElementById('payradios'); if(pr)pr.style.display=(neg||codOn)?'none':'block';
   var note=document.getElementById('negpaynote');
   if(neg){
     if(!note&&pr){ note=document.createElement('div'); note.id='negpaynote'; note.className='negpaynote'; pr.parentNode.insertBefore(note,pr); }
-    if(note){ note.style.display='block'; note.innerHTML='🤝 <b>Bargained delivery — pay when the price is agreed.</b> Riders answer your offer and you pick one. Then pay however you like: cash on delivery, or <b>pay online</b> right from the tracking screen once your rider is locked in.'; }
+    if(note){ note.style.display='block'; note.innerHTML='🤝 <b>You pay once your price is agreed.</b> Riders near you will take your price or say what they\\'d charge, and you pick the one you want. Then pay however you like — <b>cash on delivery</b>, or <b>pay online</b> from the tracking screen the moment your rider is locked in.'; }
   } else if(note){ note.style.display='none'; }
 }
 function injectNegCss(){
@@ -1817,7 +1831,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // Show the payment options this customer is allowed (pay-on-delivery per settings; COD = trusted vendor).
     if(p.pod_allowed){ var po=document.getElementById('opt-pod'); po.style.display='flex'; POD_SURCHARGE=Math.max(0,Number(p.pod_surcharge)||0); if(POD_SURCHARGE>0){ var ps=document.createElement('span'); ps.className='sur'; ps.textContent='+₦'+POD_SURCHARGE.toLocaleString(); po.appendChild(ps); } renderFee(); }
     if(p.cod_allowed){ document.getElementById('opt-cod').style.display='flex'; }
-    if(p.negotiation&&p.negotiation.enabled){ NEGO.enabled=true; NEGO.pick_default=!!p.negotiation.pick_default; injectNegCss(); renderFee(); }
+    if(p.negotiation&&p.negotiation.enabled){ NEGO.enabled=true; NEGO.pick_default=!!p.negotiation.pick_default; injectNegCss(); renderFee(); syncPayForOffer(); }
     if(p.cod_fee_pct!=null) COD_PCT=Number(p.cod_fee_pct)||1.75;
     if(p.has_bank){ BANK_SAVED=true; document.getElementById('banklabel').textContent=p.bank_label||'your saved account'; }
     // PICKUP DEFAULT = where the booker is standing. Unless the chat already named a pickup, we drop
@@ -1876,7 +1890,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     document.getElementById('banksaved').style.display=(on&&BANK_SAVED)?'block':'none';
     document.getElementById('bankbox').style.display=(on&&!BANK_SAVED)?'block':'none';
     if(on&&!BANK_SAVED) loadBanks();
-    codBreak(); renderFee(); validate();
+    codBreak(); renderFee(); syncPayForOffer(); validate();   // COD ↔ negotiation are exclusive models
   });
   document.getElementById('goods').addEventListener('input',codBreak);
   // Selecting "Pay on delivery" must update the visible Delivery fee to base + surcharge (matches the rider's cash).
@@ -2350,10 +2364,11 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   }
   document.getElementById('go').onclick=function(){
     var codOn=document.getElementById('codbox').checked;
-    // A bargained order goes out pay-on-delivery so riders can accept/counter and settle cash on delivery —
-    // the server routes any offered_price to POD regardless, but keep the client consistent.
-    var payVal=(OFFER!=null)?'pod':(codOn?'cod':(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })());
-    if(OFFER!=null)codOn=false;
+    // Negotiation model: the order goes out pay-on-delivery at the customer's stated price so riders can
+    // take it or counter, and money moves only after they agree (cash at the door, or Pay online on the
+    // tracker). The server enforces this too — this just keeps the client honest. COD keeps its own path.
+    var payVal=(!codOn&&NEGO.enabled)?'pod':(codOn?'cod':(function(){ var r=document.querySelector('input[name=pay]:checked'); return r?r.value:'now'; })());
+    if(!codOn&&NEGO.enabled)codOn=false;
     var goodsVal=codOn?Number((document.getElementById('goods').value||'').replace(/[^0-9.]/g,'')):0;
     if(codOn&&!(goodsVal>0)){ alert('Please enter how much we should collect from the buyer.'); return; }
     if(codOn&&mapFee&&(goodsVal-Math.min(3000,Math.round(goodsVal*COD_PCT/100))-Number(mapFee))<=0){ alert('That amount is too low to cover our fee and the delivery — please enter a higher amount.'); return; }
@@ -3806,6 +3821,11 @@ function bookingPreview(text) {
   // Matches both the long form (/map?session=…) and the short form (/m/…, /q/…, /w/…, /v/…, /b/…).
   const m = String(text || '').match(/https?:\/\/[^\s]+\/(map|waybill|quote|vendor|bulk|m|q|w|v|b)(?:\/|\?session=)[^\s]*/i);
   if (!m) return null;
+  // A RESUME/TRACKING link (view=track) reopens a LIVE order — "Create your delivery" copy on it told
+  // customers to set up a trip they'd already booked. Give it its own card + call-to-action.
+  if (/[?&]view=track\b/i.test(m[0])) {
+    return { url: m[0], title: '📦 Track your delivery', description: 'Tap to see your rider offers & live status', cta: 'open your delivery' };
+  }
   const kind = ({ m: 'map', q: 'quote', w: 'waybill', v: 'vendor', b: 'bulk' }[m[1].toLowerCase()] || m[1].toLowerCase());
   const meta = {
     map:     { title: '📍 Create your delivery',      description: 'Tap to set pickup & drop-off — takes 10 seconds' },
@@ -3814,7 +3834,7 @@ function bookingPreview(text) {
     vendor:  { title: '🛍️ Send your orders',          description: 'Tap to add your buyers & addresses' },
     bulk:    { title: '📦 Your deliveries',           description: 'Tap to add each pickup & drop-off — pay once' }
   }[kind] || { title: '📦 Lasalu Drop Logistics', description: 'Tap to continue' };
-  return { url: m[0], ...meta };
+  return { url: m[0], ...meta, cta: 'create your delivery' };
 }
 
 app.post('/send', async (req, res) => {
@@ -3852,7 +3872,7 @@ app.post('/send', async (req, res) => {
           const i = body.indexOf(pv.url);
           const before = body.slice(0, i).replace(/[\s\n]+$/, '');
           const after = body.slice(i + pv.url.length);
-          body = `${before}\n\n👇 *Tap the link below to create your delivery*\n${pv.url}${after}`;
+          body = `${before}\n\n👇 *Tap the link below to ${pv.cta || 'create your delivery'}*\n${pv.url}${after}`;
         }
         const content = { extendedTextMessage: { text: body, matchedText: pv.url, canonicalUrl: pv.url, title: pv.title, description: pv.description, ...(BOOK_CARD_JPEG ? { jpegThumbnail: BOOK_CARD_JPEG } : {}) } };
         const wam = await generateWAMessageFromContent(jid, content, {});
