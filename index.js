@@ -688,6 +688,26 @@ input,button,textarea,select{font-family:inherit}
 .updrow b{color:var(--ink);font-weight:600}
 .ordrow{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--ink-2);padding:4px 0;line-height:1.45}
 .ordrow .odot{flex:none;width:8px;height:8px;border-radius:99px;margin-top:4px}
+/* In-app chat with the rider — a sheet over the tracker, never leaves the app. */
+.chatwrap{position:fixed;inset:0;z-index:4000;background:rgba(26,10,23,.45);display:flex;align-items:flex-end}
+.chatpanel{width:100%;max-height:82vh;display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r-xl) var(--r-xl) 0 0;animation:rise .28s var(--ease)}
+.chathead{display:flex;align-items:center;justify-content:space-between;padding:15px 17px;border-bottom:1px solid var(--line);font-size:15px;font-weight:800;color:var(--ink)}
+.chathead button{width:auto;background:none;border:0;box-shadow:none;color:var(--ink-3);font-size:19px;padding:0 4px;cursor:pointer}
+.chatbody{flex:1;overflow-y:auto;padding:14px 15px;min-height:170px;display:flex;flex-direction:column;gap:8px}
+.chatempty{color:var(--ink-3);font-size:13px;text-align:center;margin:auto;line-height:1.6;padding:0 12px}
+.cmsg{display:flex}.cmsg.me{justify-content:flex-end}
+.cbub{max-width:78%;padding:10px 13px;border-radius:15px;font-size:14px;line-height:1.45;word-break:break-word}
+.cmsg.me .cbub{background:var(--plum);color:#fff;border-bottom-right-radius:5px}
+.cmsg.them .cbub{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:5px}
+.chatfoot{display:flex;gap:9px;padding:12px 14px;border-top:1px solid var(--line)}
+.chatfoot input{flex:1;padding:13px 15px;border:1.5px solid var(--line-2);border-radius:13px;font-size:15px;outline:none}
+.chatfoot input:focus{border-color:var(--plum)}
+.chatfoot button{width:auto;padding:0 20px;border-radius:13px;font-size:14.5px;font-weight:800}
+.rdricon{position:relative}
+.chatdot{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--magenta);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface)}
+/* Peak period — more orders than free riders. Informational: it nudges, it never inflates the fare. */
+.surgebox{display:flex;gap:10px;align-items:flex-start;background:#fff8ec;border:1px solid #ffe0a6;border-radius:var(--r);padding:12px 14px;margin:14px 0 0;font-size:12.5px;color:#8a5a12;line-height:1.5;font-weight:600}
+.surgebox b{color:#6b430b}
 /* Handover code — the receiver's proof-of-identity digits, shown only to them. */
 .codebox{margin:14px 0 0;background:var(--lilac);border:1.5px dashed var(--plum);border-radius:var(--r-lg);padding:14px;text-align:center}
 .codecap{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
@@ -1507,7 +1527,7 @@ function decodePoly(str){ var i=0,lat=0,lng=0,c=[]; while(i<str.length){ var b,s
 var routeLine=null, mapFee=null, mapMin=null, mapKm=null, POD_SURCHARGE=0;
 // Price negotiation (app-only). NEGO.enabled from prefill; OFFER = the customer's opening price to riders
 // (null = accepting the recommended fee). A new route price invalidates any prior offer.
-var NEGO={enabled:false}, OFFER=null;
+var NEGO={enabled:false}, OFFER=null, SURGE=null;
 // Render the fee box (and top badge). Pay-on-delivery adds the surcharge, so the number shown here matches
 // what the rider actually collects (base + POD surcharge) — not the base-only price. COD (buyer-hasn't-paid)
 // is a separate model whose delivery fee is netted from the goods, so it stays on the base price.
@@ -1563,6 +1583,14 @@ function renderFareCard(){
   var mi=document.getElementById('fminus'), pl=document.getElementById('fplus');
   if(mi){ mi.style.display=NEGO.enabled?'flex':'none'; mi.disabled=cur<=Math.max(FARE_STEP,base-500); }   // ₦500-below floor
   if(pl){ pl.style.display=NEGO.enabled?'flex':'none'; pl.disabled=false; }                               // no ceiling
+  // Peak-period note under the fare card: honest about WHY, and it nudges toward the + button rather
+  // than quietly charging more. Only while they haven't already raised their offer above the fare.
+  var sb=document.getElementById('surgebox');
+  if(SURGE&&NEGO.enabled){
+    if(!sb){ sb=document.createElement('div'); sb.id='surgebox'; sb.className='surgebox'; fc.parentNode.insertBefore(sb,fc.nextSibling); }
+    sb.style.display='flex';
+    sb.innerHTML='<span>🔥</span><span><b>Busy right now — '+SURGE.waiting+' orders waiting'+(SURGE.free_riders?(' and only '+SURGE.free_riders+' rider'+(SURGE.free_riders===1?'':'s')+' free'):' and no free riders')+'.</b> Riders pick the best offers first, so tapping <b>+</b> gets you moving sooner.</span>';
+  } else if(sb){ sb.style.display='none'; }
   if(ar){
     ar.style.display=NEGO.enabled?'flex':'none';
     var al=document.getElementById('autolbl'); if(al)al.textContent='Auto-accept offer of ₦'+cur.toLocaleString();
@@ -1700,6 +1728,7 @@ function quote(){
      var e=document.getElementById('eta');
      if(j.price){
        mapFee=j.price; mapMin=j.min||null; mapKm=j.km||null; OFFER=null;  // new price → any prior offer is stale
+       SURGE=(j.surge&&j.surge.active)?j.surge:null;   // peak period → tell them, let THEM decide to offer more
        track('price_shown');
        renderFee();   // fee box + top badge (adds the POD surcharge when pay-on-delivery is selected)
        if(j.min){ var ew=(e.style.display==='none'||!e.style.display); e.style.display='flex'; e.innerHTML='<svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="6" cy="17" r="2.6"/><circle cx="18.5" cy="17" r="2.6"/><path d="M8.6 17h7.3l1.9-7h2.7M6 17l2.8-8.4h4.4"/></svg>'+j.min+' min <span class="d">trip</span>'; if(ew){e.classList.remove('popin');void e.offsetWidth;e.classList.add('popin');} } else { e.style.display='none'; }
@@ -1924,6 +1953,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   var TRK_LOG=[], ORDER_META=null;   // Updates-accordion history + what-was-booked (item/route/fee) for the Order accordion
   var ORDER_PAID=false;              // CASH order paid online AFTER the price was agreed (payonline flow)
   var MY_CODE='', CODE_SET=false;    // handover code: MY_CODE only when THIS session is the receiver
+  var CHAT_UNREAD=0;                 // unread rider messages (badge on the chat button)
   function fmtClock(d){ var hh=d.getHours()%12||12, mm=('0'+d.getMinutes()).slice(-2); return hh+':'+mm+' '+(d.getHours()<12?'AM':'PM'); }
   function trkLog(t){ try{ if(TRK_LOG.length&&TRK_LOG[TRK_LOG.length-1].t===t)return; TRK_LOG.push({t:t,at:fmtClock(new Date())}); }catch(e){} }
   var COFF_DECLINED={}, _lastCounters=[], _lastViewers=0, _lastDeclines=0, COFF_EXPANDED=false;   // rider-offer picker (inDrive-style) state
@@ -2000,10 +2030,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       var _wa=(_dig.length===11&&_dig.charAt(0)==='0')?('234'+_dig.slice(1)):_dig;
       riderRow='<div class="riderrow"><div class="rdrav">'+esc(_init)+'</div>'
         +'<div class="rdrmeta"><span class="rdrnm">'+esc(RIDER.name||'On the job')+'</span><span class="rdrcap" style="text-transform:none;letter-spacing:0">Your driver</span></div>'
-        +(RIDER.phone?('<div class="rdrbtns">'
-          +'<a class="rdricon" aria-label="Call your driver" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.4 2.1L8.1 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.6 1.9z"/></svg></a>'
-          +'<a class="rdricon" aria-label="Message your driver" href="https://wa.me/'+esc(_wa)+'" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 20l1-5.1a8.4 8.4 0 1 1 17-3.4z"/></svg></a>'
-          +'</div>'):'')+'</div>';
+        +'<div class="rdrbtns">'
+          +(RIDER.phone?('<a class="rdricon" aria-label="Call your driver" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.4 2.1L8.1 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.6 1.9z"/></svg></a>'):'')
+          // In-app chat with the rider (not WhatsApp) — the thread lives on the order, both sides poll it.
+          +'<button type="button" class="rdricon" id="chatbtn" aria-label="Message your driver"><svg class="i" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 20l1-5.1a8.4 8.4 0 1 1 17-3.4z"/></svg>'
+          +(CHAT_UNREAD?'<span class="chatdot">'+(CHAT_UNREAD>9?'9+':CHAT_UNREAD)+'</span>':'')+'</button>'
+          +'</div></div>';
     }
     // Updates accordion — the timestamped story of this order (Shipday's "Updates" section).
     var upd='';
@@ -2051,6 +2083,48 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var _cb=document.getElementById('trkcancel'); if(_cb)_cb.onclick=cancelOrd;
     var _nb=document.getElementById('trknew'); if(_nb)_nb.onclick=newBooking;
     var _pb=document.getElementById('paybtn'); if(_pb)_pb.onclick=payOnline;
+    var _cb2=document.getElementById('chatbtn'); if(_cb2)_cb2.onclick=openChat;
+  }
+  // ── In-app chat with the rider ── one thread per order, polled by both sides. WhatsApp only nudges
+  // the other party when they're away, so nobody has to leave the app to talk.
+  var CHAT_OPEN=false, CHAT_MSGS=[], CHAT_BUSY=false;
+  function chatCall(text){
+    return fetch(api('action=chat&order='+encodeURIComponent(ORDNUM)+(text?('&text='+encodeURIComponent(text)):'')),_postOpt())
+      .then(function(r){return r.json();});
+  }
+  function openChat(){
+    if(!ORDNUM)return;
+    CHAT_OPEN=true; CHAT_UNREAD=0;
+    var w=document.getElementById('chatwrap');
+    if(!w){ w=document.createElement('div'); w.id='chatwrap'; w.className='chatwrap'; document.body.appendChild(w); }
+    w.innerHTML='<div class="chatpanel"><div class="chathead"><span>Message your rider</span><button type="button" id="chatx" aria-label="Close">✕</button></div>'
+      +'<div class="chatbody" id="chatbody"><div class="chatempty">Loading…</div></div>'
+      +'<div class="chatfoot"><input id="chatin" placeholder="Type a message…" maxlength="700" autocomplete="off"><button type="button" id="chatsend">Send</button></div></div>';
+    document.getElementById('chatx').onclick=closeChat;
+    document.getElementById('chatsend').onclick=sendChat;
+    document.getElementById('chatin').addEventListener('keydown',function(e){ if(e.key==='Enter')sendChat(); });
+    refreshChat();
+    trackUI(trkState);   // repaint so the unread badge clears
+  }
+  function closeChat(){ CHAT_OPEN=false; var w=document.getElementById('chatwrap'); if(w&&w.parentNode)w.parentNode.removeChild(w); }
+  function paintChat(){
+    var b=document.getElementById('chatbody'); if(!b)return;
+    if(!CHAT_MSGS.length){ b.innerHTML='<div class="chatempty">No messages yet — say hello, or tell your rider anything they need to know.</div>'; return; }
+    b.innerHTML=CHAT_MSGS.map(function(m){
+      var mine=(m.sender==='customer');
+      return '<div class="cmsg '+(mine?'me':'them')+'"><div class="cbub">'+esc(m.body)+'</div></div>';
+    }).join('');
+    b.scrollTop=b.scrollHeight;
+  }
+  function refreshChat(){ if(!CHAT_OPEN)return; chatCall('').then(function(j){ if(j&&j.messages){ CHAT_MSGS=j.messages; paintChat(); } }).catch(function(){}); }
+  function sendChat(){
+    var i=document.getElementById('chatin'); if(!i)return;
+    var t=(i.value||'').trim(); if(!t||CHAT_BUSY)return;
+    CHAT_BUSY=true; i.value='';
+    CHAT_MSGS.push({sender:'customer',body:t}); paintChat();          // optimistic
+    chatCall(t).then(function(j){ if(j&&j.messages){ CHAT_MSGS=j.messages; paintChat(); } })
+      .catch(function(){ alert('Could not send — check your connection.'); })
+      .then(function(){ CHAT_BUSY=false; });
   }
   function payOnline(){
     var b=document.getElementById('paybtn'); if(b){ b.disabled=true; b.textContent='Opening secure payment…'; }
@@ -2288,6 +2362,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         if(s){ ORDER_OWN=!!s.own; if(s.rated)ORDER_RATED=true; }   // own-fleet + already-rated flags for the rating widget
         // Handover code: repaint once when it first arrives so the receiver sees it without waiting for
         // the next milestone (the poll runs every 5s while a rider is on the job).
+        // Unread rider messages → badge the chat button; refresh the thread if it's open.
+        if(s&&typeof s.unread!=='undefined'){
+          var uWas=CHAT_UNREAD; CHAT_UNREAD=CHAT_OPEN?0:(Number(s.unread)||0);
+          if(CHAT_OPEN&&Number(s.unread)>0)refreshChat();
+          if(!CHAT_OPEN&&CHAT_UNREAD!==uWas&&trkState)trackUI(trkState);
+        }
         if(s&&(s.my_code||s.code_set)){
           var codeWas=MY_CODE;
           MY_CODE=String(s.my_code||''); CODE_SET=!!s.code_set;
