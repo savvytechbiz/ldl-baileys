@@ -944,7 +944,13 @@ button:disabled{background:var(--line);color:var(--ink-3);box-shadow:none;cursor
 var SESSION=new URLSearchParams(location.search).get('session')||"";
 var VALID=SESSION?"1":"0";
 // A used/expired link must SAY so — before this, its inputs just sat silently dead (no suggestions).
-(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent="This link has already been used or expired — go back to WhatsApp and ask me for a fresh link";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
+// Running INSIDE the native app? Then there is no chat to "go back" to — every "Back to WhatsApp"
+// button/copy is nonsense there (owner rule 2026-07-27). The app injects __LDL_APP__ before the page
+// loads (instant, works offline); the session's app_origin flag confirms it a moment later.
+var APPMODE=(function(){try{return !!window.__LDL_APP__;}catch(e){return false;}})();
+(function(){if(!SESSION)return;setTimeout(function(){try{var base=(typeof API!=="undefined")?API:null;if(!base)return;fetch(base+"?action=check&session="+encodeURIComponent(SESSION)).then(function(r){return r.json();}).then(function(j){if(j&&j.app_origin)APPMODE=true;if(j&&j.valid===false){var b=document.createElement("div");b.style.cssText="position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:12px 16px;font-size:14px;text-align:center;z-index:99999;font-family:sans-serif";b.textContent=APPMODE?"This booking link has expired — please go back and start again.":"This link has already been used or expired — go back to WhatsApp and ask me for a fresh link";document.body.appendChild(b);}}).catch(function(){});}catch(e){}},0);})();
+// The ONE place "Back to WhatsApp" is allowed: a chat customer in a mobile browser. Never in the app.
+function waCta(label){ return APPMODE ? '' : '<a class="wabtn" href="https://wa.me/2349110218825">'+(label||'Back to WhatsApp →')+'</a>'; }
 var API="https://wbsczuwofdrliloueskw.supabase.co/functions/v1/mapPicker";
 function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 // ── Funnel checkpoints ── best-effort, once per step per visit. These decide (with real numbers, not
@@ -1300,8 +1306,8 @@ function btRender(){
   // as a happy delivery. Otherwise summarise honestly.
   var doneMsg=(deliveredN===BT.list.length)?'All delivered — thanks for shipping with us':(deliveredN+' of '+BT.list.length+' delivered — the rest were cancelled or didn\\'t complete');
   document.getElementById('app').innerHTML='<div class="brevfull"><h2>Your deliveries</h2><p class="bsub">Live status of each rider — updated as they move.</p><div class="btrk">'+rows+'</div>'
-    +(doneAll?(BATCH?'<p class="bnote">'+doneMsg+'</p>':'<a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a>')
-             :'<p class="bnote">Updates land here'+(BATCH?'':' and in your WhatsApp chat')+' — you can close this page.</p>')+'</div>';
+    +(doneAll?((BATCH||APPMODE)?'<p class="bnote">'+doneMsg+'</p>':waCta())
+             :'<p class="bnote">Updates land here'+((BATCH||APPMODE)?'':' and in your WhatsApp chat')+' — you can close this page.</p>')+'</div>';
   if(doneAll&&BT.timer){clearInterval(BT.timer);BT.timer=null;}
 }
 function openBatchTracker(orders){
@@ -2338,12 +2344,16 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     }).catch(function(){});
   }
   // Cancel the live order server-side (strictly POD + unpaid + not picked up — the server re-checks).
-  function doCancel(onOk){
+  // reason='edit' → the order is being REPLACED (the customer is adjusting a pin and re-booking), so the
+  // server skips the "your order is cancelled" WhatsApp and softens the team alert. Default = a real cancel.
+  function doCancel(onOk, reason){
     var eb=document.getElementById('trkedit'), cbb=document.getElementById('trkcancel');
-    if(eb)eb.disabled=true; if(cbb){cbb.disabled=true;cbb.textContent='Cancelling…';}
-    // Belt-and-braces timeout: "Cancelling…" must NEVER hang forever, whatever the network does.
+    var editing=(reason==='edit');
+    if(eb){ eb.disabled=true; if(editing)eb.textContent='Reopening…'; }
+    if(cbb){ cbb.disabled=true; if(!editing)cbb.textContent='Cancelling…'; }
+    // Belt-and-braces timeout: the button must NEVER hang forever, whatever the network does.
     var _to={}; try{ if(window.AbortSignal&&AbortSignal.timeout)_to={signal:AbortSignal.timeout(25000)}; }catch(e){}
-    fetch(api('action=cancelorder&order='+encodeURIComponent(ORDNUM)),_to).then(function(r){return r.json();}).then(function(s){
+    fetch(api('action=cancelorder&order='+encodeURIComponent(ORDNUM)+(editing?'&reason=edit':'')),_to).then(function(r){return r.json();}).then(function(s){
       if(s&&(s.cancelled||s.already)){ onOk(); return; }
       if(s&&s.error==='too-late'){ alert('The rider already has your parcel — message us on WhatsApp and we will sort it out'); trackUI(trkState); return; }
       alert('Could not cancel just now — please try again, or message us on WhatsApp.'); trackUI(trkState);
@@ -2360,7 +2370,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // "Edit location" = cancel the unpaid order, keep EVERYTHING typed, reopen the map at step 1 —
   // they adjust a pin and re-book at the honest new price. No stale price ever rides along.
   function editLoc(){
-    if(!confirm('Change a location? We cancel this unpaid order and keep all your details, so you can adjust the map and book again at the right price.'))return;
+    if(!confirm('Change a location? We\\'ll reopen the map with all your details kept — nothing has been paid, and you just book again at the right price for the new route.'))return;
     doCancel(function(){
       stopPoll(); if(radarM){try{map.removeLayer(radarM);}catch(e){} radarM=null;}
       clearRider();
@@ -2368,7 +2378,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       trkState=''; doneN=1; ORDNUM='';
       var g=document.getElementById('go'); if(g){g.disabled=false; g.textContent='Confirm & book';}
       showStep(1);
-    });
+    },'edit');
   }
   function showSearching(j){
     ['step-route','step-pickup','step-details','step-pay'].forEach(function(id){ var e=document.getElementById(id); if(e)e.style.display='none'; });
@@ -2418,7 +2428,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
        // radar pulse on the pickup, creeping bar, real "Rider assigned" the moment Shipday confirms.
        if(j&&(j.booked||j.cod_booked)){ showSearching(j); return; }
        // Chat sessions: the order + price are waiting in WhatsApp (reply YES to pay).
-       document.getElementById('app').innerHTML='<div class="done"><h2>All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p><a class="wabtn" href="https://wa.me/2349110218825">Back to WhatsApp →</a></div>';
+       // Chat sessions finish in WhatsApp. In the APP there is no chat to return to — and landing here at
+       // all means the booking didn't complete, so say that honestly and let them try again in place.
+       document.getElementById('app').innerHTML=APPMODE
+         ? '<div class="done"><h2>Couldn\\'t finish that booking</h2><p class="muted">Nothing was charged. Please try again.</p><button type="button" id="retrybook" style="max-width:280px;margin:18px auto 0">Try again</button></div>'
+         : '<div class="done"><h2>All set!</h2><p class="muted">Your order &amp; price are waiting in your WhatsApp chat.</p>'+waCta()+'</div>';
+       var _rb=document.getElementById('retrybook'); if(_rb)_rb.onclick=function(){ location.reload(); };
      }).catch(function(){ b.disabled=false; b.textContent='Confirm & book'; alert('Network hiccup — try again.'); });
   };
 }
