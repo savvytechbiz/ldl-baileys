@@ -1955,6 +1955,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   function trackUI(st){
     var box=document.getElementById('searchbox'); if(!box)return;
     box.classList.remove('choosing');   // a state repaint always starts from the normal panel; renderCounters re-enters chooser mode if bids exist
+    if(typeof chooserH==='function')try{ chooserH(false); }catch(e){}
     var h=trkHead(st), i;
     // Shipday-style SEGMENTED progress (owner screenshot): filled = happened, pulsing = current stage.
     var segs='';
@@ -2102,23 +2103,39 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // becomes "Choose your rider" — cancel pill, verified line, then one card per bidding rider led by their
   // PRICE + ETA, a "Your fare"/"Rider's offer" chip, avatar + name ★rating rides + vehicle, Decline/Accept.
   // Everything else (radar headline, progress, raise/auto controls) hides until the bids clear.
+  // FULL-SCREEN is enforced with a min-height FLOOR: sheetH() by design never grows the sheet beyond its
+  // CONTENT height, so with one bid card it stopped at ~300px on a tall phone (owner iPhone screenshot
+  // 2026-07-27 — the chooser peeked from the bottom instead of taking the screen).
+  function chooserH(on){
+    var sh=document.querySelector('.sheet'); if(!sh)return;
+    if(on){
+      var vh=window.innerHeight||700, target=Math.round(vh*0.92);
+      if(sh.style.minHeight===target+'px')return;   // already enforced — don't restart the transition
+      sh.classList.add('snapping');
+      sh.style.minHeight=target+'px';
+      sh.style.height=target+'px';
+      setTimeout(function(){try{map.invalidateSize();}catch(e){}},350);
+    } else if(sh.style.minHeight){
+      sh.style.minHeight='';
+    }
+  }
   function renderCounters(list, viewers, declines){
     _lastCounters=list||[]; _lastViewers=Number(viewers)||0; if(declines!==undefined)_lastDeclines=Number(declines)||0;
     var box=document.getElementById('searchbox'); if(!box)return;
     var host=box.querySelector('.search')||box;
     var el=document.getElementById('counters');
     var shown=_lastCounters.filter(function(c){ var dp=COFF_DECLINED[String(c.offer_id)]; return dp===undefined||dp!==Number(c.price); });
-    if(!shown.length&&!(_lastViewers>0)&&!(_lastDeclines>0)){ if(el&&el.parentNode)el.parentNode.removeChild(el); COFF_EXPANDED=false; box.classList.remove('choosing'); return; }
+    if(!shown.length&&!(_lastViewers>0)&&!(_lastDeclines>0)){ if(el&&el.parentNode)el.parentNode.removeChild(el); COFF_EXPANDED=false; box.classList.remove('choosing'); chooserH(false); return; }
     injectCofferCss();
     if(!el){ el=document.createElement('div'); el.id='counters'; host.appendChild(el); }
     // Riders who PASSED on the price — honest signal that the offer is low; nudges a raise.
     var passed=_lastDeclines>0?('<div class="coffdecl">'+_lastDeclines+(_lastDeclines===1?' rider':' riders')+' passed on this price — raising your offer helps</div>'):'';
     if(shown.length){
       // Bids exist → the panel becomes ONLY the chooser (owner: "exactly as in the image"). The 'choosing'
-      // class hides every sibling in .search; the sheet grows once per wave so a customer who drags it
-      // back down isn't fought.
+      // class hides every sibling in .search; chooserH enforces the full-screen floor on EVERY render, so
+      // it holds on tall phones and re-applies if anything (a drag, a repaint) shrank the sheet.
       box.classList.add('choosing');
-      if(!COFF_EXPANDED){ COFF_EXPANDED=true; try{ sheetH(0.94); }catch(e){} }
+      try{ chooserH(true); }catch(e){}
       el.innerHTML='<button type="button" class="coffcancel" id="coffcancel"><svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M18 6 6 18M6 6l12 12"/></svg>Cancel request</button>'
        +'<div class="cofferh2">Choose your rider</div>'
        +'<div class="coffverified"><span class="vck">✓</span>All riders verified</div>'
@@ -2144,6 +2161,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     } else {
       COFF_EXPANDED=false;
       box.classList.remove('choosing');
+      chooserH(false);
       el.innerHTML=(_lastViewers>0?('<div class="coffview"><span class="coffdot"></span>'+_lastViewers+(_lastViewers===1?' rider is':' riders are')+' viewing your request…</div>'):'')+passed;
     }
   }
@@ -2152,7 +2170,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var _to={}; try{ if(window.AbortSignal&&AbortSignal.timeout)_to={signal:AbortSignal.timeout(25000)}; }catch(e){}
     fetch(api('action=acceptcounter&order='+encodeURIComponent(ORDNUM)+'&offer='+encodeURIComponent(offerId)),Object.assign({method:'POST'},_to))
      .then(function(r){return r.json();}).then(function(j){
-       if(j&&j.ok){ var el=document.getElementById('counters'); if(el&&el.parentNode)el.parentNode.removeChild(el); var bx=document.getElementById('searchbox'); if(bx)bx.classList.remove('choosing'); applyStatus('assigned'); return; }
+       if(j&&j.ok){ var el=document.getElementById('counters'); if(el&&el.parentNode)el.parentNode.removeChild(el); var bx=document.getElementById('searchbox'); if(bx)bx.classList.remove('choosing'); chooserH(false); applyStatus('assigned'); try{ sheetH(0.6); }catch(e){} return; }
        if(j&&j.error==='taken'){ alert('That rider just took another order — we\\'re still finding you one.'); return; }
        if(btn){ btn.disabled=false; btn.textContent='Accept'; }
        alert('Could not accept just now — please try again.');
