@@ -688,6 +688,12 @@ input,button,textarea,select{font-family:inherit}
 .updrow b{color:var(--ink);font-weight:600}
 .ordrow{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--ink-2);padding:4px 0;line-height:1.45}
 .ordrow .odot{flex:none;width:8px;height:8px;border-radius:99px;margin-top:4px}
+/* Handover code — the receiver's proof-of-identity digits, shown only to them. */
+.codebox{margin:14px 0 0;background:var(--lilac);border:1.5px dashed var(--plum);border-radius:var(--r-lg);padding:14px;text-align:center}
+.codecap{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.codeval{font-size:38px;font-weight:800;letter-spacing:.16em;color:var(--plum);line-height:1.15;margin:4px 0 2px}
+.codenote{font-size:11.5px;color:var(--ink-2);font-weight:600;line-height:1.45}
+.codehint{margin:12px 0 0;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-size:12.5px;color:var(--ink-2);font-weight:600;line-height:1.5}
 .paybtn{display:block;width:100%;margin:12px 0 0;padding:13px;background:#fff;border:1.5px solid var(--plum);border-radius:var(--r-lg);color:var(--plum);font-size:14px;font-weight:800;letter-spacing:0;box-shadow:none;cursor:pointer}
 .paybtn:disabled{opacity:.55;background:#fff;color:var(--plum)}
 .tknew{display:block;width:100%;margin:10px 0 0;padding:10px 0;background:none;border:none;box-shadow:none;color:var(--plum);font-size:13px;font-weight:700;letter-spacing:0;cursor:pointer;height:auto;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s ease}
@@ -1917,6 +1923,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null, riderM=null, ORDER_OWN=false, ORDER_RATED=false;
   var TRK_LOG=[], ORDER_META=null;   // Updates-accordion history + what-was-booked (item/route/fee) for the Order accordion
   var ORDER_PAID=false;              // CASH order paid online AFTER the price was agreed (payonline flow)
+  var MY_CODE='', CODE_SET=false;    // handover code: MY_CODE only when THIS session is the receiver
   function fmtClock(d){ var hh=d.getHours()%12||12, mm=('0'+d.getMinutes()).slice(-2); return hh+':'+mm+' '+(d.getHours()<12?'AM':'PM'); }
   function trkLog(t){ try{ if(TRK_LOG.length&&TRK_LOG[TRK_LOG.length-1].t===t)return; TRK_LOG.push({t:t,at:fmtClock(new Date())}); }catch(e){} }
   var COFF_DECLINED={}, _lastCounters=[], _lastViewers=0, _lastDeclines=0, COFF_EXPANDED=false;   // rider-offer picker (inDrive-style) state
@@ -1929,7 +1936,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       if(!riderM){
         riderM=L.marker([lat,lng],{interactive:false,zIndexOffset:600,icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="ridericon">🛵</div>'})}).addTo(map);
         var el=riderM._icon; if(el)el.classList.add('rglide');
-        var tgt=(trkState==='ontheway')?picked.dropoff:picked.pickup;
+        var tgt=(trkState==='ontheway'||trkState==='pickedup'||trkState==='arrived')?picked.dropoff:picked.pickup;
         if(tgt)try{map.fitBounds(L.latLngBounds([[lat,lng],[tgt.lat,tgt.lng]]),{padding:[46,46],maxZoom:16});}catch(e){}
       } else {
         var prev=riderM.getLatLng();
@@ -1947,17 +1954,20 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   }
   // The 4 milestones the customer sees. "On the way" lives in the HEADLINE (our webhook folds
   // picked-up + on-the-way into one milestone) — the dots mark what has HAPPENED.
-  var TRK=['Order placed','Rider assigned','Picked up','Delivered'];
+  var TRK=['Order placed','Rider assigned','Picked up','On the way','Arrived','Delivered'];
+  var RUNNING_STATES=['assigned','pickedup','ontheway','arrived'];   // a rider is actively on this job
   function trkHead(st){
     if(st==='searching')return ['Finding your rider…','Your order is out to riders nearby.'];
     if(st==='assigned')return ['Rider assigned','Your rider is heading to the pickup now.'];
-    if(st==='ontheway')return ['Picked up — on the way','Your parcel is moving — we message you at every step too.'];
+    if(st==='pickedup')return ['Picked up','Your parcel is with the rider — we sent the receiver their 4-digit handover code.'];
+    if(st==='ontheway')return ['On the way','Your parcel is moving — we message you at every step too.'];
+    if(st==='arrived')return ['Rider has arrived','Give the rider the 4-digit code to collect your parcel.'];
     if(st==='delivered')return ['Delivered','Thank you for sending with Lasalu Drop'];
     if(st==='failed')return ['Delivery issue','Something interrupted this delivery — our team is on it and will message you.'];
     if(st==='cancelled')return ['Order cancelled','Nothing was charged — book again anytime'];
     return ['Still matching you','Riders are confirming — the moment one accepts, we update here and on WhatsApp.'];
   }
-  function stageN(st){ if(st==='assigned')return 2; if(st==='ontheway')return 3; if(st==='delivered')return 4; return 1; }
+  function stageN(st){ if(st==='assigned')return 2; if(st==='pickedup')return 3; if(st==='ontheway')return 4; if(st==='arrived')return 5; if(st==='delivered')return 6; return 1; }
   function trackUI(st){
     var box=document.getElementById('searchbox'); if(!box)return;
     box.classList.remove('choosing');   // a state repaint always starts from the normal panel; renderCounters re-enters chooser mode if bids exist
@@ -1975,7 +1985,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var canCancel=(ORDNUM&&(st==='searching'||st==='settle'||st==='assigned'));
     var canEdit=(MODE==='pod'&&!ORDER_PAID&&canCancel);   // once paid online, edit(=cancel+rebook) means a refund — humans only
     var ended=(st==='delivered'||st==='failed'||st==='cancelled');
-    var running=(st==='assigned'||st==='ontheway');
+    var running=(st==='assigned'||st==='pickedup'||st==='ontheway'||st==='arrived');   // a rider is on the job
     // Price agreed + still cash → offer to settle it ONLINE right here (owner 2026-07-26): the fare is
     // locked once a rider is assigned, so prepaying it is safe; the webhook tells the rider not to collect.
     var feeL=ORDER_PAID?'✅ Paid online — nothing to pay on delivery.':feeLine;
@@ -2012,6 +2022,14 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       if(!obody)obody='<div class="ordrow"><span>Full details are in your WhatsApp chat.</span></div>';
       ord='<details class="tacc"><summary>Order '+esc(ORDNUM)+(om.item?(' · '+esc(om.item)):'')+'</summary><div class="taccb">'+obody+'</div></details>';
     }
+    // The receiver's own handover code — shown only to them (the server only sends my_code when this
+    // session's number IS the receiver's). Everyone else gets the explainer instead.
+    var codeBox='';
+    if(MY_CODE&&(st==='pickedup'||st==='ontheway'||st==='arrived')){
+      codeBox='<div class="codebox"><div class="codecap">Your handover code</div><div class="codeval">'+esc(MY_CODE)+'</div><div class="codenote">Give this to the rider ONLY when they hand you the parcel.</div></div>';
+    } else if(CODE_SET&&(st==='pickedup'||st==='ontheway'||st==='arrived')){
+      codeBox='<div class="codehint">🔐 We sent the receiver a 4-digit code — the rider needs it to complete the handover.</div>';
+    }
     var live=(st==='searching'||st==='settle')?'<span class="livedot"></span>':'';
     box.innerHTML='<div class="search">'
       +'<div class="tkhead"><h2>'+live+h[0]+'</h2>'+(running?'<span class="etapill" id="etapill" style="display:none"></span>':'')+'</div>'
@@ -2019,6 +2037,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       +((st==='searching'||st==='settle')?'<div class="sbar"><div class="sfill"></div></div>':'')
       +'<div class="tsegs">'+segs+'</div>'
       +riderRow
+      +codeBox
       +(feeL&&!ended?('<p class="feenote">'+feeL+'</p>'):'')
       +payBtn
       +upd
@@ -2267,6 +2286,13 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         var hadRider=!!(RIDER&&(RIDER.name||RIDER.phone));
         if(s&&(s.rider_name||s.rider_phone)) RIDER={name:String(s.rider_name||''),phone:String(s.rider_phone||'')};
         if(s){ ORDER_OWN=!!s.own; if(s.rated)ORDER_RATED=true; }   // own-fleet + already-rated flags for the rating widget
+        // Handover code: repaint once when it first arrives so the receiver sees it without waiting for
+        // the next milestone (the poll runs every 5s while a rider is on the job).
+        if(s&&(s.my_code||s.code_set)){
+          var codeWas=MY_CODE;
+          MY_CODE=String(s.my_code||''); CODE_SET=!!s.code_set;
+          if(MY_CODE&&MY_CODE!==codeWas&&trkState) trackUI(trkState);
+        }
         // Keep the AGREED price in sync (a counter-accept changes delivery_fee) — the Order accordion,
         // the cash note and the pay-online button label all read it.
         if(s&&Number(s.base)>0&&ORDER_META&&Number(s.base)!==Number(ORDER_META.fee)){
@@ -2276,15 +2302,15 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         applyStatus(String((s&&s.status)||''));
         // CASH order flipped to paid (payonline webhook landed) → repaint once: note becomes "✅ Paid online",
         // the pay button disappears, and the Updates story records it.
-        if(s&&s.cash===false&&MODE==='pod'&&!ORDER_PAID&&(trkState==='assigned'||trkState==='ontheway')){
+        if(s&&s.cash===false&&MODE==='pod'&&!ORDER_PAID&&RUNNING_STATES.indexOf(trkState)>-1){
           ORDER_PAID=true; trkLog('Paid online'); trackUI(trkState);
         }
         // Rider price counters while still searching — let the customer accept one right here.
         if(trkState==='searching'||trkState==='settle') renderCounters((s&&s.counters)||[], (s&&s.viewers)||0, (s&&s.declines)||0); else renderCounters([], 0, 0);
         renderNegControls(s);
-        if(!hadRider&&RIDER&&(RIDER.name||RIDER.phone)&&(trkState==='assigned'||trkState==='ontheway')) trackUI(trkState);
+        if(!hadRider&&RIDER&&(RIDER.name||RIDER.phone)&&RUNNING_STATES.indexOf(trkState)>-1) trackUI(trkState);
         // Live rider position + ETA on the map while the job is running.
-        if(s&&(trkState==='assigned'||trkState==='ontheway')){
+        if(s&&RUNNING_STATES.indexOf(trkState)>-1){
           updateRider(Number(s.rider_lat),Number(s.rider_lng));
           var eb=document.getElementById('eta');
           if(eb&&s.eta_mins){ eb.textContent='~'+s.eta_mins+' min'; eb.style.display='block'; }
@@ -2302,7 +2328,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // A cancelled order (cancelled here, in chat, or by the team) must LEAVE the radar — not sit on
     // "Finding your rider" forever. orderstatus now reports 'cancelled'; show it and stop polling.
     if(raw==='cancelled'){ trkState='cancelled'; trkLog('Order cancelled'); if(radarM){try{map.removeLayer(radarM);}catch(e){}radarM=null;} clearRider(); trackUI('cancelled'); stopPoll(); return; }
-    var st=(raw==='assigned'||raw==='ontheway'||raw==='delivered'||raw==='failed')?raw:'';
+    var st=(raw==='assigned'||raw==='pickedup'||raw==='ontheway'||raw==='arrived'||raw==='delivered'||raw==='failed')?raw:'';
     if(!st||st===trkState)return;
     if(st==='assigned')track('rider_assigned');
     trkLog(trkHead(st)[0]);
