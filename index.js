@@ -2064,7 +2064,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
    +'.cofferh2{font-size:20px;font-weight:800;letter-spacing:-.01em;color:var(--ink,#241826);margin:0 0 4px}'
    +'.coffverified{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink2,#6A6270);margin:0 0 13px}'
    +'.coffverified .vck{width:16px;height:16px;border-radius:99px;background:var(--plum,#4F074C);color:#fff;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}'
-   +'.coffprice{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--ink,#241826)}'
+   +'.coffprice{font-size:23px;font-weight:800;letter-spacing:-.02em;color:var(--ink,#241826)}'
    +'.coffeta2{font-size:13px;font-weight:600;color:var(--ink2,#6A6270);margin-left:8px;letter-spacing:0}'
    +'.coffer>.cofftag{margin:7px 0 0}'
    +'.coffer .coffhead{margin-top:10px}'
@@ -2076,14 +2076,20 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
    +'.coffview{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink2,#6A6270);padding:8px 0}'
    +'.coffdot{width:8px;height:8px;border-radius:99px;background:var(--magenta,#E23A7C);animation:coffpulse 1.4s infinite}'
    +'@keyframes coffpulse{0%{box-shadow:0 0 0 0 rgba(226,58,124,.5)}70%{box-shadow:0 0 0 8px rgba(226,58,124,0)}100%{box-shadow:0 0 0 0 rgba(226,58,124,0)}}'
-   +'.coffer{background:#fff;border:1.5px solid var(--line-2,#ddd0e2);border-radius:16px;padding:13px;margin-bottom:10px}'
-   +'.coffhead{display:flex;align-items:center;gap:11px}'
-   +'.coffav{width:40px;height:40px;border-radius:99px;background:var(--plum,#4F074C);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0}'
-   +'.coffid{flex:1;min-width:0}.cofn{font-size:15px;font-weight:800;color:var(--ink,#241826);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cofsub{font-size:12.5px;color:var(--ink2,#6A6270);margin-top:1px}'
+   +'.coffer{background:#fff;border:1.5px solid var(--line-2,#ddd0e2);border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:0 6px 18px rgba(58,5,55,.06)}'
+   +'.coffhead{display:flex;align-items:center;gap:13px}'
+   +'.coffav{width:56px;height:56px;border-radius:99px;background:var(--plum,#4F074C);color:#fff;display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(58,5,55,.18)}'
+   +'.coffid{flex:1;min-width:0}.cofn{font-size:16px;font-weight:800;color:var(--ink,#241826);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cofsub{font-size:12.5px;color:var(--ink2,#6A6270);margin-top:1px}'
+   +'.cofmeta{display:flex;align-items:baseline;gap:10px;margin-top:3px;flex-wrap:wrap}'
+   +'.cofrate{font-size:15px;font-weight:800;color:var(--ink,#241826)}'
+   +'.cofgold{color:#F2B01E}'
+   +'.cofcnt{font-size:12px;font-weight:600;color:var(--ink2,#6A6270);margin-left:3px}'
+   +'.cofrides2{font-size:13px;font-weight:700;color:var(--ink2,#6A6270)}'
+   +'.cofnew{font-size:11px;font-weight:800;letter-spacing:.02em;color:#0369a1;background:#e0f2fe;border-radius:99px;padding:3px 10px}'
    +'.cofpx{text-align:right;flex-shrink:0}.cofp{font-size:18px;font-weight:800;color:var(--plum,#4F074C)}.coffeta{font-size:11.5px;color:var(--ink2,#6A6270);margin-top:1px}'
-   +'.coffact{display:flex;gap:9px;margin-top:12px}'
-   +'.coffdecline{flex:1;background:#fff;border:1.5px solid var(--line-2,#ddd0e2);color:var(--ink2,#6A6270);border-radius:12px;padding:11px;font-size:14px;font-weight:700;cursor:pointer}'
-   +'.cofa{flex:1.7;background:var(--plum,#4F074C);color:#fff;border:none;border-radius:12px;padding:11px;font-size:14px;font-weight:800;cursor:pointer}.cofa:disabled{opacity:.5}'
+   +'.coffact{display:flex;gap:10px;margin-top:14px}'
+   +'.coffdecline{flex:1;background:#fff;border:1.5px solid var(--line-2,#ddd0e2);color:var(--ink2,#6A6270);border-radius:13px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer}'
+   +'.cofa{flex:1.7;background:var(--plum,#4F074C);color:#fff;border:none;border-radius:13px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(79,7,76,.25)}.cofa:disabled{opacity:.5}'
    +'.coffav.hasimg{overflow:hidden}.coffav img{width:100%;height:100%;object-fit:cover;border-radius:99px;display:block}'
    +'.cofftag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.02em;color:#0B7A45;background:#E4F7EC;border-radius:99px;padding:2px 9px;margin-top:9px}'
    +'.cofftag.counter{color:var(--magenta,#E23A7C);background:#FCE7F1}'
@@ -2145,14 +2151,18 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         var av=c.photo?('<div class="coffav hasimg" style="position:relative">'+ini+'<img src="'+esc(String(c.photo))+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()"></div>'):('<div class="coffav">'+ini+'</div>');
         var tag=c.took_price?'<span class="cofftag">Your fare</span>':'<span class="cofftag counter">Rider\\'s offer</span>';
         var veh=(String(c.vehicle||'bike')==='keke')?'Keke':'Motorbike';
-        var stat=(c.rating!=null?('<span class="coffstar">★ '+Number(c.rating).toFixed(2)+'</span>'):'')
-                +(c.trips?('<span class="coffrides">'+c.trips+' ride'+(c.trips===1?'':'s')+'</span>'):(c.rating==null?'<span class="coffrides">New rider</span>':''));
+        // Rating is the decision-maker — it gets its own LOUD line (gold star, bold number, count),
+        // rides beside it; "New rider" only when there is truly no history.
+        var stat=c.rating!=null
+          ?('<span class="cofrate"><span class="cofgold">★</span> '+Number(c.rating).toFixed(2)+(c.rating_count?('<span class="cofcnt">('+c.rating_count+')</span>'):'')+'</span>')
+          :(c.trips?'':'<span class="cofnew">New rider</span>');   // rides but never rated ≠ new — show the rides alone
+        var rides=c.trips?('<span class="cofrides2">'+c.trips+' ride'+(c.trips===1?'':'s')+'</span>'):'';
         return '<div class="coffer">'
-          +'<div class="coffprice">₦'+Number(c.price||0).toLocaleString()+(c.eta_mins?('<span class="coffeta2">'+c.eta_mins+' min</span>'):'')+'</div>'
+          +'<div class="coffprice">₦'+Number(c.price||0).toLocaleString()+(c.eta_mins?('<span class="coffeta2">'+c.eta_mins+' min away</span>'):'')+'</div>'
           +tag
           +'<div class="coffhead">'
           +av
-          +'<div class="coffid"><div class="cofn">'+nm+' '+stat+'</div><div class="coffveh">'+veh+'</div></div>'
+          +'<div class="coffid"><div class="cofn">'+nm+'</div><div class="cofmeta">'+stat+rides+'</div><div class="coffveh">'+veh+'</div></div>'
           +'</div><div class="coffact"><button type="button" class="coffdecline" data-off="'+id+'">Decline</button><button type="button" class="cofa" data-off="'+id+'">Accept</button></div></div>';
       }).join('');
       var _cc=document.getElementById('coffcancel'); if(_cc)_cc.onclick=function(){ cancelOrd(); };
