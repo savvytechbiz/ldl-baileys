@@ -38,6 +38,7 @@ let currentQR = null;
 let connectionStatus = 'disconnected';
 let connectedPhone = null;
 let isConnecting = false;
+let reconnectAttempts = 0;   // drives exponential backoff — a hammering retry loop is what WhatsApp answers with 405
 // Bug 8: ids already handed to the webhook. WhatsApp re-delivers the same id on reconnect/'append',
 // so we process each id at most once. Bounded (drops oldest) so it can't grow without limit.
 const _seenMsgIds = new Set();
@@ -254,8 +255,22 @@ async function connectWhatsApp() {
           console.log('Logged out - clearing stored session and waiting for manual reconnect');
           await clearSupabaseAuth();
         } else {
-          const retryDelay = Math.min(15000 + Math.random() * 10000, 60000);
-          console.log('Reconnecting in', Math.round(retryDelay / 1000) + 's...');
+          // BACKOFF (fixed 2026-07-29 outage). This used to retry every 15-25s FOREVER, with no backoff.
+          // WhatsApp answers a hammering client with 405 "Connection Failure" and keeps answering 405 for
+          // as long as the hammering continues — so the retry loop was what kept the outage alive (30+ min
+          // of 20s retries, never recovering, never even reaching a QR). Now: exponential backoff, and a
+          // 405/428 (refused/rate-limited) starts at a full 2 minutes and climbs to 15, giving the block
+          // time to expire. Any successful connection resets the ladder.
+          reconnectAttempts++;
+          const refused = statusCode === 405 || statusCode === 428;
+          const base = refused ? 120000 : 15000;
+          const retryDelay = Math.min(base * Math.pow(2, Math.min(reconnectAttempts - 1, 4)), 900000)
+            + Math.random() * 5000;   // jitter so restarts don't sync up
+          console.log(`Connection closed (${statusCode}). Attempt ${reconnectAttempts} — reconnecting in ${Math.round(retryDelay / 1000)}s...`);
+          if (refused && reconnectAttempts === 3) {
+            console.warn('⚠️ WhatsApp keeps refusing (405). This is a rate-limit/block — backing right off. ' +
+              'If it persists after ~30 min, SUSPEND the service to let it clear, then resume and scan the QR.');
+          }
           setTimeout(connectWhatsApp, retryDelay);
         }
       }
@@ -264,6 +279,7 @@ async function connectWhatsApp() {
         connectionStatus = 'connected';
         isConnecting = false;
         currentQR = null;
+        reconnectAttempts = 0;   // clean connection → reset the backoff ladder
         connectedPhone = sock.user?.id?.split(':')[0] || null;
         console.log('WhatsApp connected! Phone:', connectedPhone);
       }
