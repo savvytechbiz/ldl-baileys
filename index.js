@@ -723,8 +723,14 @@ input,button,textarea,select{font-family:inherit}
 .rdricon{position:relative}
 .chatdot{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--magenta);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface)}
 /* Peak period — more orders than free riders. Informational: it nudges, it never inflates the fare. */
-.surgebox{display:flex;gap:10px;align-items:flex-start;background:#fff8ec;border:1px solid #ffe0a6;border-radius:var(--r);padding:12px 14px;margin:14px 0 0;font-size:12.5px;color:#8a5a12;line-height:1.5;font-weight:600}
+.surgebox{display:flex;gap:10px;align-items:flex-start;background:#fff8ec;border:1px solid #ffe0a6;border-radius:var(--r);padding:12px 14px;margin:14px 0 0;font-size:12.5px;color:#8a5a12;line-height:1.5;font-weight:600;opacity:0;transform:translateY(-6px);transition:opacity .24s var(--ease),transform .24s var(--ease)}
+.surgebox.in{opacity:1;transform:none}
 .surgebox b{color:#6b430b}
+/* Stagger the card's parts on first appearance — price, then the invitation, then the toggle.
+   Short gaps (60/110ms): enough to read as a sequence, too quick to feel like waiting. */
+#farecard.risein{animation-delay:0ms}
+.negexplain.risein{animation-delay:60ms;animation-fill-mode:both}
+.autorow.risein{animation-delay:110ms;animation-fill-mode:both}
 /* Handover code — the receiver's proof-of-identity digits, shown only to them. */
 .codebox{margin:14px 0 0;background:var(--lilac);border:1.5px dashed var(--plum);border-radius:var(--r-lg);padding:14px;text-align:center}
 .codecap{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
@@ -848,26 +854,40 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .feebig{display:none;align-items:center;justify-content:space-between;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 18px;margin:16px 0 0}
 /* ── inDrive-style fare card (route screen): recommended fare centred, − / + steppers to name your price ── */
 #farecard{align-items:center;gap:10px;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin:16px 0 0}
-.fbtn{width:46px;height:46px;flex:none;border-radius:50%;background:#fff;border:1.5px solid var(--line-2);color:var(--plum);box-shadow:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
+/* The steppers are the primary interaction on this screen, so the press has to be FELT. The global
+   button rule only scales to .985 — far too timid for a 46px circle you tap repeatedly. */
+.fbtn{position:relative;width:46px;height:46px;flex:none;border-radius:50%;background:#fff;border:1.5px solid var(--line-2);color:var(--plum);box-shadow:0 1px 2px rgba(58,5,55,.06);padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .14s var(--ease),opacity .18s ease,border-color .18s ease}
 .fbtn .i{width:20px;height:20px;stroke-width:2.2}
-.fbtn:disabled{opacity:.3}
-/* A few gentle pulses on first sight so the − / + read as "press me", then it stops and stays calm. */
-.fbtn.hintpulse{animation:fbpulse 1.7s cubic-bezier(.23,1,.32,1) 3}
-@keyframes fbpulse{0%{box-shadow:0 0 0 0 rgba(226,58,124,.5)}100%{box-shadow:0 0 0 13px rgba(226,58,124,0)}}
-/* "You can name your own price" — the line that turns two anonymous circles into an invitation. */
-.negexplain{display:none;gap:10px;align-items:flex-start;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:10px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.5;font-weight:500}
+.fbtn:active:not(:disabled){transform:scale(.92)}
+.fbtn:disabled{opacity:.32}
+/* Attention ring: a PSEUDO-ELEMENT scaling on the GPU, not an animated box-shadow (which repaints
+   every frame). Three passes, then it stops for good — a permanent pulse becomes noise. */
+.fbtn.hintpulse::after{content:'';position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--pink);opacity:0;animation:fbring 1.8s var(--ease) 3}
+@keyframes fbring{0%{opacity:.55;transform:scale(1)}100%{opacity:0;transform:scale(1.5)}}
+/* "You can name your own price" — the line that turns two anonymous circles into an invitation.
+   Enters with the card rather than snapping in, and leaves instantly once it's been understood. */
+.negexplain{display:none;gap:10px;align-items:flex-start;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:10px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.5;font-weight:500;opacity:0;transform:translateY(-6px);transition:opacity .24s var(--ease),transform .24s var(--ease)}
+.negexplain.in{opacity:1;transform:none}
 .negexplain b{color:var(--plum);font-weight:800}
 .negexplain .nxi{font-size:15px;line-height:1.2}
 .fmid{flex:1;text-align:center;min-width:0}
-.famt{font-size:24px;font-weight:800;color:var(--plum);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* The number is the thing they're changing — it gets a tiny physical kick on every step. Driven by a
+   TRANSITION (not a keyframe) so hammering + retargets smoothly instead of restarting from zero. */
+.famt{font-size:24px;font-weight:800;color:var(--plum);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:transform .19s var(--ease)}
+.famt.tick{transform:scale(1.075)}
 .famt .was{font-size:13px;color:var(--ink-3);text-decoration:line-through;font-weight:600;margin-left:6px}
-.flbl{font-size:11.5px;color:var(--ink-2);font-weight:600;margin-top:2px}
+/* The caption swaps meaning as they bargain ("Recommended fare" → "Your offer…"), so cross-fade it
+   instead of hard-cutting between two different sentences. */
+.flbl{font-size:11.5px;color:var(--ink-2);font-weight:600;margin-top:2px;transition:opacity .16s ease}
+.flbl.swap{opacity:0}
 .autorow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 4px 0}
 .autolbl{font-size:13.5px;font-weight:600;color:var(--ink)}
-.fartog{width:46px;height:26px;flex:none;border-radius:13px;background:var(--line-2);position:relative;cursor:pointer;transition:background .18s ease}
-.fartog span{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .18s ease}
+.fartog{width:46px;height:26px;flex:none;border-radius:13px;background:var(--line-2);position:relative;cursor:pointer;transition:background .2s ease,transform .14s var(--ease)}
+.fartog:active{transform:scale(.94)}
+/* translateX, not the 'left' property — 'left' repaints every frame; transform rides the GPU. */
+.fartog span{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(58,5,55,.28);transition:transform .2s var(--ease)}
 .fartog.on{background:var(--plum)}
-.fartog.on span{left:23px}
+.fartog.on span{transform:translateX(20px)}
 .feebig .lbl{font-size:13px;color:var(--ink-2);font-weight:600}
 .feebig .sub{font-size:12px;color:var(--ink-2);margin-top:2px;font-weight:500}
 .feebig .amt{font-size:23px;font-weight:800;color:var(--plum);letter-spacing:-.02em}
@@ -1587,6 +1607,16 @@ function renderFee(){
 // the amount opens a type-your-price panel. Under it: "Auto-accept offer of ₦X" — ON matches the first
 // rider instantly at that price, OFF collects rider offers and the customer picks (inDrive mode).
 var FARE_STEP=100, AUTO_PICK=null;   // AUTO_PICK null = customer hasn't touched the toggle → model default
+// Reveal an element that fades in from opacity:0. rAF alone is NOT safe: a backgrounded/non-compositing
+// tab never fires it, which would leave the element invisible but still taking up space. The timeout is
+// the backstop — whichever lands first wins, and adding the class twice is harmless.
+function showIn(el){
+  if(!el)return;
+  el.style.display='flex';
+  var go=function(){ el.classList.add('in'); };
+  try{ requestAnimationFrame(go); }catch(e){}
+  setTimeout(go,80);
+}
 // Under the negotiation model the customer ALWAYS picks their rider by default (riders state what they'll
 // charge and the offer cards come back). The toggle is the escape hatch for someone in a hurry: ON = match
 // me instantly with the first rider who takes my price.
@@ -1599,12 +1629,31 @@ function renderFareCard(){
   if(mapFee==null||_codOn||!(picked.pickup&&picked.dropoff)){ fc.style.display='none'; if(ar)ar.style.display='none'; return; }
   var base=Math.round(Number(mapFee)), cur=(OFFER!=null?Math.round(Number(OFFER)):base);
   var was=fc.style.display!=='none';
-  fc.style.display='flex'; if(!was)anim(fc,'risein');
+  fc.style.display='flex';
+  // First appearance only: the card's parts cascade in (price → invitation → toggle) rather than
+  // all landing at once. Never re-runs on a price step — that would flicker on every tap.
+  if(!was){
+    anim(fc,'risein');
+    var _ar0=document.getElementById('autorow'); if(_ar0)anim(_ar0,'risein');
+    setTimeout(function(){ var _ex0=document.getElementById('negexplain'); if(_ex0&&_ex0.style.display==='flex')anim(_ex0,'risein'); },0);
+  }
   var am=document.getElementById('famt'), lb=document.getElementById('flbl');
-  if(am)am.innerHTML='₦'+cur.toLocaleString()+(OFFER!=null?'<span class="was">₦'+base.toLocaleString()+'</span>':'');
-  if(lb)lb.textContent=!NEGO.enabled?'Delivery fee'
+  var amtHtml='₦'+cur.toLocaleString()+(OFFER!=null?'<span class="was">₦'+base.toLocaleString()+'</span>':'');
+  if(am&&am.innerHTML!==amtHtml){
+    var first=!am.innerHTML;
+    am.innerHTML=amtHtml;
+    // Kick the number so a tap on − / + is FELT, not just read. Transition-based, so rapid taps
+    // retarget smoothly rather than restarting. Skipped on first paint (nothing changed yet).
+    if(!first){ am.classList.add('tick'); setTimeout(function(){ am.classList.remove('tick'); },20); }
+  }
+  var lblText=!NEGO.enabled?'Delivery fee'
     :(OFFER==null?'Recommended fare'
     :(OFFER<base?'Your offer — riders accept or counter':'Boosted offer — reaches riders faster'));
+  // The caption changes MEANING as they bargain — cross-fade rather than hard-cut between sentences.
+  if(lb&&lb.textContent!==lblText){
+    if(!lb.textContent){ lb.textContent=lblText; }
+    else { lb.classList.add('swap'); setTimeout(function(){ lb.textContent=lblText; lb.classList.remove('swap'); },160); }
+  }
   var mi=document.getElementById('fminus'), pl=document.getElementById('fplus');
   if(mi){ mi.style.display=NEGO.enabled?'flex':'none'; mi.disabled=cur<=Math.max(FARE_STEP,base-500); }   // ₦500-below floor
   if(pl){ pl.style.display=NEGO.enabled?'flex':'none'; pl.disabled=false; }                               // no ceiling
@@ -1615,11 +1664,14 @@ function renderFareCard(){
   var ex=document.getElementById('negexplain');
   if(NEGO.enabled&&OFFER==null){
     if(!ex){ ex=document.createElement('div'); ex.id='negexplain'; ex.className='negexplain'; fc.parentNode.insertBefore(ex,fc.nextSibling); }
-    ex.style.display='flex';
-    ex.innerHTML='<span class="nxi">🤝</span><span>This price is only a suggestion — tap <b>−</b> or <b>+</b> to name what you want to pay. Riders nearby will take your price or tell you theirs, and you pick the rider you want.</span>';
-    if(mi)mi.classList.add('hintpulse'); if(pl)pl.classList.add('hintpulse');
-  } else {
-    if(ex)ex.style.display='none';
+    if(ex.style.display!=='flex'){
+      ex.innerHTML='<span class="nxi">🤝</span><span>This price is only a suggestion — tap <b>−</b> or <b>+</b> to name what you want to pay. Riders nearby will take your price or tell you theirs, and you pick the rider you want.</span>';
+      showIn(ex);   // fade+slide in, never a hard snap — and never stuck invisible if rAF is asleep
+      if(mi)mi.classList.add('hintpulse'); if(pl)pl.classList.add('hintpulse');
+    }
+  } else if(ex&&ex.style.display!=='none'){
+    // Exit is instant: they've acted, and the caption under the price now tells the story.
+    ex.classList.remove('in'); ex.style.display='none';
     if(mi)mi.classList.remove('hintpulse'); if(pl)pl.classList.remove('hintpulse');
   }
   // Peak-period note under the fare card: honest about WHY, and it nudges toward the + button rather
@@ -1628,9 +1680,9 @@ function renderFareCard(){
   if(SURGE&&NEGO.enabled){
     var anchor=(ex&&ex.style.display!=='none')?ex:fc;   // keep the explainer directly under the card
     if(!sb){ sb=document.createElement('div'); sb.id='surgebox'; sb.className='surgebox'; anchor.parentNode.insertBefore(sb,anchor.nextSibling); }
-    sb.style.display='flex';
     sb.innerHTML='<span>🔥</span><span><b>Busy right now — '+SURGE.waiting+' orders waiting'+(SURGE.free_riders?(' and only '+SURGE.free_riders+' rider'+(SURGE.free_riders===1?'':'s')+' free'):' and no free riders')+'.</b> Riders pick the best offers first, so tapping <b>+</b> gets you moving sooner.</span>';
-  } else if(sb){ sb.style.display='none'; }
+    if(sb.style.display!=='flex'){ showIn(sb); }
+  } else if(sb&&sb.style.display!=='none'){ sb.classList.remove('in'); sb.style.display='none'; }
   if(ar){
     ar.style.display=NEGO.enabled?'flex':'none';
     var al=document.getElementById('autolbl'); if(al)al.textContent='Auto-accept offer of ₦'+cur.toLocaleString();
