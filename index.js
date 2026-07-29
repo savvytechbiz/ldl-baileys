@@ -585,6 +585,7 @@ input,button,textarea,select{font-family:inherit}
 #rpickup,#rdrop{display:none}
 #app.routed .recentlist{display:none}
 .recentlist{margin-top:6px}
+.recenthint{display:none;font-size:12px;font-weight:700;color:var(--ink-3);letter-spacing:.02em;margin:12px 2px 2px}
 .recentlist .rr{display:flex;align-items:center;gap:14px;padding:15px 4px;border-bottom:1px solid var(--line);cursor:pointer}
 .recentlist .rr:active{background:var(--lilac)}
 .recentlist .rc{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
@@ -850,6 +851,13 @@ h2{margin:2px 2px 16px;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .fbtn{width:46px;height:46px;flex:none;border-radius:50%;background:#fff;border:1.5px solid var(--line-2);color:var(--plum);box-shadow:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .fbtn .i{width:20px;height:20px;stroke-width:2.2}
 .fbtn:disabled{opacity:.3}
+/* A few gentle pulses on first sight so the − / + read as "press me", then it stops and stays calm. */
+.fbtn.hintpulse{animation:fbpulse 1.7s cubic-bezier(.23,1,.32,1) 3}
+@keyframes fbpulse{0%{box-shadow:0 0 0 0 rgba(226,58,124,.5)}100%{box-shadow:0 0 0 13px rgba(226,58,124,0)}}
+/* "You can name your own price" — the line that turns two anonymous circles into an invitation. */
+.negexplain{display:none;gap:10px;align-items:flex-start;background:var(--lilac);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:10px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.5;font-weight:500}
+.negexplain b{color:var(--plum);font-weight:800}
+.negexplain .nxi{font-size:15px;line-height:1.2}
 .fmid{flex:1;text-align:center;min-width:0}
 .famt{font-size:24px;font-weight:800;color:var(--plum);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .famt .was{font-size:13px;color:var(--ink-3);text-decoration:line-through;font-weight:600;margin-left:6px}
@@ -1001,6 +1009,7 @@ function api(qs){return API+"?session="+encodeURIComponent(SESSION)+"&"+qs}
 var FUNNEL_SENT={};
 function track(step){ if(FUNNEL_SENT[step])return; FUNNEL_SENT[step]=1; try{ fetch(api('action=funnel&step='+encodeURIComponent(step)),{method:'POST'}).catch(function(){}); }catch(e){} }
 var picked={pickup:null,dropoff:null};
+var ACTIVE_FIELD='';   // 'pickup' | 'dropoff' — the box a tapped history place fills
 // ── BATCH mode (/bulk) ── the SAME map flow, but you ADD several drops and book them together.
 // Everything batch is gated on BATCH, so /map is completely unaffected.
 var BATCH = location.pathname.indexOf('/bulk') > -1;
@@ -1599,11 +1608,26 @@ function renderFareCard(){
   var mi=document.getElementById('fminus'), pl=document.getElementById('fplus');
   if(mi){ mi.style.display=NEGO.enabled?'flex':'none'; mi.disabled=cur<=Math.max(FARE_STEP,base-500); }   // ₦500-below floor
   if(pl){ pl.style.display=NEGO.enabled?'flex':'none'; pl.disabled=false; }                               // no ceiling
+  // SAY that bargaining is on offer. Two bare − / + circles read as "adjust something" only to someone
+  // who already knows inDrive; a first-time customer just sees a price (owner 2026-07-29). This line
+  // spells out the whole deal, and retires itself once they've actually named a price — from then on
+  // the label under the amount ("Your offer — riders accept or counter") carries the story.
+  var ex=document.getElementById('negexplain');
+  if(NEGO.enabled&&OFFER==null){
+    if(!ex){ ex=document.createElement('div'); ex.id='negexplain'; ex.className='negexplain'; fc.parentNode.insertBefore(ex,fc.nextSibling); }
+    ex.style.display='flex';
+    ex.innerHTML='<span class="nxi">🤝</span><span>This price is only a suggestion — tap <b>−</b> or <b>+</b> to name what you want to pay. Riders nearby will take your price or tell you theirs, and you pick the rider you want.</span>';
+    if(mi)mi.classList.add('hintpulse'); if(pl)pl.classList.add('hintpulse');
+  } else {
+    if(ex)ex.style.display='none';
+    if(mi)mi.classList.remove('hintpulse'); if(pl)pl.classList.remove('hintpulse');
+  }
   // Peak-period note under the fare card: honest about WHY, and it nudges toward the + button rather
   // than quietly charging more. Only while they haven't already raised their offer above the fare.
   var sb=document.getElementById('surgebox');
   if(SURGE&&NEGO.enabled){
-    if(!sb){ sb=document.createElement('div'); sb.id='surgebox'; sb.className='surgebox'; fc.parentNode.insertBefore(sb,fc.nextSibling); }
+    var anchor=(ex&&ex.style.display!=='none')?ex:fc;   // keep the explainer directly under the card
+    if(!sb){ sb=document.createElement('div'); sb.id='surgebox'; sb.className='surgebox'; anchor.parentNode.insertBefore(sb,anchor.nextSibling); }
     sb.style.display='flex';
     sb.innerHTML='<span>🔥</span><span><b>Busy right now — '+SURGE.waiting+' orders waiting'+(SURGE.free_riders?(' and only '+SURGE.free_riders+' rider'+(SURGE.free_riders===1?'':'s')+' free'):' and no free riders')+'.</b> Riders pick the best offers first, so tapping <b>+</b> gets you moving sooner.</span>';
   } else if(sb){ sb.style.display='none'; }
@@ -1771,6 +1795,11 @@ function wire(inId,sugId,which){
 }
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
 else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
+  // Remember which address box the customer last touched — a tapped history place goes THERE. Set on
+  // FOCUS and deliberately NOT cleared on blur: tapping a list row blurs the input first, so clearing
+  // on blur would throw away the very answer we need.
+  ['pin','din'].forEach(function(id){ var el=document.getElementById(id); if(!el)return;
+    el.addEventListener('focus',function(){ ACTIVE_FIELD=(id==='pin')?'pickup':'dropoff'; try{recentHint();}catch(e){} }); });
   if(BATCH){ try{ initBatch(); }catch(e){} }
   // inDrive fare card controls (/map): − / + step the offer, tap the amount to type it, toggle auto-accept.
   if(!BATCH){
@@ -1838,6 +1867,32 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   }
   // One-tap reuse for returning customers ("same as last time").
   function reuse(id,title,value,fn){ var d=document.getElementById(id); var a=document.createElement('a'); a.innerHTML='<span class="ric">↩</span><span class="rl"><span class="rt"></span><span class="rv"></span></span>'; a.querySelector('.rt').textContent=title; a.querySelector('.rv').textContent=value; a.onclick=function(){ fn(); a.className='on'; validate(); }; d.appendChild(a); }
+  // ── Which box does a tapped history place go into? ──
+  // A saved place is just an ADDRESS — not a role. Tapping "Saved pickup" while you're filling the
+  // drop-off used to overwrite your pickup (owner 2026-07-29). Now the tap fills whichever box you're
+  // working in: the one you last touched, else the first empty one, else the drop-off.
+  function targetField(){
+    if(ACTIVE_FIELD)return ACTIVE_FIELD;
+    if(!picked.pickup)return 'pickup';
+    if(!picked.dropoff)return 'dropoff';
+    return 'dropoff';
+  }
+  function fillFrom(place){
+    if(!place||!place.lat)return;
+    var which=targetField();
+    document.getElementById(which==='pickup'?'pin':'din').value=place.address;
+    setPin(which,{address:place.address,lat:place.lat,lng:place.lng});
+    recentHint();
+  }
+  // Say out loud which box the next tap will fill, so it's never a surprise.
+  function recentHint(){
+    var d=document.getElementById('recentlist'); if(!d)return;
+    var h=document.getElementById('recenthint');
+    if(!d.querySelector('.rr')){ if(h)h.style.display='none'; return; }
+    if(!h){ h=document.createElement('div'); h.id='recenthint'; h.className='recenthint'; d.parentNode.insertBefore(h,d); }
+    h.style.display='block';
+    h.textContent=targetField()==='pickup'?'Tap a place to set your pickup':'Tap a place to set your drop-off';
+  }
   // Bolt-style recent/saved place row (shown as a tappable list on the search step).
   // Row = place on top, its area underneath (the icon already says recent vs saved, so we don't repeat it).
   // "Waterlines, Port Harcourt" -> "Waterlines" / "Port Harcourt". No comma: fall back to the label.
@@ -1872,12 +1927,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var _seen={};
     (p.recent||[]).slice(0,4).forEach(function(r){
       if(!r||!r.address||!r.lat||_seen[r.address])return; _seen[r.address]=1;
-      recentRow(_clock,r.address,'Recent drop-off',function(){ document.getElementById('din').value=r.address; setPin('dropoff',r); });
+      recentRow(_clock,r.address,'Recent drop-off',function(){ fillFrom(r); });
     });
-    if(p.dropoff&&p.dropoff.lat&&!p.dropoff.from_chat&&!_seen[p.dropoff.address]){ _seen[p.dropoff.address]=1; recentRow(_clock,p.dropoff.address,'Recent drop-off',function(){ document.getElementById('din').value=p.dropoff.address; setPin('dropoff',p.dropoff); }); }
-    if(p.pickup&&p.pickup.lat&&!p.pickup.from_chat){ recentRow(_home,p.pickup.address,'Saved pickup',function(){ document.getElementById('pin').value=p.pickup.address; setPin('pickup',p.pickup); }); }
+    if(p.dropoff&&p.dropoff.lat&&!p.dropoff.from_chat&&!_seen[p.dropoff.address]){ _seen[p.dropoff.address]=1; recentRow(_clock,p.dropoff.address,'Recent drop-off',function(){ fillFrom(p.dropoff); }); }
+    if(p.pickup&&p.pickup.lat&&!p.pickup.from_chat){ recentRow(_home,p.pickup.address,'Saved pickup',function(){ fillFrom(p.pickup); }); }
     // The list arrives AFTER the sheet was first sized — re-fit so the places are never clipped.
-    if(document.querySelectorAll('#recentlist .rr').length) sheetH(0.74);
+    if(document.querySelectorAll('#recentlist .rr').length){ recentHint(); sheetH(0.74); }
     if(p.me_phone)MYPHONE=String(p.me_phone);
     if(p.me_name)MYNAME=String(p.me_name);
     if(p.receiver&&p.receiver.name){ var _rpB=function(){ document.getElementById('rphone').dispatchEvent(new Event('blur')); };
@@ -2104,6 +2159,25 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // ── In-app chat with the rider ── one thread per order, polled by both sides. WhatsApp only nudges
   // the other party when they're away, so nobody has to leave the app to talk.
   var CHAT_OPEN=false, CHAT_MSGS=[], CHAT_BUSY=false;
+  // A rider message has to be NOTICED. Phones vibrate; a short two-note chime is synthesised on the fly
+  // (no asset to load, works offline). Both are best-effort — some browsers block audio until a tap, and
+  // the badge + WhatsApp fallback still cover it.
+  function chatAlert(){
+    try{ if(navigator.vibrate)navigator.vibrate([120,80,120]); }catch(e){}
+    try{
+      var AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+      var ac=new AC(); var t=ac.currentTime;
+      [[880,0],[1170,0.14]].forEach(function(n){
+        var o=ac.createOscillator(), g=ac.createGain();
+        o.type='sine'; o.frequency.value=n[0];
+        g.gain.setValueAtTime(0.0001,t+n[1]);
+        g.gain.exponentialRampToValueAtTime(0.22,t+n[1]+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+n[1]+0.13);
+        o.connect(g); g.connect(ac.destination); o.start(t+n[1]); o.stop(t+n[1]+0.15);
+      });
+      setTimeout(function(){ try{ac.close();}catch(e){} },600);
+    }catch(e){}
+  }
   function chatCall(text){
     return fetch(api('action=chat&order='+encodeURIComponent(ORDNUM)+(text?('&text='+encodeURIComponent(text)):'')),_postOpt())
       .then(function(r){return r.json();});
@@ -2159,9 +2233,23 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     clearRider();
     var bx=document.getElementById('searchbox'); if(bx&&bx.parentNode)bx.parentNode.removeChild(bx);
     RESUMED=false; RIDER=null; trkState=''; doneN=1; ORDNUM=''; MODE=''; pollN=0; TRK_LOG=[]; ORDER_META=null; ORDER_PAID=false;
+    // Booking flipped this session to 'used'; reactivate it or the NEXT booking is rejected as a stale
+    // link and the page dead-ends (owner 2026-07-29: "start a new delivery and it misbehaves").
+    fetch(api('action=reopen'),_postOpt()).catch(function(){});
+    // Wipe every trace of the finished order. Leaving these behind is what made the second booking
+    // misbehave: a stale mapFee/OFFER meant the fare card showed the OLD trip's price (or nothing),
+    // and a stale code/chat kept painting panels that belonged to an order that no longer exists.
+    mapFee=null; mapMin=null; mapKm=null; OFFER=null; SURGE=null; AUTO_PICK=null;
+    MY_CODE=''; CODE_SET=false; CHAT_UNREAD=0; CHAT_MSGS=[]; _lastCounters=[]; _lastViewers=0; _lastDeclines=0;
+    COFF_DECLINED={}; COFF_EXPANDED=false;
+    try{ closeChat(); }catch(e){}
+    try{ chooserH(false); }catch(e){}
+    var _sb=document.getElementById('surgebox'); if(_sb&&_sb.parentNode)_sb.parentNode.removeChild(_sb);
+    var _fp=document.getElementById('farepanel'); if(_fp){_fp.style.display='none';_fp.innerHTML='';}
     // Clear the finished/running order's route completely — a stale prefilled route here would
     // let one absent-minded Continue re-book the SAME trip, so the new booking starts clean.
     try{ clearLoc('pickup'); clearLoc('dropoff'); }catch(e){}
+    try{ renderFee(); }catch(e){}   // repaint with the cleared price so nothing stale lingers on screen
     var g=document.getElementById('go'); if(g){g.disabled=false; g.textContent='Confirm & book';}
     showStep(1);
   }
@@ -2382,7 +2470,10 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         if(s&&typeof s.unread!=='undefined'){
           var uWas=CHAT_UNREAD; CHAT_UNREAD=CHAT_OPEN?0:(Number(s.unread)||0);
           if(CHAT_OPEN&&Number(s.unread)>0)refreshChat();
-          if(!CHAT_OPEN&&CHAT_UNREAD!==uWas&&trkState)trackUI(trkState);
+          if(!CHAT_OPEN&&CHAT_UNREAD!==uWas&&trkState){
+            if(CHAT_UNREAD>uWas)chatAlert();   // a rider message must be heard, not just badged
+            trackUI(trkState);
+          }
         }
         if(s&&(s.my_code||s.code_set)){
           var codeWas=MY_CODE;
