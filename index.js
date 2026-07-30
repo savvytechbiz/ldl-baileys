@@ -721,7 +721,22 @@ input,button,textarea,select{font-family:inherit}
 .chatfoot input:focus{border-color:var(--plum)}
 .chatfoot button{width:auto;padding:0 20px;border-radius:13px;font-size:14.5px;font-weight:800}
 .rdricon{position:relative}
-.chatdot{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--magenta);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface)}
+.chatdot{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--pink);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface)}
+/* A rider's message must be READ, not decoded from a 1px dot (owner 2026-07-30: "someone won't even
+   notice"). Full-width card carrying the actual words, with a slow magenta ring breathing around it.
+   The ring is a pseudo-element animating transform+opacity only — no layout, no paint, GPU-cheap. */
+.msgalert{position:relative;display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:linear-gradient(180deg,#fff2f7,#ffe6f0);border:1.5px solid #f6b6d1;border-radius:14px;padding:12px 13px;margin:11px 0 0;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .16s var(--ease)}
+.msgalert:active{transform:scale(.975)}
+.msgalert::after{content:'';position:absolute;inset:-2px;border-radius:15px;border:2px solid var(--pink);opacity:0;pointer-events:none;animation:msgring 2.2s var(--ease) .5s infinite}
+.msgav{flex:none;width:34px;height:34px;border-radius:50%;background:var(--pink);display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+.msgtxt{min-width:0;flex:1}
+.msgwho{display:block;font-size:10.5px;font-weight:800;color:var(--pink);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.msgbody{display:block;font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msgcta{flex:none;font-size:12px;font-weight:800;color:var(--pink);white-space:nowrap}
+@keyframes msgring{0%{opacity:.6;transform:scale(1)}70%,100%{opacity:0;transform:scale(1.035)}}
+@keyframes msgin{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:none}}
+.msgalert.in{animation:msgin .26s var(--ease) both}
+@media (prefers-reduced-motion:reduce){.msgalert::after{animation:none;opacity:.5}.msgalert.in{animation:none}}
 /* Peak period — more orders than free riders. Informational: it nudges, it never inflates the fare. */
 .surgebox{display:flex;gap:10px;align-items:flex-start;background:#fff8ec;border:1px solid #ffe0a6;border-radius:var(--r);padding:12px 14px;margin:14px 0 0;font-size:12.5px;color:#8a5a12;line-height:1.5;font-weight:600;opacity:0;transform:translateY(-6px);transition:opacity .24s var(--ease),transform .24s var(--ease)}
 .surgebox.in{opacity:1;transform:none}
@@ -1872,7 +1887,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var dragging=false, sy=0, sh=0;
     grab.addEventListener('pointerdown',function(e){ dragging=true; sheet.classList.remove('snapping'); sy=e.clientY; sh=sheet.getBoundingClientRect().height; try{grab.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); });
     window.addEventListener('pointermove',function(e){ if(!dragging)return; setH(sh+(sy-e.clientY)); });
-    window.addEventListener('pointerup',function(){ if(!dragging)return; dragging=false; sheet.classList.add('snapping'); setH(nearest(sheet.getBoundingClientRect().height)); setTimeout(function(){ try{map.invalidateSize();}catch(_){}} ,360); });
+    window.addEventListener('pointerup',function(){ if(!dragging)return; dragging=false; sheet.classList.add('snapping'); setH(nearest(sheet.getBoundingClientRect().height)); setTimeout(function(){ try{map.invalidateSize();}catch(_){} try{refitTrack();}catch(_){}} ,360); });
     sheetH(0.58);   // open at a comfortable middle height
   })();
   ['sname','sphone','rname','rphone','item'].forEach(function(id){ document.getElementById(id).addEventListener('input',validate); });
@@ -2077,7 +2092,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   var TRK_LOG=[], ORDER_META=null;   // Updates-accordion history + what-was-booked (item/route/fee) for the Order accordion
   var ORDER_PAID=false;              // CASH order paid online AFTER the price was agreed (payonline flow)
   var MY_CODE='', CODE_SET=false, CODE_ROLE='';   // handover code + who is looking: 'receiver' reads it out, 'booker' passes it on
-  var CHAT_UNREAD=0;                 // unread rider messages (badge on the chat button)
+  var CHAT_UNREAD=0, CHAT_LAST='';   // unread rider messages + the newest line, shown in the alert card
   function fmtClock(d){ var hh=d.getHours()%12||12, mm=('0'+d.getMinutes()).slice(-2); return hh+':'+mm+' '+(d.getHours()<12?'AM':'PM'); }
   function trkLog(t){ try{ if(TRK_LOG.length&&TRK_LOG[TRK_LOG.length-1].t===t)return; TRK_LOG.push({t:t,at:fmtClock(new Date())}); }catch(e){} }
   // The LASALU status chime (owner: "unique and loud enough") — pure WebAudio, no file, works in the
@@ -2115,6 +2130,37 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   var NEG_BASE=0, NEG_RAISE=0, NEG_TIMER=null, NEG_LEFT=0;  // raise-offer + auto-accept + search countdown
   // Live rider marker: a bike chip that glides between GPS fixes (Shipday reports the rider app's
   // location; we join it server-side). Camera fits ONCE on first fix — never fight the user's pan.
+  // Frame the live job WITHOUT ever handing the customer a globe.
+  // THE BUG THIS EXISTS FOR: the tracking sheet covers most of the screen, so the map strip can be only
+  // a couple of hundred pixels tall. fitBounds with a fixed 46px padding then asks for 92px of margin
+  // inside a box that may not have it — Leaflet can't satisfy it, falls back to its MINIMUM zoom, and
+  // you get the whole world with your rider as a dot on Africa (owner screenshots, twice). So: re-measure
+  // the container first, scale the padding to whatever room actually exists, and refuse any result that
+  // is zoomed out past a city view.
+  var MIN_TRACK_ZOOM=11;
+  function fitTrack(pts){
+    try{
+      if(!pts||!pts.length)return;
+      map.invalidateSize();
+      var sz=map.getSize(), room=Math.min(sz.x,sz.y);
+      var pad=Math.max(6,Math.min(46,Math.floor(room*0.12)));
+      if(pts.length>1){
+        var b=L.latLngBounds(pts);
+        map.fitBounds(b,{padding:[pad,pad],maxZoom:16});
+        if(map.getZoom()<MIN_TRACK_ZOOM)map.setView(b.getCenter(),15);
+      } else {
+        map.setView(pts[0],16);
+      }
+    }catch(e){}
+  }
+  // The sheet is draggable and changes height a lot; re-frame once it settles so a fit taken while the
+  // map was squeezed doesn't stick.
+  function refitTrack(){
+    if(!riderM)return;
+    var tgt=(trkState==='ontheway'||trkState==='pickedup'||trkState==='arrived')?picked.dropoff:picked.pickup;
+    var p=riderM.getLatLng();
+    fitTrack(tgt?[[p.lat,p.lng],[tgt.lat,tgt.lng]]:[[p.lat,p.lng]]);
+  }
   function updateRider(lat,lng){
     // Number(null)===0, and (0,0) is a point in the Atlantic — one missing GPS fix used to drop the bike
     // there and the fitBounds below framed half the planet. No rider is ever at exactly (0,0).
@@ -2124,7 +2170,8 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         riderM=L.marker([lat,lng],{interactive:false,zIndexOffset:600,icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="ridericon">🛵</div>'})}).addTo(map);
         var el=riderM._icon; if(el)el.classList.add('rglide');
         var tgt=(trkState==='ontheway'||trkState==='pickedup'||trkState==='arrived')?picked.dropoff:picked.pickup;
-        if(tgt)try{map.fitBounds(L.latLngBounds([[lat,lng],[tgt.lat,tgt.lng]]),{padding:[46,46],maxZoom:16});}catch(e){}
+        fitTrack(tgt?[[lat,lng],[tgt.lat,tgt.lng]]:[[lat,lng]]);
+        setTimeout(refitTrack,420);   // again after the sheet's snap animation, when the real height is known
       } else {
         var prev=riderM.getLatLng();
         if(prev&&Math.abs(prev.lat-lat)<1e-6&&Math.abs(prev.lng-lng)<1e-6)return;   // same fix — keep gliding, no restart
@@ -2194,6 +2241,17 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
           +(CHAT_UNREAD?'<span class="chatdot">'+(CHAT_UNREAD>9?'9+':CHAT_UNREAD)+'</span>':'')+'</button>'
           +'</div></div>';
     }
+    // The unread message itself, as a card you cannot walk past — the dot on the icon stays as backup.
+    var msgAlert='';
+    if(CHAT_UNREAD&&running){
+      var _who=(RIDER&&RIDER.name)?String(RIDER.name).trim().split(/\s+/)[0]:'Your rider';
+      var _prev=CHAT_LAST||(CHAT_UNREAD>1?(CHAT_UNREAD+' new messages — tap to read'):'Tap to read the message');
+      msgAlert='<button type="button" class="msgalert in" id="msgalert">'
+        +'<span class="msgav">💬</span>'
+        +'<span class="msgtxt"><span class="msgwho">'+esc(_who)+' messaged you'+(CHAT_UNREAD>1?(' · '+CHAT_UNREAD+' new'):'')+'</span>'
+        +'<span class="msgbody">'+esc(_prev)+'</span></span>'
+        +'<span class="msgcta">Read ›</span></button>';
+    }
     // Updates accordion — the timestamped story of this order (Shipday's "Updates" section).
     var upd='';
     if(TRK_LOG.length){
@@ -2207,7 +2265,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       var obody='';
       if(om.pu)obody+='<div class="ordrow"><span class="odot" style="background:var(--plum)"></span><span>'+esc(om.pu)+'</span></div>';
       if(om.doff)obody+='<div class="ordrow"><span class="odot" style="background:#16a34a"></span><span>'+esc(om.doff)+'</span></div>';
-      if(om.fee)obody+='<div class="ordrow"><span class="odot" style="background:var(--magenta)"></span><span>Delivery fee ₦'+Number(om.fee).toLocaleString()+(MODE==='pod'?' — cash on delivery':'')+'</span></div>';
+      if(om.fee)obody+='<div class="ordrow"><span class="odot" style="background:var(--pink)"></span><span>Delivery fee ₦'+Number(om.fee).toLocaleString()+(MODE==='pod'?' — cash on delivery':'')+'</span></div>';
       if(!obody)obody='<div class="ordrow"><span>Full details are in your WhatsApp chat.</span></div>';
       ord='<details class="tacc"><summary>Order '+esc(ORDNUM)+(om.item?(' · '+esc(om.item)):'')+'</summary><div class="taccb">'+obody+'</div></details>';
     }
@@ -2229,6 +2287,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       +((st==='searching'||st==='settle')?'<div class="sbar"><div class="sfill"></div></div>':'')
       +'<div class="tsegs">'+segs+'</div>'
       +riderRow
+      +msgAlert
       +codeBox
       +(feeL&&!ended?('<p class="feenote">'+feeL+'</p>'):'')
       +payBtn
@@ -2244,6 +2303,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var _nb=document.getElementById('trknew'); if(_nb)_nb.onclick=newBooking;
     var _pb=document.getElementById('paybtn'); if(_pb)_pb.onclick=payOnline;
     var _cb2=document.getElementById('chatbtn'); if(_cb2)_cb2.onclick=openChat;
+    var _ma=document.getElementById('msgalert'); if(_ma)_ma.onclick=openChat;
   }
   // ── In-app chat with the rider ── one thread per order, polled by both sides. WhatsApp only nudges
   // the other party when they're away, so nobody has to leave the app to talk.
@@ -2329,7 +2389,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // misbehave: a stale mapFee/OFFER meant the fare card showed the OLD trip's price (or nothing),
     // and a stale code/chat kept painting panels that belonged to an order that no longer exists.
     mapFee=null; mapMin=null; mapKm=null; OFFER=null; SURGE=null; AUTO_PICK=null;
-    MY_CODE=''; CODE_SET=false; CODE_ROLE=''; CHAT_UNREAD=0; CHAT_MSGS=[]; _lastCounters=[]; _lastViewers=0; _lastDeclines=0;
+    MY_CODE=''; CODE_SET=false; CODE_ROLE=''; CHAT_UNREAD=0; CHAT_LAST=''; CHAT_MSGS=[]; _lastCounters=[]; _lastViewers=0; _lastDeclines=0;
     COFF_DECLINED={}; COFF_EXPANDED=false;
     try{ closeChat(); }catch(e){}
     try{ chooserH(false); }catch(e){}
@@ -2412,9 +2472,12 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       sh.classList.add('snapping');
       sh.style.minHeight=target+'px';
       sh.style.height=target+'px';
-      setTimeout(function(){try{map.invalidateSize();}catch(e){}},350);
+      setTimeout(function(){try{map.invalidateSize();}catch(e){} try{refitTrack();}catch(e){}},350);
     } else if(sh.style.minHeight){
       sh.style.minHeight='';
+      // Coming OUT of the full-screen chooser gives the map its height back — re-frame, or it keeps the
+      // zoom it was forced into while it was a sliver.
+      setTimeout(function(){try{map.invalidateSize();}catch(e){} try{refitTrack();}catch(e){}},350);
     }
   }
   function renderCounters(list, viewers, declines){
@@ -2563,9 +2626,13 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         // the next milestone (the poll runs every 5s while a rider is on the job).
         // Unread rider messages → badge the chat button; refresh the thread if it's open.
         if(s&&typeof s.unread!=='undefined'){
-          var uWas=CHAT_UNREAD; CHAT_UNREAD=CHAT_OPEN?0:(Number(s.unread)||0);
+          var uWas=CHAT_UNREAD, lWas=CHAT_LAST;
+          CHAT_UNREAD=CHAT_OPEN?0:(Number(s.unread)||0);
+          CHAT_LAST=CHAT_OPEN?'':String(s.last_msg||'');
           if(CHAT_OPEN&&Number(s.unread)>0)refreshChat();
-          if(!CHAT_OPEN&&CHAT_UNREAD!==uWas&&trkState){
+          // Repaint on a changed TEXT too, not just a changed count: a rider who sends a second line
+          // before you look must not leave the card showing their first one.
+          if(!CHAT_OPEN&&(CHAT_UNREAD!==uWas||CHAT_LAST!==lWas)&&trkState){
             if(CHAT_UNREAD>uWas)chatAlert();   // a rider message must be heard, not just badged
             trackUI(trkState);
           }
