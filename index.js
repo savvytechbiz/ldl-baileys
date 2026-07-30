@@ -2080,25 +2080,35 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   var CHAT_UNREAD=0;                 // unread rider messages (badge on the chat button)
   function fmtClock(d){ var hh=d.getHours()%12||12, mm=('0'+d.getMinutes()).slice(-2); return hh+':'+mm+' '+(d.getHours()<12?'AM':'PM'); }
   function trkLog(t){ try{ if(TRK_LOG.length&&TRK_LOG[TRK_LOG.length-1].t===t)return; TRK_LOG.push({t:t,at:fmtClock(new Date())}); }catch(e){} }
-  // A bright two-note whistle on every status change (owner ask) — pure WebAudio, no file, works in the
-  // app's WebView. Browsers keep audio suspended until a touch, so the first gesture unlocks it quietly.
+  // The LASALU status chime (owner: "unique and loud enough") — pure WebAudio, no file, works in the
+  // app's WebView. Progress = a bright rising three-note arpeggio, each note doubled an octave up so it
+  // cuts through street noise; failed/cancelled = a falling two-tone, so the SOUND alone tells the story.
+  // Browsers keep audio suspended until a touch, so the first gesture unlocks it quietly.
   var _tctx=null;
   function _toneCtx(){ try{ _tctx=_tctx||new (window.AudioContext||window.webkitAudioContext)(); if(_tctx.state==='suspended')_tctx.resume(); }catch(e){} return _tctx; }
   try{ document.addEventListener('touchstart',function(){ _toneCtx(); },{once:true,passive:true}); }catch(e){}
-  function statusTone(){
+  function statusTone(kind){
     try{
       var c=_toneCtx(); if(!c)return;
-      var t=c.currentTime;
-      [[988,0],[1319,0.12]].forEach(function(n){
+      var t=c.currentTime+0.02, bad=(kind==='bad');
+      function nx(f,at,dur,vol,type){
         var o=c.createOscillator(),g=c.createGain();
-        o.type='sine'; o.frequency.setValueAtTime(n[0],t+n[1]);
-        g.gain.setValueAtTime(0.0001,t+n[1]);
-        g.gain.exponentialRampToValueAtTime(0.16,t+n[1]+0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001,t+n[1]+0.3);
+        o.type=type||'triangle'; o.frequency.setValueAtTime(f,t+at);
+        g.gain.setValueAtTime(0.0001,t+at);
+        g.gain.exponentialRampToValueAtTime(vol,t+at+0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+at+dur);
         o.connect(g); g.connect(c.destination);
-        o.start(t+n[1]); o.stop(t+n[1]+0.32);
-      });
-      if(navigator.vibrate)navigator.vibrate(60);
+        o.start(t+at); o.stop(t+at+dur+0.02);
+      }
+      if(bad){
+        nx(1108.7,0,0.32,0.5); nx(554.4,0,0.32,0.22,'sine');
+        nx(830.6,0.16,0.5,0.5); nx(415.3,0.16,0.5,0.22,'sine');
+      } else {
+        nx(880,0,0.16,0.5);      nx(1760,0,0.16,0.18,'sine');
+        nx(1108.7,0.10,0.16,0.5); nx(2217.5,0.10,0.16,0.18,'sine');
+        nx(1318.5,0.20,0.55,0.55); nx(2637,0.20,0.55,0.2,'sine');
+      }
+      if(navigator.vibrate)navigator.vibrate(bad?[0,140,80,140]:[0,80,50,80]);
     }catch(e){}
   }
   var COFF_DECLINED={}, _lastCounters=[], _lastViewers=0, _lastDeclines=0, COFF_EXPANDED=false;   // rider-offer picker (inDrive-style) state
@@ -2599,10 +2609,10 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(trkState==='cancelled')return;   // a poll already in flight must never repaint a cancelled order
     // A cancelled order (cancelled here, in chat, or by the team) must LEAVE the radar — not sit on
     // "Finding your rider" forever. orderstatus now reports 'cancelled'; show it and stop polling.
-    if(raw==='cancelled'){ trkState='cancelled'; trkLog('Order cancelled'); statusTone(); if(radarM){try{map.removeLayer(radarM);}catch(e){}radarM=null;} clearRider(); trackUI('cancelled'); stopPoll(); return; }
+    if(raw==='cancelled'){ trkState='cancelled'; trkLog('Order cancelled'); statusTone('bad'); if(radarM){try{map.removeLayer(radarM);}catch(e){}radarM=null;} clearRider(); trackUI('cancelled'); stopPoll(); return; }
     var st=(raw==='assigned'||raw==='pickedup'||raw==='ontheway'||raw==='arrived'||raw==='delivered'||raw==='failed')?raw:'';
     if(!st||st===trkState)return;
-    statusTone();
+    statusTone(st==='failed'?'bad':'good');
     if(st==='assigned')track('rider_assigned');
     trkLog(trkHead(st)[0]);
     trkState=st;
@@ -2995,24 +3005,33 @@ const TRACK_CSS = `
 const TRACK_JS = `
 function ldlTracker(opts){
   var st='',done=1,pn=0,timer=null,RID=null,ORD='',L=opts.labels;
-  // Two-note whistle on every status change (owner ask) — WebAudio, no file; first touch unlocks audio.
+  // The LASALU status chime (owner: "unique and loud enough") — rising arpeggio for progress, falling
+  // two-tone for failed/cancelled. WebAudio, no file; first touch unlocks audio.
   var _tc=null;
   function _tcx(){ try{ _tc=_tc||new (window.AudioContext||window.webkitAudioContext)(); if(_tc.state==='suspended')_tc.resume(); }catch(e){} return _tc; }
   try{ document.addEventListener('touchstart',function(){ _tcx(); },{once:true,passive:true}); }catch(e){}
-  function statusTone(){
+  function statusTone(kind){
     try{
       var c=_tcx(); if(!c)return;
-      var t=c.currentTime;
-      [[988,0],[1319,0.12]].forEach(function(n){
+      var t=c.currentTime+0.02, bad=(kind==='bad');
+      function nx(f,at,dur,vol,type){
         var o=c.createOscillator(),g=c.createGain();
-        o.type='sine'; o.frequency.setValueAtTime(n[0],t+n[1]);
-        g.gain.setValueAtTime(0.0001,t+n[1]);
-        g.gain.exponentialRampToValueAtTime(0.16,t+n[1]+0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001,t+n[1]+0.3);
+        o.type=type||'triangle'; o.frequency.setValueAtTime(f,t+at);
+        g.gain.setValueAtTime(0.0001,t+at);
+        g.gain.exponentialRampToValueAtTime(vol,t+at+0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+at+dur);
         o.connect(g); g.connect(c.destination);
-        o.start(t+n[1]); o.stop(t+n[1]+0.32);
-      });
-      if(navigator.vibrate)navigator.vibrate(60);
+        o.start(t+at); o.stop(t+at+dur+0.02);
+      }
+      if(bad){
+        nx(1108.7,0,0.32,0.5); nx(554.4,0,0.32,0.22,'sine');
+        nx(830.6,0.16,0.5,0.5); nx(415.3,0.16,0.5,0.22,'sine');
+      } else {
+        nx(880,0,0.16,0.5);      nx(1760,0,0.16,0.18,'sine');
+        nx(1108.7,0.10,0.16,0.5); nx(2217.5,0.10,0.16,0.18,'sine');
+        nx(1318.5,0.20,0.55,0.55); nx(2637,0.20,0.55,0.2,'sine');
+      }
+      if(navigator.vibrate)navigator.vibrate(bad?[0,140,80,140]:[0,80,50,80]);
     }catch(e){}
   }
   function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -3041,10 +3060,10 @@ function ldlTracker(opts){
     if(st==='cancelled')return;
     // A cancelled order must LEAVE the radar, not sit on "Finding your rider" forever. Self-contained
     // render (no dependency on the per-page labels) so every flow shows a clean cancelled state.
-    if(raw==='cancelled'){ st='cancelled'; statusTone(); stop(); var mc=document.getElementById(opts.mount); if(mc)mc.innerHTML='<div class="search"><h2>Order cancelled</h2><p class="smut">This delivery was cancelled. You can book again anytime.</p>'+(opts.doneHtml||'')+'</div>'; return; }
+    if(raw==='cancelled'){ st='cancelled'; statusTone('bad'); stop(); var mc=document.getElementById(opts.mount); if(mc)mc.innerHTML='<div class="search"><h2>Order cancelled</h2><p class="smut">This delivery was cancelled. You can book again anytime.</p>'+(opts.doneHtml||'')+'</div>'; return; }
     var s=(raw==='assigned'||raw==='pickedup'||raw==='ontheway'||raw==='arrived'||raw==='delivered'||raw==='failed')?raw:'';
     if(!s||s===st)return;
-    statusTone();
+    statusTone(s==='failed'?'bad':'good');
     st=s; if(s!=='failed')done=stageN(s);
     ui(s);
     if(s==='delivered'||s==='failed'){stop();} else {poll(15000);}
