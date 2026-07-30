@@ -2076,16 +2076,39 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   var radarM=null, pollT=null, pollN=0, trkState='', doneN=1, feeLine='', ORDNUM='', MODE='', RESUMED=false, RIDER=null, riderM=null, ORDER_OWN=false, ORDER_RATED=false;
   var TRK_LOG=[], ORDER_META=null;   // Updates-accordion history + what-was-booked (item/route/fee) for the Order accordion
   var ORDER_PAID=false;              // CASH order paid online AFTER the price was agreed (payonline flow)
-  var MY_CODE='', CODE_SET=false;    // handover code: MY_CODE only when THIS session is the receiver
+  var MY_CODE='', CODE_SET=false, CODE_ROLE='';   // handover code + who is looking: 'receiver' reads it out, 'booker' passes it on
   var CHAT_UNREAD=0;                 // unread rider messages (badge on the chat button)
   function fmtClock(d){ var hh=d.getHours()%12||12, mm=('0'+d.getMinutes()).slice(-2); return hh+':'+mm+' '+(d.getHours()<12?'AM':'PM'); }
   function trkLog(t){ try{ if(TRK_LOG.length&&TRK_LOG[TRK_LOG.length-1].t===t)return; TRK_LOG.push({t:t,at:fmtClock(new Date())}); }catch(e){} }
+  // A bright two-note whistle on every status change (owner ask) — pure WebAudio, no file, works in the
+  // app's WebView. Browsers keep audio suspended until a touch, so the first gesture unlocks it quietly.
+  var _tctx=null;
+  function _toneCtx(){ try{ _tctx=_tctx||new (window.AudioContext||window.webkitAudioContext)(); if(_tctx.state==='suspended')_tctx.resume(); }catch(e){} return _tctx; }
+  try{ document.addEventListener('touchstart',function(){ _toneCtx(); },{once:true,passive:true}); }catch(e){}
+  function statusTone(){
+    try{
+      var c=_toneCtx(); if(!c)return;
+      var t=c.currentTime;
+      [[988,0],[1319,0.12]].forEach(function(n){
+        var o=c.createOscillator(),g=c.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(n[0],t+n[1]);
+        g.gain.setValueAtTime(0.0001,t+n[1]);
+        g.gain.exponentialRampToValueAtTime(0.16,t+n[1]+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+n[1]+0.3);
+        o.connect(g); g.connect(c.destination);
+        o.start(t+n[1]); o.stop(t+n[1]+0.32);
+      });
+      if(navigator.vibrate)navigator.vibrate(60);
+    }catch(e){}
+  }
   var COFF_DECLINED={}, _lastCounters=[], _lastViewers=0, _lastDeclines=0, COFF_EXPANDED=false;   // rider-offer picker (inDrive-style) state
   var NEG_BASE=0, NEG_RAISE=0, NEG_TIMER=null, NEG_LEFT=0;  // raise-offer + auto-accept + search countdown
   // Live rider marker: a bike chip that glides between GPS fixes (Shipday reports the rider app's
   // location; we join it server-side). Camera fits ONCE on first fix — never fight the user's pan.
   function updateRider(lat,lng){
-    if(!(isFinite(lat)&&isFinite(lng)))return;
+    // Number(null)===0, and (0,0) is a point in the Atlantic — one missing GPS fix used to drop the bike
+    // there and the fitBounds below framed half the planet. No rider is ever at exactly (0,0).
+    if(!(isFinite(lat)&&isFinite(lng))||(!lat&&!lng))return;
     try{
       if(!riderM){
         riderM=L.marker([lat,lng],{interactive:false,zIndexOffset:600,icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:'<div class="ridericon">🛵</div>'})}).addTo(map);
@@ -2178,11 +2201,14 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       if(!obody)obody='<div class="ordrow"><span>Full details are in your WhatsApp chat.</span></div>';
       ord='<details class="tacc"><summary>Order '+esc(ORDNUM)+(om.item?(' · '+esc(om.item)):'')+'</summary><div class="taccb">'+obody+'</div></details>';
     }
-    // The receiver's own handover code — shown only to them (the server only sends my_code when this
-    // session's number IS the receiver's). Everyone else gets the explainer instead.
+    // The handover code, worded for WHO is looking (owner 2026-07-30: the creator must see it too — if
+    // the receiver has no WhatsApp, the creator is the one who has to pass it on or the parcel is not
+    // released). Receiver: read it out at the door. Booker: send it to your receiver now.
     var codeBox='';
     if(MY_CODE&&(st==='pickedup'||st==='ontheway'||st==='arrived')){
-      codeBox='<div class="codebox"><div class="codecap">Your handover code</div><div class="codeval">'+esc(MY_CODE)+'</div><div class="codenote">Give this to the rider ONLY when they hand you the parcel.</div></div>';
+      codeBox=(CODE_ROLE==='receiver')
+        ?'<div class="codebox"><div class="codecap">Your handover code</div><div class="codeval">'+esc(MY_CODE)+'</div><div class="codenote">Give this to the rider ONLY when they hand you the parcel.</div></div>'
+        :'<div class="codebox"><div class="codecap">Handover code — for your receiver</div><div class="codeval">'+esc(MY_CODE)+'</div><div class="codenote">Make sure your receiver has this code. The rider only releases the parcel when the person at the door gives it — without it the package will not be handed over. We also try to WhatsApp it to them directly.</div></div>';
     } else if(CODE_SET&&(st==='pickedup'||st==='ontheway'||st==='arrived')){
       codeBox='<div class="codehint">🔐 We sent the receiver a 4-digit code — the rider needs it to complete the handover.</div>';
     }
@@ -2293,7 +2319,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     // misbehave: a stale mapFee/OFFER meant the fare card showed the OLD trip's price (or nothing),
     // and a stale code/chat kept painting panels that belonged to an order that no longer exists.
     mapFee=null; mapMin=null; mapKm=null; OFFER=null; SURGE=null; AUTO_PICK=null;
-    MY_CODE=''; CODE_SET=false; CHAT_UNREAD=0; CHAT_MSGS=[]; _lastCounters=[]; _lastViewers=0; _lastDeclines=0;
+    MY_CODE=''; CODE_SET=false; CODE_ROLE=''; CHAT_UNREAD=0; CHAT_MSGS=[]; _lastCounters=[]; _lastViewers=0; _lastDeclines=0;
     COFF_DECLINED={}; COFF_EXPANDED=false;
     try{ closeChat(); }catch(e){}
     try{ chooserH(false); }catch(e){}
@@ -2443,10 +2469,13 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
      }).catch(function(){ if(btn){ btn.disabled=false; btn.textContent='Accept'; } alert('Network hiccup — try again.'); });
   }
   function _postOpt(){ var o={method:'POST'}; try{ if(window.AbortSignal&&AbortSignal.timeout)o.signal=AbortSignal.timeout(25000); }catch(e){} return o; }
-  // inDrive-style waiting controls (only in "pick your rider" mode = own order, still searching, auto-accept OFF):
-  // a search countdown, "raise your offer" stepper, and the auto-accept toggle.
+  // inDrive-style waiting controls: a search countdown, the "raise your offer" stepper, and the
+  // auto-accept toggle. Shown on EVERY own cash order still searching — not just pick-your-rider mode:
+  // when riders are passing on the price, the raise button is the customer's way out, and hiding it in
+  // instant-match mode left them stuck watching the radar. Cash only — a prepaid fee is already paid
+  // and can't be raised (the server refuses too).
   function renderNegControls(s){
-    var show=ORDER_OWN&&(trkState==='searching'||trkState==='settle')&&s&&s.auto_accept===false;
+    var show=ORDER_OWN&&(trkState==='searching'||trkState==='settle')&&s&&s.cash===true;
     var el=document.getElementById('negctl');
     if(!show){ if(el&&el.parentNode)el.parentNode.removeChild(el); stopNegTimer(); return; }
     var box=document.getElementById('searchbox'); if(!box)return;
@@ -2472,6 +2501,9 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       document.getElementById('negtog').onclick=function(){ toggleAutoAccept(); };
       startNegTimer();
     }
+    // The toggle mirrors the SERVER's auto_accept on every poll — now that this panel also shows in
+    // instant-match mode, a toggle stuck rendering "off" would lie about how matching works.
+    var _tg=document.getElementById('negtog'); if(_tg)_tg.classList.toggle('on', !(s.auto_accept===false));
     updateNeg();
   }
   function updateNeg(){
@@ -2530,7 +2562,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
         }
         if(s&&(s.my_code||s.code_set)){
           var codeWas=MY_CODE;
-          MY_CODE=String(s.my_code||''); CODE_SET=!!s.code_set;
+          MY_CODE=String(s.my_code||''); CODE_SET=!!s.code_set; CODE_ROLE=String(s.code_role||'');
           if(MY_CODE&&MY_CODE!==codeWas&&trkState) trackUI(trkState);
         }
         // Keep the AGREED price in sync (a counter-accept changes delivery_fee) — the Order accordion,
@@ -2567,9 +2599,10 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     if(trkState==='cancelled')return;   // a poll already in flight must never repaint a cancelled order
     // A cancelled order (cancelled here, in chat, or by the team) must LEAVE the radar — not sit on
     // "Finding your rider" forever. orderstatus now reports 'cancelled'; show it and stop polling.
-    if(raw==='cancelled'){ trkState='cancelled'; trkLog('Order cancelled'); if(radarM){try{map.removeLayer(radarM);}catch(e){}radarM=null;} clearRider(); trackUI('cancelled'); stopPoll(); return; }
+    if(raw==='cancelled'){ trkState='cancelled'; trkLog('Order cancelled'); statusTone(); if(radarM){try{map.removeLayer(radarM);}catch(e){}radarM=null;} clearRider(); trackUI('cancelled'); stopPoll(); return; }
     var st=(raw==='assigned'||raw==='pickedup'||raw==='ontheway'||raw==='arrived'||raw==='delivered'||raw==='failed')?raw:'';
     if(!st||st===trkState)return;
+    statusTone();
     if(st==='assigned')track('rider_assigned');
     trkLog(trkHead(st)[0]);
     trkState=st;
@@ -2962,6 +2995,26 @@ const TRACK_CSS = `
 const TRACK_JS = `
 function ldlTracker(opts){
   var st='',done=1,pn=0,timer=null,RID=null,ORD='',L=opts.labels;
+  // Two-note whistle on every status change (owner ask) — WebAudio, no file; first touch unlocks audio.
+  var _tc=null;
+  function _tcx(){ try{ _tc=_tc||new (window.AudioContext||window.webkitAudioContext)(); if(_tc.state==='suspended')_tc.resume(); }catch(e){} return _tc; }
+  try{ document.addEventListener('touchstart',function(){ _tcx(); },{once:true,passive:true}); }catch(e){}
+  function statusTone(){
+    try{
+      var c=_tcx(); if(!c)return;
+      var t=c.currentTime;
+      [[988,0],[1319,0.12]].forEach(function(n){
+        var o=c.createOscillator(),g=c.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(n[0],t+n[1]);
+        g.gain.setValueAtTime(0.0001,t+n[1]);
+        g.gain.exponentialRampToValueAtTime(0.16,t+n[1]+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+n[1]+0.3);
+        o.connect(g); g.connect(c.destination);
+        o.start(t+n[1]); o.stop(t+n[1]+0.32);
+      });
+      if(navigator.vibrate)navigator.vibrate(60);
+    }catch(e){}
+  }
   function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function stageN(s){return s==='assigned'?2:((s==='pickedup'||s==='ontheway'||s==='arrived')?3:4);}
   function head(s){return L.heads[s]||((s==='pickedup'||s==='arrived')?L.heads.ontheway:L.heads.searching)||L.heads.searching;}
@@ -2988,9 +3041,10 @@ function ldlTracker(opts){
     if(st==='cancelled')return;
     // A cancelled order must LEAVE the radar, not sit on "Finding your rider" forever. Self-contained
     // render (no dependency on the per-page labels) so every flow shows a clean cancelled state.
-    if(raw==='cancelled'){ st='cancelled'; stop(); var mc=document.getElementById(opts.mount); if(mc)mc.innerHTML='<div class="search"><h2>Order cancelled</h2><p class="smut">This delivery was cancelled. You can book again anytime.</p>'+(opts.doneHtml||'')+'</div>'; return; }
+    if(raw==='cancelled'){ st='cancelled'; statusTone(); stop(); var mc=document.getElementById(opts.mount); if(mc)mc.innerHTML='<div class="search"><h2>Order cancelled</h2><p class="smut">This delivery was cancelled. You can book again anytime.</p>'+(opts.doneHtml||'')+'</div>'; return; }
     var s=(raw==='assigned'||raw==='pickedup'||raw==='ontheway'||raw==='arrived'||raw==='delivered'||raw==='failed')?raw:'';
     if(!s||s===st)return;
+    statusTone();
     st=s; if(s!=='failed')done=stageN(s);
     ui(s);
     if(s==='delivered'||s==='failed'){stop();} else {poll(15000);}
