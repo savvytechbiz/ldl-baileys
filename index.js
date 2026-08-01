@@ -2235,7 +2235,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
       riderRow='<div class="riderrow"><div class="rdrav">'+esc(_init)+'</div>'
         +'<div class="rdrmeta"><span class="rdrnm">'+esc(RIDER.name||'On the job')+'</span><span class="rdrcap" style="text-transform:none;letter-spacing:0">Your driver</span></div>'
         +'<div class="rdrbtns">'
-          +(RIDER.phone?('<a class="rdricon" aria-label="Call your driver" href="tel:'+esc(String(RIDER.phone).replace(/[^\\d+]/g,''))+'"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.4 2.1L8.1 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.6 1.9z"/></svg></a>'):'')
+          +(RIDER.phone?('<button type="button" class="rdricon" id="callbtn" aria-label="Call your driver"><svg class="i" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.4 2.1L8.1 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.6 1.9z"/></svg></button>'):'')
           // In-app chat with the rider (not WhatsApp) — the thread lives on the order, both sides poll it.
           +'<button type="button" class="rdricon" id="chatbtn" aria-label="Message your driver"><svg class="i" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 20l1-5.1a8.4 8.4 0 1 1 17-3.4z"/></svg>'
           +(CHAT_UNREAD?'<span class="chatdot">'+(CHAT_UNREAD>9?'9+':CHAT_UNREAD)+'</span>':'')+'</button>'
@@ -2304,6 +2304,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     var _pb=document.getElementById('paybtn'); if(_pb)_pb.onclick=payOnline;
     var _cb2=document.getElementById('chatbtn'); if(_cb2)_cb2.onclick=openChat;
     var _ma=document.getElementById('msgalert'); if(_ma)_ma.onclick=openChat;
+    var _cw=document.getElementById('callbtn'); if(_cw)_cw.onclick=function(){ openCallOverlay('start'); };
   }
   // ── In-app chat with the rider ── one thread per order, polled by both sides. WhatsApp only nudges
   // the other party when they're away, so nobody has to leave the app to talk.
@@ -2311,6 +2312,45 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
   // A rider message has to be NOTICED. Phones vibrate; a short two-note chime is synthesised on the fly
   // (no asset to load, works offline). Both are best-effort — some browsers block audio until a tap, and
   // the badge + WhatsApp fallback still cover it.
+  // ── In-app voice call ── the /call page in a full-screen overlay (same origin, so the mic prompt
+  // belongs to this site). 'start' = we ring the rider; 'wait' = the rider is ringing US.
+  // The page itself offers "Call on the phone network instead", so the choice is always on screen.
+  var CALL_OPEN=false, CALL_WATCH=null;
+  function openCallOverlay(mode){
+    if(CALL_OPEN)return; CALL_OPEN=true;
+    var tel=(RIDER&&RIDER.phone)?String(RIDER.phone):'';
+    var who=(RIDER&&RIDER.name)?RIDER.name:'Your rider';
+    var u='/call?role=customer&mode='+mode+'&order='+encodeURIComponent(ORDNUM)
+      +'&session='+encodeURIComponent(SESSION)+'&who='+encodeURIComponent(who)+'&tel='+encodeURIComponent(tel);
+    var w=document.createElement('div'); w.id='callwrap';
+    w.style.cssText='position:fixed;inset:0;z-index:99999;background:#33052F';
+    var f=document.createElement('iframe'); f.src=u; f.allow='microphone; autoplay';
+    f.style.cssText='width:100%;height:100%;border:0';
+    w.appendChild(f);
+    var x=document.createElement('button'); x.textContent='Close';
+    x.style.cssText='position:absolute;top:16px;right:14px;background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:11px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer';
+    x.onclick=function(){ closeCallOverlay(); };
+    w.appendChild(x);
+    document.body.appendChild(w);
+  }
+  function closeCallOverlay(){ var w=document.getElementById('callwrap'); if(w&&w.parentNode)w.parentNode.removeChild(w); CALL_OPEN=false; }
+  // The rider may ring US — watch for it while the job is live (the tracker is the customer's phone here).
+  function watchIncoming(){
+    if(CALL_WATCH)return;
+    CALL_WATCH=setInterval(function(){
+      if(CALL_OPEN)return;
+      if(RUNNING_STATES.indexOf(trkState)<0){ return; }
+      fetch('https://wbsczuwofdrliloueskw.supabase.co/functions/v1/callSignal',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'poll',role:'customer',order_number:ORDNUM,session:SESSION,since:0})})
+      .then(function(r){return r.json();}).then(function(j){
+        if(j&&j.call&&j.call.status==='ringing'&&j.call.caller==='rider'&&!CALL_OPEN){
+          statusTone('good');
+          openCallOverlay('wait');
+        }
+      }).catch(function(){});
+    },5000);
+  }
+  watchIncoming();
   function chatAlert(){
     try{ if(navigator.vibrate)navigator.vibrate([120,80,120]); }catch(e){}
     try{
@@ -2818,7 +2858,209 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
 // on — not a hardcoded one. connectedPhone is the live session number; swap it into each page at serve
 // time so the button always opens the right chat (and auto-follows any future number change).
 const withWa = (html) => html.split('2349110218825').join(connectedPhone || '2347071180251');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALL_PAGE — one voice-call screen used by BOTH sides.
+// The rider opens it inside the driver app (a web view, so no native calling
+// library is needed and the app still runs in Expo Go); the customer opens it
+// from their tracker. Same code both ends = one implementation to get right.
+//
+// The audio goes phone-to-phone. Our server only introduces the two sides
+// (callSignal), which is why an in-app call costs nothing per minute.
+// ─────────────────────────────────────────────────────────────────────────────
+const CALL_PAGE = `<!doctype html><html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lasalu Drop — Call</title>
+<style>
+:root{--plum:#4F074C;--plum-d:#33052F;--pink:#E23A7C;--ink:#fff;--mut:rgba(255,255,255,.72);--stop:#C0392B}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:linear-gradient(170deg,var(--plum),var(--plum-d));color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden}
+.wrap{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:40px 24px 34px}
+.top{text-align:center;margin-top:22px}
+.who{font-size:27px;font-weight:800;letter-spacing:-.4px}
+.role{font-size:13px;color:var(--mut);margin-top:6px;text-transform:uppercase;letter-spacing:.09em;font-weight:700}
+.state{font-size:15px;color:var(--mut);margin-top:20px;min-height:22px;font-weight:600}
+.timer{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:6px;min-height:36px;letter-spacing:1px}
+.av{width:118px;height:118px;border-radius:50%;background:rgba(255,255,255,.13);display:flex;align-items:center;
+  justify-content:center;font-size:44px;font-weight:800;margin:26px auto 0;position:relative}
+.av.ring::after{content:'';position:absolute;inset:-10px;border-radius:50%;border:2px solid rgba(255,255,255,.5);
+  animation:pulse 1.6s cubic-bezier(.23,1,.32,1) infinite}
+@keyframes pulse{0%{opacity:.75;transform:scale(1)}70%,100%{opacity:0;transform:scale(1.22)}}
+.acts{display:flex;gap:22px;align-items:center;justify-content:center;width:100%}
+.btn{width:70px;height:70px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;
+  font-size:27px;cursor:pointer;color:#fff;transition:transform .16s cubic-bezier(.23,1,.32,1)}
+.btn:active{transform:scale(.93)}
+.btn.end{background:var(--stop)}.btn.ans{background:#1DB954}.btn.sec{background:rgba(255,255,255,.16);width:58px;height:58px;font-size:21px}
+.btn.sec.on{background:#fff;color:var(--plum)}
+.lbl{font-size:11.5px;color:var(--mut);text-align:center;margin-top:9px;font-weight:700}
+.col{display:flex;flex-direction:column;align-items:center}
+.note{font-size:12.5px;color:var(--mut);text-align:center;line-height:1.55;max-width:300px;margin:14px auto 0}
+.fallback{display:inline-block;margin-top:16px;color:#fff;font-size:13.5px;font-weight:800;text-decoration:underline;opacity:.92}
+</style></head><body>
+<div class="wrap">
+  <div class="top">
+    <div class="av" id="av"><span id="ini">·</span></div>
+    <div class="who" id="who">&nbsp;</div>
+    <div class="role" id="role">&nbsp;</div>
+    <div class="state" id="state">Starting…</div>
+    <div class="timer" id="timer"></div>
+    <div class="note" id="note"></div>
+    <a class="fallback" id="fallback" style="display:none">Call on the phone network instead</a>
+  </div>
+  <div class="acts" id="acts"></div>
+</div>
+<script>
+(function(){
+  var Q=new URLSearchParams(location.search);
+  var API='https://wbsczuwofdrliloueskw.supabase.co/functions/v1/callSignal';
+  var ROLE=Q.get('role')||'customer', ORDER=Q.get('order')||'';
+  var TOKEN=Q.get('token')||'', SESSION=Q.get('session')||'';
+  var WHO=Q.get('who')||'', TEL=Q.get('tel')||'', MODE=Q.get('mode')||'start';
+  var pc=null, localStream=null, callId='', since=0, pollT=null, tickT=null, t0=0, ended=false, muted=false, spk=false;
+  var el=function(i){return document.getElementById(i);};
+  function say(t){ el('state').textContent=t; }
+  function note(t){ el('note').textContent=t||''; }
+  function body(o){ o=o||{}; o.role=ROLE; o.order_number=ORDER; if(ROLE==='rider')o.token=TOKEN; else o.session=SESSION; return o; }
+  function api(o){ return fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body(o))}).then(function(r){return r.json();}); }
+
+  el('who').textContent=WHO||'Connecting';
+  el('ini').textContent=(WHO||'·').trim().charAt(0).toUpperCase()||'·';
+  el('role').textContent=ROLE==='rider'?'Customer':'Your rider';
+  if(TEL){ var fb=el('fallback'); fb.href='tel:'+TEL.replace(/[^0-9+]/g,''); fb.style.display='inline-block'; }
+
+  function buttons(kind){
+    var a=el('acts'); a.innerHTML='';
+    function mk(cls,glyph,label,fn){
+      var c=document.createElement('div'); c.className='col';
+      var b=document.createElement('button'); b.className='btn '+cls; b.innerHTML=glyph; b.onclick=fn;
+      c.appendChild(b); var l=document.createElement('div'); l.className='lbl'; l.textContent=label; c.appendChild(l);
+      a.appendChild(c); return b;
+    }
+    if(kind==='incoming'){
+      mk('end','&#10006;','Decline',function(){ hangup('declined'); });
+      mk('ans','&#9742;','Answer',function(){ answer(); });
+    } else if(kind==='live'){
+      var mb=mk('sec','&#128264;','Mute',function(){ muted=!muted; if(localStream)localStream.getAudioTracks().forEach(function(t){t.enabled=!muted;}); mb.classList.toggle('on',muted); });
+      mk('end','&#10006;','End',function(){ hangup('hangup'); });
+      var sb=mk('sec','&#128266;','Speaker',function(){
+        spk=!spk; sb.classList.toggle('on',spk);
+        var au=document.getElementById('remoteAudio');
+        if(au&&au.setSinkId){ au.setSinkId(spk?'speaker':'').catch(function(){}); } else if(au){ au.volume=1.0; }
+      });
+    } else {
+      mk('end','&#10006;','End',function(){ hangup('hangup'); });
+    }
+  }
+
+  function fmt(s){ var m=Math.floor(s/60), r=s%60; return m+':'+(r<10?'0':'')+r; }
+  function startTimer(){ t0=Date.now(); if(tickT)clearInterval(tickT); tickT=setInterval(function(){ el('timer').textContent=fmt(Math.floor((Date.now()-t0)/1000)); },500); }
+
+  function done(msg, reason){
+    if(ended)return; ended=true;
+    if(pollT)clearInterval(pollT); if(tickT)clearInterval(tickT);
+    try{ if(pc)pc.close(); }catch(e){}
+    try{ if(localStream)localStream.getTracks().forEach(function(t){t.stop();}); }catch(e){}
+    say(msg||'Call ended'); el('acts').innerHTML=''; el('av').classList.remove('ring');
+    note(reason||'You can close this screen.');
+    try{ if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify({t:'call-ended'})); }catch(e){}
+    setTimeout(function(){ try{ if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify({t:'call-close'})); }catch(e){} },1600);
+  }
+  function hangup(reason){
+    if(callId) api({action:'end',call_id:callId,reason:reason||'hangup'}).catch(function(){});
+    done(reason==='declined'?'Declined':'Call ended');
+  }
+
+  function attachRemote(stream){
+    var au=document.getElementById('remoteAudio');
+    if(!au){ au=document.createElement('audio'); au.id='remoteAudio'; au.autoplay=true; au.playsInline=true; document.body.appendChild(au); }
+    au.srcObject=stream; au.play().catch(function(){});
+  }
+
+  function newPeer(ice){
+    var p=new RTCPeerConnection({iceServers:ice||[{urls:'stun:stun.l.google.com:19302'}]});
+    p.onicecandidate=function(e){ if(e.candidate&&callId) api({action:'signal',call_id:callId,kind:'ice',payload:e.candidate}).catch(function(){}); };
+    p.ontrack=function(e){ attachRemote(e.streams[0]); };
+    p.onconnectionstatechange=function(){
+      if(p.connectionState==='connected'){ say('Connected'); note(''); buttons('live'); startTimer(); }
+      if(p.connectionState==='failed'){ done('Could not connect','Your networks could not reach each other. Use the phone-network button instead.'); }
+    };
+    return p;
+  }
+
+  function mic(){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)
+      return Promise.reject(new Error('This phone cannot make in-app calls.'));
+    return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+  }
+
+  function poll(){
+    if(pollT)clearInterval(pollT);
+    pollT=setInterval(function(){
+      api({action:'poll',since:since}).then(function(j){
+        if(ended)return;
+        if(!j) return;
+        if(!j.call){
+          if(callId){ var r=(j.last_ended&&j.last_ended.end_reason)||''; done(r==='declined'?'Call declined':(r==='timeout'?'No answer':'Call ended')); }
+          return;
+        }
+        callId=j.call.id;
+        if(j.call.status==='active'){ el('av').classList.remove('ring'); }
+        (j.signals||[]).forEach(function(s){
+          since=Math.max(since,s.id);
+          if(s.kind==='offer'){
+            pc.setRemoteDescription(new RTCSessionDescription(s.payload))
+              .then(function(){ return pc.createAnswer(); })
+              .then(function(a){ return pc.setLocalDescription(a).then(function(){ return api({action:'signal',call_id:callId,kind:'answer',payload:a}); }); })
+              .catch(function(){});
+          } else if(s.kind==='answer'){
+            pc.setRemoteDescription(new RTCSessionDescription(s.payload)).catch(function(){});
+          } else if(s.kind==='ice'){
+            pc.addIceCandidate(new RTCIceCandidate(s.payload)).catch(function(){});
+          }
+        });
+      }).catch(function(){});
+    },1000);
+  }
+
+  function answer(){
+    api({action:'accept',call_id:callId}).then(function(){
+      say('Connecting…'); buttons('live');
+      return mic();
+    }).then(function(st){
+      localStream=st; st.getTracks().forEach(function(t){ pc.addTrack(t,st); });
+    }).catch(function(e){ done('Microphone blocked', 'Allow microphone access for Drop, then try again.'); });
+  }
+
+  api({action:'ice'}).then(function(cfg){
+    pc=newPeer(cfg&&cfg.ice_servers);
+    if(MODE==='wait'){
+      say('Incoming call'); el('av').classList.add('ring'); buttons('incoming'); poll();
+      setTimeout(function(){ if(!ended&&el('timer').textContent===''){ done('Missed call'); } },45000);
+      return;
+    }
+    say('Calling…'); el('av').classList.add('ring'); buttons('calling');
+    return api({action:'start'}).then(function(j){
+      if(!j||j.error){ done('Could not start the call', (j&&j.error)||'Try the phone-network button.'); return; }
+      callId=j.call.id; poll();
+      return mic().then(function(st){
+        localStream=st; st.getTracks().forEach(function(t){ pc.addTrack(t,st); });
+        return pc.createOffer({offerToReceiveAudio:true});
+      }).then(function(o){
+        return pc.setLocalDescription(o).then(function(){ return api({action:'signal',call_id:callId,kind:'offer',payload:o}); });
+      }).then(function(){
+        setTimeout(function(){ if(!ended&&el('timer').textContent===''){ done('No answer','They may not have the app open. Use the phone-network button.'); if(callId)api({action:'end',call_id:callId,reason:'timeout'}).catch(function(){}); } },45000);
+      });
+    });
+  }).catch(function(e){ done('Call unavailable', (e&&e.message)||'Please use the phone-network button.'); });
+
+  window.addEventListener('pagehide',function(){ if(!ended&&callId) api({action:'end',call_id:callId,reason:'hangup'}).catch(function(){}); });
+})();
+</script></body></html>`;
+
 app.get('/map', (req, res) => { res.type('html').send(withWa(MAP_PAGE)); });
+// The shared voice-call screen (rider app web view + customer tracker both load this).
+app.get('/call', (req, res) => { res.type('html').send(CALL_PAGE); });
 // Short-link redirects so booking links are tidy in chat: /m/:t → /map?session=:t (etc.)
 app.get('/m/:t', (req, res) => res.redirect(302, `/map?session=${encodeURIComponent(req.params.t)}`));
 app.get('/q/:t', (req, res) => res.redirect(302, `/quote?session=${encodeURIComponent(req.params.t)}`));
