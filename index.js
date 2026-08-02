@@ -1081,7 +1081,14 @@ function pinIcon(which){
 // dots drift roughly with the riders — like Bolt/inDrive, but honest (no fake bikes, no ETA promises).
 var riderDots=[];
 function bikeIcon(){return L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],html:'<div style="width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 3px 11px rgba(58,5,55,.3);border:1px solid rgba(58,5,55,.08);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="#4F074C" aria-hidden="true"><path d="M19.44 9.03L15.41 5H11v2h3.59l2 2H5c-2.8 0-5 2.2-5 5s2.2 5 5 5c2.46 0 4.45-1.69 4.9-4h1.65l2.77-2.77c-.21.54-.32 1.14-.32 1.77 0 2.8 2.2 5 5 5s5-2.2 5-5c0-2.79-2.21-5-4.56-4.97zM7.82 15C7.4 16.15 6.28 17 5 17c-1.63 0-3-1.37-3-3s1.37-3 3-3c1.28 0 2.4.85 2.82 2H5v2h2.82zM19 17c-1.63 0-3-1.37-3-3s1.37-3 3-3 3 1.37 3 3-1.37 3-3 3z"/></svg></div>'});}
+var RIDERS_T0=Date.now();
+var RIDERS_IV=null;var BOOKED=false;
 function loadRiders(){
+  // The dots are a booking-time nicety. This interval used to run for the LIFETIME of the tab — every
+  // forgotten booking link kept hitting the server every 25s all day (each tick is a metered edge-function
+  // call). Stop once the customer has booked (the tracker takes over) or after 15 quiet minutes; any
+  // interaction re-arms the window.
+  if((typeof BOOKED!=='undefined'&&BOOKED)||(Date.now()-RIDERS_T0)>15*60*1000){if(RIDERS_IV){clearInterval(RIDERS_IV);RIDERS_IV=null;}return;}
   fetch(api('action=riders')).then(function(r){return r.json();}).then(function(j){
     var rs=(j&&j.riders)||[];
     riderDots.forEach(function(m){map.removeLayer(m);});riderDots=[];
@@ -1862,7 +1869,7 @@ function wire(inId,sugId,which){
   });
 }
 if(VALID!=='1'){ document.getElementById('app').innerHTML='<div class="done"><h2>Link expired</h2><p class="muted">Please head back to your chat and ask for the price again.</p></div>'; }
-else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
+else { initMap(); loadRiders(); RIDERS_IV=setInterval(loadRiders,25000); document.addEventListener('pointerdown',function(){RIDERS_T0=Date.now();if(!RIDERS_IV&&!(typeof BOOKED!=='undefined'&&BOOKED))RIDERS_IV=setInterval(loadRiders,25000);}); wire('pin','psug','pickup'); wire('din','dsug','dropoff');
   // Remember which address box the customer last touched — a tapped history place goes THERE. Set on
   // FOCUS and deliberately NOT cleared on blur: tapping a list row blurs the input first, so clearing
   // on blur would throw away the very answer we need.
@@ -2797,6 +2804,7 @@ else { initMap(); loadRiders(); setInterval(loadRiders,25000); wire('pin','psug'
     },'edit');
   }
   function showSearching(j){
+    BOOKED=true; if(typeof RIDERS_IV!=='undefined'&&RIDERS_IV){clearInterval(RIDERS_IV);RIDERS_IV=null;}   // booked: the tracker owns the page now, stop the dots poll
     ['step-route','step-pickup','step-details','step-pay'].forEach(function(id){ var e=document.getElementById(id); if(e)e.style.display='none'; });
     var sh=document.querySelector('.sheet');
     if(sh&&!document.getElementById('searchbox')){ var bx=document.createElement('div'); bx.id='searchbox'; sh.appendChild(bx); }
